@@ -72,8 +72,8 @@ export default async function RoomPage({
   const openUnresolved = opens?.filter((o) => !o.answer) || []
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-slate-800 bg-slate-900/50">
+    <div className="min-h-screen bg-bh-black text-white">
+      <header className="border-b border-bh-border bg-bh-panel/70">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
@@ -93,7 +93,7 @@ export default async function RoomPage({
                 <button
                   className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 transition-colors ${
                     room.review_state === s
-                      ? 'bg-amber-500 text-slate-950'
+                      ? 'bg-gold text-slate-950'
                       : 'bg-slate-800 text-slate-400 hover:text-white'
                   }`}
                 >
@@ -146,7 +146,7 @@ export default async function RoomPage({
               const active = list!.filter((d) => d.status === 'active')
               const superseded = list!.filter((d) => d.status === 'superseded')
               return (
-                <div key={topic} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <div key={topic} className="bg-bh-card border border-bh-border rounded-xl p-4">
                   <div className="text-xs font-mono text-slate-500 mb-2">{topic}</div>
                   {active.map((d) => (
                     <div key={d.id} className="flex items-start justify-between gap-3 mb-1">
@@ -176,25 +176,25 @@ export default async function RoomPage({
               )
             })}
             {!decisions?.length && (
-              <div className="text-sm text-slate-600 border border-dashed border-slate-800 rounded-xl p-6 text-center">
+              <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-6 text-center">
                 No decisions captured for this room yet.
               </div>
             )}
           </div>
 
-          <form action={addDecision} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+          <form action={addDecision} className="bg-bh-panel/70 border border-bh-border rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
             <input type="hidden" name="project_id" value={id} />
             <input type="hidden" name="room_id" value={roomId} />
-            <input name="topic" required placeholder="Topic (e.g. ceiling)" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 col-span-1" />
-            <input name="value" required placeholder="Decision (e.g. 12-ft flat, vaulted…)" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 col-span-1" />
-            <select name="source" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
+            <input name="topic" required placeholder="Topic (e.g. ceiling)" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2 col-span-1" />
+            <input name="value" required placeholder="Decision (e.g. 12-ft flat, vaulted…)" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2 col-span-1" />
+            <select name="source" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2">
               {Object.entries(SOURCE_LABEL).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
-            <input name="source_ref" placeholder="Source ref (timestamp / page)" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2" />
-            <input name="meeting_date" type="date" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2" />
-            <button className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg px-3 py-2 transition-colors">
+            <input name="source_ref" placeholder="Source ref (timestamp / page)" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2" />
+            <input name="meeting_date" type="date" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2" />
+            <button className="bg-gold hover:bg-gold-light-light text-slate-950 font-semibold rounded-lg px-3 py-2 transition-colors">
               Add decision (supersedes previous on same topic)
             </button>
           </form>
@@ -205,7 +205,7 @@ export default async function RoomPage({
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
             Runbook defaults in effect ({openDefaults.length} topics with no decision → §4 default)
           </h2>
-          <div className="bg-slate-900/50 border border-slate-800 rounded-xl divide-y divide-slate-800/60">
+          <div className="bg-bh-panel/70 border border-bh-border rounded-xl divide-y divide-slate-800/60">
             {openDefaults.map((d) => (
               <div key={d.topic} className="flex items-start justify-between gap-4 px-4 py-2.5 text-sm">
                 <div>
@@ -237,7 +237,7 @@ export default async function RoomPage({
             </h2>
             <Link
               href={`/projects/${id}/images`}
-              className="text-xs text-amber-400 hover:text-amber-300 underline"
+              className="text-xs text-gold-light hover:text-gold-light underline"
             >
               manage image pool →
             </Link>
@@ -245,7 +245,7 @@ export default async function RoomPage({
           {(images || []).length ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {images!.map((img) => (
-                <div key={img.id} className="rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
+                <div key={img.id} className="rounded-xl overflow-hidden border border-bh-border bg-bh-card">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`${SUPABASE_URL}/storage/v1/object/public/intent-inspo/${img.storage_path}`}
@@ -257,9 +257,9 @@ export default async function RoomPage({
               ))}
             </div>
           ) : (
-            <div className="text-sm text-slate-600 border border-dashed border-slate-800 rounded-xl p-4 text-center">
+            <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-4 text-center">
               No inspo assigned to this room.{' '}
-              <Link href={`/projects/${id}/images`} className="text-amber-400 underline">
+              <Link href={`/projects/${id}/images`} className="text-gold-light underline">
                 Assign some →
               </Link>
             </div>
@@ -276,7 +276,7 @@ export default async function RoomPage({
               <div
                 key={o.id}
                 className={`border rounded-xl p-4 ${
-                  o.answer ? 'border-slate-800 bg-slate-900/40' : 'border-amber-900/50 bg-slate-900'
+                  o.answer ? 'border-bh-border bg-bh-panel/50' : 'border-amber-900/50 bg-bh-card'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -303,7 +303,7 @@ export default async function RoomPage({
                       name="answer"
                       required
                       placeholder={o.default_if_unanswered ? `Answer (or type the default: ${o.default_if_unanswered})` : 'Answer'}
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm"
+                      className="flex-1 bg-bh-black border border-bh-border rounded-lg px-3 py-2 text-sm"
                     />
                     <button className="bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 text-sm font-medium">
                       Resolve
@@ -313,18 +313,18 @@ export default async function RoomPage({
               </div>
             ))}
             {!opens?.length && (
-              <div className="text-sm text-slate-600 border border-dashed border-slate-800 rounded-xl p-4 text-center">
+              <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-4 text-center">
                 No open questions for this room.
               </div>
             )}
           </div>
-          <form action={addOpenQuestion} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+          <form action={addOpenQuestion} className="bg-bh-panel/70 border border-bh-border rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
             <input type="hidden" name="project_id" value={id} />
             <input type="hidden" name="room_id" value={roomId} />
-            <input name="question" required placeholder="Question (e.g. floating vanities?)" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 col-span-2" />
-            <input name="default_if_unanswered" placeholder="Default if unanswered" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2" />
+            <input name="question" required placeholder="Question (e.g. floating vanities?)" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2 col-span-2" />
+            <input name="default_if_unanswered" placeholder="Default if unanswered" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2" />
             <label className="flex items-center gap-2 text-slate-400 text-xs">
-              <input type="checkbox" name="blocking" defaultChecked className="accent-amber-500" />
+              <input type="checkbox" name="blocking" defaultChecked className="accent-gold" />
               Blocking (must resolve before Lock)
             </label>
             <button className="bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 font-medium col-span-2">
@@ -340,8 +340,8 @@ export default async function RoomPage({
           </h2>
           <div className="space-y-2 mb-4">
             {(redlines || []).map((r) => (
-              <div key={r.id} className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm">
-                <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-amber-300 rounded px-1.5 py-0.5 shrink-0">
+              <div key={r.id} className="flex items-center gap-3 bg-bh-card border border-bh-border rounded-lg px-4 py-2 text-sm">
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-gold-light rounded px-1.5 py-0.5 shrink-0">
                   {r.note_type.replace('_', ' ')}
                 </span>
                 <span>{r.text}</span>
@@ -349,21 +349,21 @@ export default async function RoomPage({
               </div>
             ))}
             {!redlines?.length && (
-              <div className="text-sm text-slate-600 border border-dashed border-slate-800 rounded-xl p-4 text-center">
+              <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-4 text-center">
                 No redline notes for this room.
               </div>
             )}
           </div>
-          <form action={addRedlineNote} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 grid grid-cols-4 gap-3 text-sm">
+          <form action={addRedlineNote} className="bg-bh-panel/70 border border-bh-border rounded-xl p-4 grid grid-cols-4 gap-3 text-sm">
             <input type="hidden" name="project_id" value={id} />
             <input type="hidden" name="room_id" value={roomId} />
-            <select name="note_type" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 col-span-1">
+            <select name="note_type" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2 col-span-1">
               {NOTE_TYPES.map((t) => (
                 <option key={t} value={t}>{t.replace('_', ' ')}</option>
               ))}
             </select>
-            <input name="text" required placeholder="What the markup means (e.g. beam, not wall)" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 col-span-2" />
-            <input name="source_ref" placeholder="D1 ref" className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 col-span-1" />
+            <input name="text" required placeholder="What the markup means (e.g. beam, not wall)" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2 col-span-2" />
+            <input name="source_ref" placeholder="D1 ref" className="bg-bh-black border border-bh-border rounded-lg px-3 py-2 col-span-1" />
             <button className="bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 font-medium col-span-4">
               Add redline note
             </button>

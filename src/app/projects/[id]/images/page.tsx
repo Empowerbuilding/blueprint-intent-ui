@@ -40,8 +40,8 @@ export default async function ImagesPage({
     <div
       key={img.id}
       className={`rounded-xl overflow-hidden border ${
-        state === 'unassigned' ? 'border-red-900/60' : state === 'parked' ? 'border-slate-800' : 'border-emerald-900/50'
-      } bg-slate-900`}
+        state === 'unassigned' ? 'border-red-900/60' : state === 'parked' ? 'border-bh-border' : 'border-emerald-900/50'
+      } bg-bh-card`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={publicUrl(img.storage_path)} alt={img.notes || 'inspo'} className="w-full h-40 object-cover" />
@@ -59,7 +59,7 @@ export default async function ImagesPage({
           <select
             name="room_id"
             defaultValue={img.room_id ?? (img.parked ? 'PARK' : '')}
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs"
+            className="flex-1 bg-bh-black border border-bh-border rounded-lg px-2 py-1.5 text-xs"
           >
             <option value="">— unassigned —</option>
             <option value="PARK">🅿️ park (not used)</option>
@@ -78,8 +78,8 @@ export default async function ImagesPage({
   )
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-slate-800 bg-slate-900/50">
+    <div className="min-h-screen bg-bh-black text-white">
+      <header className="border-b border-bh-border bg-bh-panel/70">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href={`/projects/${id}`} className="text-slate-500 hover:text-white text-sm transition-colors">

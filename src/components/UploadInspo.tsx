@@ -43,7 +43,7 @@ export default function UploadInspo({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex items-center gap-3">
-      <label className="cursor-pointer bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg px-4 py-2 text-sm transition-colors">
+      <label className="cursor-pointer bg-gold hover:bg-gold-light-light text-slate-950 font-semibold rounded-lg px-4 py-2 text-sm transition-colors">
         {busy ? 'Uploading…' : 'Upload inspo images'}
         <input
           type="file"

@@ -17,13 +17,13 @@ export default async function LoginPage({
   if (user) return <meta httpEquiv="refresh" content="0;url=/" />
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-bh-black px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="text-3xl font-bold text-white">Design Intent</div>
           <div className="text-sm text-slate-400 mt-1">Barnhaus · Work Order UI</div>
         </div>
-        <form action={signIn} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+        <form action={signIn} className="bg-bh-card border border-bh-border rounded-xl p-6 space-y-4">
           {error && (
             <div className="text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-lg px-3 py-2">
               Sign-in failed — check email and password.
@@ -35,7 +35,7 @@ export default async function LoginPage({
               name="email"
               type="email"
               required
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500"
+              className="w-full bg-bh-black border border-bh-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold"
               placeholder="you@barnhaussteelbuilders.com"
             />
           </div>
@@ -45,12 +45,12 @@ export default async function LoginPage({
               name="password"
               type="password"
               required
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500"
+              className="w-full bg-bh-black border border-bh-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold"
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg px-3 py-2 text-sm transition-colors"
+            className="w-full bg-gold hover:bg-gold-light-light text-slate-950 font-semibold rounded-lg px-3 py-2 text-sm transition-colors"
           >
             Sign in
           </button>

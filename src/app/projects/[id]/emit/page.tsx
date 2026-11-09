@@ -61,8 +61,8 @@ export default async function EmitPage({
     .order('version', { ascending: false })
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-slate-800 bg-slate-900/50">
+    <div className="min-h-screen bg-bh-black text-white">
+      <header className="border-b border-bh-border bg-bh-panel/70">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
           <Link href={`/projects/${id}`} className="text-slate-500 hover:text-white text-sm transition-colors">
             ← {project.name}
@@ -93,7 +93,7 @@ export default async function EmitPage({
             <div
               key={g.label}
               className={`flex items-center justify-between rounded-xl border p-4 ${
-                g.ok ? 'border-emerald-900/50 bg-slate-900' : 'border-red-900/60 bg-slate-900'
+                g.ok ? 'border-emerald-900/50 bg-bh-card' : 'border-red-900/60 bg-bh-card'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -112,7 +112,7 @@ export default async function EmitPage({
               disabled={!allPass}
               className={`w-full rounded-xl px-4 py-3 font-semibold text-sm transition-colors ${
                 allPass
-                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                  ? 'bg-gold hover:bg-gold-light-light text-slate-950'
                   : 'bg-slate-800 text-slate-500 cursor-not-allowed'
               }`}
             >
@@ -137,14 +137,14 @@ export default async function EmitPage({
             {emissions?.map((e) => (
               <div
                 key={e.id}
-                className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm"
+                className="flex items-center justify-between bg-bh-card border border-bh-border rounded-lg px-4 py-3 text-sm"
               >
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-xs bg-slate-800 rounded px-2 py-0.5">v{e.version}</span>
                   <span className="text-slate-500">{new Date(e.emitted_at).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="text-amber-300">{e.blueprint_status}</span>
+                  <span className="text-gold-light">{e.blueprint_status}</span>
                   <a
                     href={`/api/contract/${id}?version=${e.version}&format=brief`}
                     className="text-slate-400 hover:text-white underline"
@@ -158,7 +158,7 @@ export default async function EmitPage({
               </div>
             ))}
             {!emissions?.length && (
-              <div className="text-sm text-slate-600 border border-dashed border-slate-800 rounded-xl p-4 text-center">
+              <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-4 text-center">
                 No emissions yet.
               </div>
             )}

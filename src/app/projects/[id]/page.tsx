@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation'
 
 const REVIEW_STYLES: Record<string, string> = {
   unreviewed: 'bg-red-900/60 text-red-300',
-  defaults_accepted: 'bg-amber-900/60 text-amber-300',
+  defaults_accepted: 'bg-amber-900/60 text-gold-light',
   confirmed: 'bg-emerald-900/60 text-emerald-300',
 }
 
@@ -61,8 +61,8 @@ export default async function ProjectPage({
   const total = rooms?.length || 0
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-slate-800 bg-slate-900/50">
+    <div className="min-h-screen bg-bh-black text-white">
+      <header className="border-b border-bh-border bg-bh-panel/70">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="text-slate-500 hover:text-white text-sm transition-colors">
@@ -77,7 +77,7 @@ export default async function ProjectPage({
                 <button
                   className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 transition-colors ${
                     project.status === s
-                      ? 'bg-amber-500 text-slate-950'
+                      ? 'bg-gold text-slate-950'
                       : 'bg-slate-800 text-slate-400 hover:text-white'
                   }`}
                 >
@@ -93,7 +93,7 @@ export default async function ProjectPage({
         <div className="flex items-center justify-between mb-6">
           <div className="text-sm text-slate-400">
             Room board —{' '}
-            <span className={total && confirmed === total ? 'text-emerald-400' : 'text-amber-400'}>
+            <span className={total && confirmed === total ? 'text-emerald-400' : 'text-gold-light'}>
               {confirmed}/{total} confirmed
             </span>
             {openCount ? <span className="text-red-400"> · {openCount} open questions</span> : null}
@@ -118,7 +118,7 @@ export default async function ProjectPage({
                 </Link>
                 <Link
                   href={`/projects/${id}/emit`}
-                  className="text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg px-4 py-2 transition-colors"
+                  className="text-sm bg-gold hover:bg-gold-light-light text-slate-950 font-semibold rounded-lg px-4 py-2 transition-colors"
                 >
                   Lock &amp; Emit{project.emitted_version ? ` (v${project.emitted_version})` : ''}
                 </Link>
@@ -132,7 +132,7 @@ export default async function ProjectPage({
             <Link
               key={r.id}
               href={`/projects/${id}/rooms/${r.id}`}
-              className="group bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-xl p-4 transition-colors"
+              className="group bg-bh-card border border-bh-border hover:border-gold/50 rounded-xl p-4 transition-colors"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-mono text-slate-500">{r.section_code}</span>
@@ -144,7 +144,7 @@ export default async function ProjectPage({
                   {r.review_state.replace('_', ' ')}
                 </span>
               </div>
-              <div className="text-sm font-medium group-hover:text-amber-400 transition-colors">
+              <div className="text-sm font-medium group-hover:text-gold-light transition-colors">
                 {r.name}
               </div>
               <div className="text-xs text-slate-500 mt-2 flex items-center gap-2">
