@@ -125,6 +125,11 @@ export default async function RoomPage({
                 </button>
               </form>
             )}
+            {room.review_state === '2d_approved' && (
+              <span className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 bg-violet-900/70 text-violet-300 border border-violet-500/60">
+                ✓ 2d approved
+              </span>
+            )}
           </div>
         </div>
       </header>
