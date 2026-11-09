@@ -125,7 +125,7 @@ export async function buildAndEmit(
         method: 'POST',
         headers: {
           apikey: portalKey,
-          Authorization: ['Bear', 'er', portalKey].join(' '),
+          Authorization: ['Bear', 'er', portalKey].join(''),
           'Content-Type': 'application/json',
           Prefer: 'return=minimal',
         },

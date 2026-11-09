@@ -35,7 +35,7 @@ Look at the image and return ONLY valid JSON (no markdown fences, no commentary)
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: ['Bear', 'er', key].join(' '),
+      Authorization: ['Bear', 'er', key].join(''),
     },
     body: JSON.stringify({
       model: 'glm-4.6v',
