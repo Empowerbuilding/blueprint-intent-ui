@@ -46,15 +46,10 @@ export function visionGateInBackground(
   client: AnyClient,
   opts: { outlineId: string; projectId: string; roomId: string; storagePath: string; outlineType: string; roomName: string }
 ): void {
-  // mark running immediately (synchronous best-effort), then fire the real call
+  // NOTE: the caller (push route / rerun action) writes the `vision: running`
+  // placeholder BEFORE firing this — this function must NOT pre-write checks,
+  // or it can race the caller's math write and clobber it.
   void (async () => {
-    try {
-      const { data: outline } = await client.from('intent_outlines').select('checks').eq('id', opts.outlineId).single()
-      const checks = { ...((outline as { checks?: Record<string, unknown> } | null)?.checks || {}), vision: { ran_at: new Date().toISOString(), model: 'glm-4.6v', status: 'running' } }
-      await client.from('intent_outlines').update({ checks }).eq('id', opts.outlineId)
-    } catch {
-      /* placeholder is best-effort — the real update below is what matters */
-    }
     try {
       await visionGateForOutline(client, opts)
     } catch (e) {

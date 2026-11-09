@@ -175,9 +175,18 @@ export async function POST(request: NextRequest) {
     latestVersion?.[0]?.version ?? null
   )
 
-  // ---- VISION GATE (GLM-4.6v vs confirmed decisions) — runs in the background; ----
-  // ---- large images take 1-2+ min and the push returns fast with math results ----
+  // ---- persist checks (math + vision placeholder) BEFORE firing the background job ----
+  // (write-order matters: the background vision must never be able to clobber math)
+  const checks: Record<string, unknown> = { math }
   let visionNote = 'skipped (no image)'
+  if (storagePath) {
+    checks.vision = { ran_at: new Date().toISOString(), model: 'glm-4.6v', status: 'running' }
+    visionNote = 'running (background — lands on the outline card when done; poll GET /api/outlines or re-run via /api/verify-outline)'
+  }
+  await supabase.from('intent_outlines').update({ checks }).eq('id', outline.id)
+
+  // ---- VISION GATE (GLM-4.6v vs confirmed decisions) — background ----
+  // ---- large images take 1-2+ min; push returns fast with math results ----
   if (storagePath) {
     visionGateInBackground(supabase, {
       outlineId: outline.id,
@@ -187,13 +196,7 @@ export async function POST(request: NextRequest) {
       outlineType: outlineType!,
       roomName: room.name,
     })
-    visionNote = 'running (background — lands on the outline card when done; poll GET /api/outlines or re-run via /api/verify-outline)'
   }
-
-  // ---- persist checks ----
-  const checks: Record<string, unknown> = { math }
-  if (storagePath) checks.vision = { ran_at: new Date().toISOString(), model: 'glm-4.6v', status: 'running' }
-  await supabase.from('intent_outlines').update({ checks }).eq('id', outline.id)
 
   const mathFails = math.results.filter((r) => r.status === 'fail')
 
