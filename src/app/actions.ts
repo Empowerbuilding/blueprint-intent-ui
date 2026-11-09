@@ -10,7 +10,10 @@ export async function signIn(formData: FormData) {
     email: String(formData.get('email') || ''),
     password: String(formData.get('password') || ''),
   })
-  if (error) redirect('/login?error=1')
+  if (error) {
+    console.error('signIn failed:', error.status, error.code, error.message)
+    redirect('/login?error=1')
+  }
   redirect('/')
 }
 
