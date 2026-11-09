@@ -56,7 +56,11 @@ Look at the image and return ONLY valid JSON (no markdown fences, no commentary)
     return null
   }
   const data = await res.json()
-  const text: string = data?.content?.[0]?.text || ''
+  // GLM-4.6v returns a thinking block first — collect ALL text blocks
+  const text: string = (Array.isArray(data?.content) ? data.content : [])
+    .filter((c: { type?: string }) => c?.type === 'text')
+    .map((c: { text?: string }) => c?.text || '')
+    .join('\n')
   const m = text.match(/\{[\s\S]*\}/)
   if (!m) return null
   try {
