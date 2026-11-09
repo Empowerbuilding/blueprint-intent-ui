@@ -9,6 +9,7 @@ const REVIEW_STYLES: Record<string, string> = {
   unreviewed: 'bg-red-900/60 text-red-300',
   defaults_accepted: 'bg-amber-900/60 text-gold-light',
   confirmed: 'bg-emerald-900/60 text-emerald-300',
+  '2d_approved': 'bg-violet-900/60 text-violet-300',
 }
 
 const STATUSES = ['intake', 'review', 'locked', 'building', 'done']
@@ -37,7 +38,7 @@ export default async function ProjectPage({
       .eq('status', 'active'),
   ])
 
-  const [{ count: openCount }, { count: unassignedImgs }] = await Promise.all([
+  const [{ count: openCount }, { count: unassignedImgs }, { data: outlineCounts }] = await Promise.all([
     supabase
       .from('intent_open_questions')
       .select('id', { count: 'exact', head: true })
@@ -49,7 +50,20 @@ export default async function ProjectPage({
       .eq('project_id', id)
       .is('room_id', null)
       .eq('parked', false),
+    supabase
+      .from('intent_outlines')
+      .select('room_id, status')
+      .eq('project_id', id)
+      .neq('status', 'superseded'),
   ])
+
+  const outlinesByRoom = new Map<string, { pending: number; approved: number }>()
+  for (const o of outlineCounts || []) {
+    const cur = outlinesByRoom.get(o.room_id) || { pending: 0, approved: 0 }
+    if (o.status === 'pushed') cur.pending++
+    if (o.status === 'approved') cur.approved++
+    outlinesByRoom.set(o.room_id, cur)
+  }
 
   const decisionsByRoom = new Map<string, number>()
   for (const d of counts || []) {
@@ -152,6 +166,16 @@ export default async function ProjectPage({
                 {r.area_sf ? <span className="text-slate-400">· {Math.round(r.area_sf)} SF</span> : null}
                 {r.source === 'model_scan' ? (
                   <span className="text-[8px] font-bold uppercase tracking-wider text-sky-300 bg-sky-950/60 rounded-full px-1.5 py-0.5">model</span>
+                ) : null}
+                {outlinesByRoom.get(r.id) ? (
+                  <span
+                    className={`text-[8px] font-bold uppercase tracking-wider rounded-full px-1.5 py-0.5 ${
+                      outlinesByRoom.get(r.id)!.pending ? 'text-amber-300 bg-amber-950/60' : 'text-violet-300 bg-violet-950/60'
+                    }`}
+                    title="2D outlines: approved / awaiting review"
+                  >
+                    2D {outlinesByRoom.get(r.id)!.approved}/{outlinesByRoom.get(r.id)!.approved + outlinesByRoom.get(r.id)!.pending}
+                  </span>
                 ) : null}
               </div>
             </Link>

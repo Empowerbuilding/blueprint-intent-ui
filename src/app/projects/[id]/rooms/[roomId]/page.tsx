@@ -8,6 +8,7 @@ import {
   resolveOpen,
   setReviewState,
 } from '@/app/actions'
+import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
 import { defaultsForRoom } from '@/lib/defaults'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -26,10 +27,13 @@ const NOTE_TYPES = ['beam', 'cabinet_run', 'delete', 'move', 'keep', 'note']
 
 export default async function RoomPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; roomId: string }>
+  searchParams: Promise<{ err2d?: string }>
 }) {
   const { id, roomId } = await params
+  const { err2d } = await searchParams
   const supabase = await createClient()
 
   const { data: room } = await supabase
@@ -45,7 +49,7 @@ export default async function RoomPage({
     .eq('id', id)
     .single()
 
-  const [{ data: decisions }, { data: opens }, { data: redlines }, { data: images }] = await Promise.all([
+  const [{ data: decisions }, { data: opens }, { data: redlines }, { data: images }, { data: outlines }] = await Promise.all([
     supabase
       .from('intent_decisions')
       .select('*')
@@ -55,6 +59,7 @@ export default async function RoomPage({
     supabase.from('intent_open_questions').select('*').eq('room_id', roomId).order('created_at'),
     supabase.from('intent_redline_notes').select('*').eq('room_id', roomId).order('created_at'),
     supabase.from('intent_inspo_images').select('*').eq('room_id', roomId).order('created_at'),
+    supabase.from('intent_outlines').select('*').eq('room_id', roomId).order('pushed_at', { ascending: false }),
   ])
 
   const defaults = defaultsForRoom(room.section_code, room.name)
@@ -71,8 +76,17 @@ export default async function RoomPage({
 
   const openUnresolved = opens?.filter((o) => !o.answer) || []
 
+  const activeOutlines = (outlines || []).filter((o) => o.status === 'pushed' || o.status === 'approved')
+  const rejectedOutlines = (outlines || []).filter((o) => o.status === 'rejected')
+  const supersededCount = (outlines || []).filter((o) => o.status === 'superseded').length
+  const pendingOutlines = activeOutlines.filter((o) => o.status === 'pushed')
+  const visionRunning = activeOutlines.some(
+    (o) => (o.checks as { vision?: { status?: string } } | null)?.vision?.status === 'running'
+  )
+
   return (
     <div className="min-h-screen bg-bh-black text-white">
+      {visionRunning && <meta httpEquiv="refresh" content="30" />}
       <header className="border-b border-bh-border bg-bh-panel/70">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -101,11 +115,224 @@ export default async function RoomPage({
                 </button>
               </form>
             ))}
+            {room.review_state === 'confirmed' && (
+              <form action={set2dApproved.bind(null, roomId, id)}>
+                <button
+                  title="Requires: room confirmed + every pushed outline reviewed (approved or rejected)"
+                  className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 border border-violet-500/60 text-violet-300 hover:bg-violet-950/60 transition-colors"
+                >
+                  2d approved →
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8 space-y-10">
+        {err2d && (
+          <div className="bg-red-950/50 border border-red-900 rounded-xl p-4 text-sm text-red-300">
+            Can&apos;t set 2D approved: {err2d}
+          </div>
+        )}
+
+        {/* 2D OUTLINES (orthographic stage — pushed by Blueprint after emit) */}
+        <section>
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+            2D outlines ({activeOutlines.length} active{pendingOutlines.length ? ` · ${pendingOutlines.length} awaiting review` : ''})
+            {rejectedOutlines.length ? <span className="text-red-400"> · {rejectedOutlines.length} rejected</span> : null}
+            {supersededCount ? <span className="text-slate-600"> · {supersededCount} superseded</span> : null}
+          </h2>
+
+          <div className="space-y-4">
+            {activeOutlines.map((o) => {
+              const math = (o.checks?.math || null) as {
+                ran_at?: string
+                rulebook_version?: number | null
+                passed?: boolean
+                results?: { rule_key: string; description: string; status: string; measured?: string; required?: string; detail?: string }[]
+              } | null
+              const vision = (o.checks?.vision || null) as {
+                ran_at?: string
+                status?: string
+                error?: string
+                skipped?: string
+                results?: { topic: string; verdict: string; note?: string }[]
+              } | null
+              const mathFails = math?.results?.filter((r) => r.status === 'fail') || []
+              const mathPass = math?.results?.filter((r) => r.status === 'pass') || []
+              const geoElements = Array.isArray((o.geometry as { elements?: unknown[] } | null)?.elements)
+                ? (o.geometry as { elements: unknown[] }).elements.length
+                : 0
+              return (
+                <div key={o.id} className="bg-bh-card border border-bh-border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-violet-950/60 text-violet-300 rounded-full px-2 py-0.5">
+                        {o.outline_type}
+                      </span>
+                      {o.label && <span className="text-sm text-slate-300">{o.label}</span>}
+                      <span className="text-[10px] text-slate-600">
+                        {geoElements} elements · pushed {new Date(o.pushed_at).toLocaleString()}{o.pushed_by ? ` by ${o.pushed_by}` : ''}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 ${
+                        o.status === 'approved' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-amber-900/60 text-gold-light'
+                      }`}
+                    >
+                      {o.status}
+                    </span>
+                  </div>
+
+                  {o.storage_path && (
+                    <a
+                      href={`${SUPABASE_URL}/storage/v1/object/public/intent-outlines/${o.storage_path}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block rounded-lg overflow-hidden border border-bh-border mb-3"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`${SUPABASE_URL}/storage/v1/object/public/intent-outlines/${o.storage_path}`}
+                        alt={`${o.outline_type} ${o.label}`}
+                        className="w-full max-h-72 object-contain bg-bh-black"
+                      />
+                    </a>
+                  )}
+
+                  {/* math gate */}
+                  <div className="text-xs mb-2">
+                    <span className={math ? (mathFails.length ? 'text-red-400' : 'text-emerald-400') : 'text-slate-600'}>
+                      Math gate: {math ? (mathFails.length ? `${mathFails.length} FAIL / ${mathPass.length} pass` : `${mathPass.length} pass`) : 'not run'}
+                      {math?.rulebook_version ? <span className="text-slate-600"> (rulebook v{math.rulebook_version})</span> : null}
+                    </span>
+                  </div>
+                  {math?.results?.length ? (
+                    <details className="mb-3 text-xs">
+                      <summary className="cursor-pointer text-slate-500 hover:text-slate-300">rule results</summary>
+                      <div className="mt-2 space-y-1">
+                        {math.results.map((r) => (
+                          <div key={r.rule_key} className="flex items-start gap-2">
+                            <span className={r.status === 'fail' ? 'text-red-400' : r.status === 'pass' ? 'text-emerald-400' : 'text-slate-600'}>
+                              {r.status === 'fail' ? '✗' : r.status === 'pass' ? '✓' : '–'}
+                            </span>
+                            <span className="text-slate-400">
+                              {r.description}
+                              {r.status !== 'na' && r.measured ? <span className="text-slate-300"> — {r.measured}{r.required ? ` (need ${r.required})` : ''}</span> : null}
+                              {r.detail ? <span className="text-slate-600"> · {r.detail}</span> : null}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
+
+                  {/* vision gate */}
+                  <div className="text-xs mb-2">
+                    {vision?.status === 'ok' ? (
+                      <span className="text-slate-400">
+                        Vision gate:{' '}
+                        <span className="text-emerald-400">{vision.results?.filter((v) => v.verdict === 'confirmed').length || 0} confirmed</span>
+                        {' / '}
+                        <span className="text-amber-400">{vision.results?.filter((v) => v.verdict === 'missing').length || 0} missing</span>
+                        {' / '}
+                        <span className="text-red-400">{vision.results?.filter((v) => v.verdict === 'conflict').length || 0} conflict</span>
+                      </span>
+                    ) : vision?.status === 'running' ? (
+                      <span className="text-sky-400 animate-pulse">Vision gate: running… (GLM-4.6v — page refreshes while it works)</span>
+                    ) : (
+                      <span className="text-slate-600">Vision gate: {vision?.status === 'skipped' ? vision.skipped : vision?.error || 'not run'}</span>
+                    )}
+                  </div>
+                  {vision?.results?.length ? (
+                    <details className="mb-3 text-xs">
+                      <summary className="cursor-pointer text-slate-500 hover:text-slate-300">decision verdicts</summary>
+                      <div className="mt-2 space-y-1">
+                        {vision.results.map((v, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <span
+                              className={
+                                v.verdict === 'confirmed'
+                                  ? 'text-emerald-400'
+                                  : v.verdict === 'conflict'
+                                    ? 'text-red-400'
+                                    : 'text-amber-400'
+                              }
+                            >
+                              {v.verdict === 'confirmed' ? '✓' : v.verdict === 'conflict' ? '✗' : '?'}
+                            </span>
+                            <span className="text-slate-400">
+                              <span className="font-mono text-[10px] text-slate-500">{v.topic}</span>
+                              {v.note ? ` — ${v.note}` : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
+
+                  {/* actions */}
+                  <div className="flex flex-wrap gap-2 items-start">
+                    {o.status === 'pushed' && (
+                      <>
+                        <form action={approveOutline}>
+                          <input type="hidden" name="project_id" value={id} />
+                          <input type="hidden" name="room_id" value={roomId} />
+                          <input type="hidden" name="outline_id" value={o.id} />
+                          <button className="bg-emerald-800 hover:bg-emerald-700 text-emerald-100 font-semibold rounded-lg px-3 py-1.5 text-xs transition-colors">
+                            ✓ Approve 2D
+                          </button>
+                        </form>
+                        <form action={rejectOutline} className="flex gap-2 flex-1 min-w-[240px]">
+                          <input type="hidden" name="project_id" value={id} />
+                          <input type="hidden" name="room_id" value={roomId} />
+                          <input type="hidden" name="outline_id" value={o.id} />
+                          <input
+                            name="feedback"
+                            required
+                            placeholder="Reject — what to change (wakes Blueprint to redraft)"
+                            className="flex-1 bg-bh-black border border-bh-border rounded-lg px-3 py-1.5 text-xs"
+                          />
+                          <button className="bg-red-900/70 hover:bg-red-800 text-red-100 font-semibold rounded-lg px-3 py-1.5 text-xs transition-colors">
+                            ✗ Reject
+                          </button>
+                        </form>
+                      </>
+                    )}
+                    <form action={rerunOutlineChecks}>
+                      <input type="hidden" name="project_id" value={id} />
+                      <input type="hidden" name="room_id" value={roomId} />
+                      <input type="hidden" name="outline_id" value={o.id} />
+                      <button className="bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-xs transition-colors">
+                        ↻ re-run checks
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )
+            })}
+
+            {rejectedOutlines.map((o) => (
+              <div key={o.id} className="bg-bh-panel/40 border border-red-900/40 rounded-xl p-4 opacity-80">
+                <div className="flex items-center gap-2 mb-2 text-xs">
+                  <span className="text-[9px] font-bold uppercase tracking-wider bg-violet-950/60 text-violet-300 rounded-full px-2 py-0.5">{o.outline_type}</span>
+                  {o.label && <span className="text-slate-400 line-through">{o.label}</span>}
+                  <span className="text-[9px] font-bold uppercase text-red-300 bg-red-950/60 rounded-full px-2 py-0.5">rejected</span>
+                  <span className="text-slate-600">{new Date(o.pushed_at).toLocaleString()}</span>
+                </div>
+                <div className="text-xs text-red-300/90">“{o.feedback}”</div>
+              </div>
+            ))}
+
+            {!outlines?.length && (
+              <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-6 text-center">
+                No 2D outlines pushed yet. After Lock &amp; Emit, Blueprint drafts zone maps + elevations and pushes
+                them here — math + vision gates run automatically, then you approve.
+              </div>
+            )}
+          </div>
+        </section>
         {/* CURRENT MODEL STATE (from intake scan) */}
         {(room.area_sf || (room.model_state && Object.keys(room.model_state).length > 0)) && (
           <section>

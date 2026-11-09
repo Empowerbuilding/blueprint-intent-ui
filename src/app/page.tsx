@@ -32,6 +32,9 @@ export default async function Home() {
             </span>
           </div>
           <div className="flex items-center gap-4 text-sm">
+            <Link href="/rules" className="text-slate-400 hover:text-gold-light transition-colors">
+              Rules
+            </Link>
             <span className="text-slate-400">{user?.email}</span>
             <form action={signOut}>
               <button className="text-slate-400 hover:text-white transition-colors">Sign out</button>

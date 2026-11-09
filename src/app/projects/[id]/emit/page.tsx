@@ -127,6 +127,11 @@ export default async function EmitPage({
             card to blueprint-mitch. Blueprint compiles the work order from it — approval still requires Mitch&apos;s
             in-thread &quot;go&quot;.
           </p>
+          <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+            After emit — the 2D-first stage: Blueprint drafts zone maps + elevations and pushes them to each room
+            (math + vision gates run automatically). Michael approves/rejects in the room cards; rooms go{' '}
+            <span className="text-violet-300">2d approved</span>; the work order compiles from approved 2D.
+          </p>
         </section>
 
         <section>
