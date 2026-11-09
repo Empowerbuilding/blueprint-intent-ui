@@ -35,7 +35,7 @@ export default async function ImagesPage({
   const parked = (images || []).filter((i) => !i.room_id && i.parked)
   const assigned = (images || []).filter((i) => i.room_id)
 
-  type InspoImg = { id: string; storage_path: string; notes: string | null; room_id: string | null; parked: boolean }
+  type InspoImg = { id: string; storage_path: string; notes: string | null; room_id: string | null; parked: boolean; tags: string[] | null }
   const card = (img: InspoImg, state: 'unassigned' | 'parked' | 'assigned') => (
     <div
       key={img.id}
@@ -53,6 +53,16 @@ export default async function ImagesPage({
               ? '🅿️ parked (explicitly not used)'
               : '⚠️ unassigned — blocks Lock & Emit'}
         </div>
+        {(img.tags || []).length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {(img.tags as string[]).slice(0, 6).map((t) => (
+              <span key={t} className="text-[9px] bg-bh-border/60 text-slate-400 rounded-full px-1.5 py-0.5">
+                {t.replace('color:', '🎨 ')}
+              </span>
+            ))}
+          </div>
+        )}
+        {img.notes && <div className="text-[11px] text-slate-400 leading-snug">{img.notes}</div>}
         <form action={assignImageForm} className="flex gap-2">
           <input type="hidden" name="image_id" value={img.id} />
           <input type="hidden" name="project_id" value={id} />
