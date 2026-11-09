@@ -77,6 +77,8 @@ export async function buildAndEmit(
     section_code: room.section_code,
     name: room.name,
     review_state: room.review_state,
+    area_sf: room.area_sf,
+    model_state: room.model_state || {},
     decisions: activeDecisions.filter((d) => d.room_id === room.id).map((d) => byId.get(d.id)!).filter(Boolean),
     open_questions: (opens || [])
       .filter((o) => o.room_id === room.id)

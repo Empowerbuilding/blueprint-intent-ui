@@ -14,6 +14,8 @@ export type ContractRoom = {
   section_code: string
   name: string
   review_state: string
+  area_sf?: number | null
+  model_state?: Record<string, unknown>
   decisions: ContractDecision[]
   open_questions: { question: string; answer: string | null; default_if_unanswered: string | null; blocking: boolean }[]
   redline_notes: { note_type: string; text: string; source_ref: string | null }[]
@@ -51,7 +53,11 @@ export function buildBriefMd(contract: Contract): string {
   const section = (r: ContractRoom) => {
     const label = r.section_code === 'HOUSE' ? 'House-Level (global)' : `${r.section_code}. ${r.name}`
     lines.push(`### ${label}`)
-    lines.push(`_Review state: **${r.review_state.replace('_', ' ')}**_`)
+    const bits = [`Review state: **${r.review_state.replace('_', ' ')}**`]
+    if (r.area_sf) bits.push(`${Math.round(r.area_sf)} SF`)
+    const ms = Object.entries(r.model_state || {}).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ')
+    if (ms) bits.push(ms)
+    lines.push(`_${bits.join(' · ')}_`)
     lines.push('')
     // every decision in the contract is active by construction; superseded_by
     // carries the history entries it replaced (rendered indented under it)

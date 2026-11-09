@@ -34,7 +34,7 @@ export default async function RoomPage({
 
   const { data: room } = await supabase
     .from('intent_rooms')
-    .select('id, project_id, section_code, name, review_state')
+    .select('id, project_id, section_code, name, review_state, area_sf, model_state, source')
     .eq('id', roomId)
     .single()
   if (!room || room.project_id !== id) notFound()
@@ -106,6 +106,35 @@ export default async function RoomPage({
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8 space-y-10">
+        {/* CURRENT MODEL STATE (from intake scan) */}
+        {(room.area_sf || (room.model_state && Object.keys(room.model_state).length > 0)) && (
+          <section>
+            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+              Current model state{' '}
+              {room.source === 'model_scan' && (
+                <span className="text-[9px] font-bold uppercase tracking-wider text-sky-300 bg-sky-950/60 rounded-full px-2 py-0.5 ml-1">from intake scan</span>
+              )}
+            </h2>
+            <div className="bg-sky-950/30 border border-sky-900/40 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              {room.area_sf ? (
+                <div>
+                  <div className="text-xs text-slate-500">Area</div>
+                  <div className="font-semibold">{Math.round(room.area_sf)} SF</div>
+                </div>
+              ) : null}
+              {Object.entries((room.model_state || {}) as Record<string, unknown>).map(([k, v]) => (
+                <div key={k}>
+                  <div className="text-xs text-slate-500">{k.replace(/_/g, ' ')}</div>
+                  <div className="font-semibold">{String(v)}</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-600 mt-2">
+              Snapshot pushed by the model scan at intake — decisions above change this; this is what exists now.
+            </p>
+          </section>
+        )}
+
         {/* DECISIONS */}
         <section>
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">

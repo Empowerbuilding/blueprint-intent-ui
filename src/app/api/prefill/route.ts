@@ -32,6 +32,9 @@ type PrefillDecision = {
 type PrefillRoom = {
   section_code: string
   name: string
+  source?: 'template' | 'model_scan'
+  area_sf?: number | null
+  model_state?: Record<string, unknown>
   decisions?: PrefillDecision[]
   open_questions?: { question: string; default_if_unanswered?: string | null; blocking?: boolean }[]
   redline_notes?: { note_type: string; text: string; source_ref?: string | null }[]
@@ -88,7 +91,14 @@ export async function POST(request: NextRequest) {
     const { data: roomRow } = await supabase
       .from('intent_rooms')
       .upsert(
-        { project_id: project.id, section_code: room.section_code, name: room.name },
+        {
+          project_id: project.id,
+          section_code: room.section_code,
+          name: room.name,
+          ...(room.source ? { source: room.source } : {}),
+          ...(room.area_sf != null ? { area_sf: room.area_sf } : {}),
+          ...(room.model_state ? { model_state: room.model_state } : {}),
+        },
         { onConflict: 'project_id,section_code' }
       )
       .select('id')

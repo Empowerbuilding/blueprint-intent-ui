@@ -147,8 +147,12 @@ export default async function ProjectPage({
               <div className="text-sm font-medium group-hover:text-amber-400 transition-colors">
                 {r.name}
               </div>
-              <div className="text-xs text-slate-500 mt-2">
-                {decisionsByRoom.get(r.id) || 0} active decisions
+              <div className="text-xs text-slate-500 mt-2 flex items-center gap-2">
+                <span>{decisionsByRoom.get(r.id) || 0} decisions</span>
+                {r.area_sf ? <span className="text-slate-400">· {Math.round(r.area_sf)} SF</span> : null}
+                {r.source === 'model_scan' ? (
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-sky-300 bg-sky-950/60 rounded-full px-1.5 py-0.5">model</span>
+                ) : null}
               </div>
             </Link>
           ))}
