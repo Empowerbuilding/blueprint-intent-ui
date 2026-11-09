@@ -23,7 +23,7 @@ export default async function ProjectPage({
 
   const { data: project } = await supabase
     .from('intent_projects')
-    .select('id, name, client, status')
+    .select('id, name, client, status, emitted_version')
     .eq('id', id)
     .single()
   if (!project) notFound()
@@ -37,12 +37,18 @@ export default async function ProjectPage({
       .eq('status', 'active'),
   ])
 
-  const [{ count: openCount }] = await Promise.all([
+  const [{ count: openCount }, { count: unassignedImgs }] = await Promise.all([
     supabase
       .from('intent_open_questions')
       .select('id', { count: 'exact', head: true })
       .eq('project_id', id)
       .is('answer', null),
+    supabase
+      .from('intent_inspo_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', id)
+      .is('room_id', null)
+      .eq('parked', false),
   ])
 
   const decisionsByRoom = new Map<string, number>()
@@ -91,15 +97,34 @@ export default async function ProjectPage({
               {confirmed}/{total} confirmed
             </span>
             {openCount ? <span className="text-red-400"> · {openCount} open questions</span> : null}
+            {unassignedImgs ? <span className="text-red-400"> · {unassignedImgs} unassigned images</span> : null}
             <span className="text-slate-600"> · every room must be confirmed before Lock &amp; Emit</span>
           </div>
-          {total === 0 ? (
-            <form action={createStandardRooms.bind(null, id)}>
-              <button className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg px-4 py-2 text-sm transition-colors">
-                Generate standard room set (B1–B18 + HOUSE)
-              </button>
-            </form>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {total === 0 && (
+              <form action={createStandardRooms.bind(null, id)}>
+                <button className="bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-2 text-sm font-medium transition-colors">
+                  Generate room set (B1–B18 + HOUSE)
+                </button>
+              </form>
+            )}
+            {total > 0 && (
+              <>
+                <Link
+                  href={`/projects/${id}/images`}
+                  className="text-sm bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-2 transition-colors"
+                >
+                  Image pool
+                </Link>
+                <Link
+                  href={`/projects/${id}/emit`}
+                  className="text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-lg px-4 py-2 transition-colors"
+                >
+                  Lock &amp; Emit{project.emitted_version ? ` (v${project.emitted_version})` : ''}
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">

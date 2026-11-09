@@ -8,8 +8,11 @@ import {
   resolveOpen,
   setReviewState,
 } from '@/app/actions'
+import { defaultsForRoom } from '@/lib/defaults'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
 const SOURCE_LABEL: Record<string, string> = {
   transcript: 'transcript',
@@ -42,7 +45,7 @@ export default async function RoomPage({
     .eq('id', id)
     .single()
 
-  const [{ data: decisions }, { data: opens }, { data: redlines }] = await Promise.all([
+  const [{ data: decisions }, { data: opens }, { data: redlines }, { data: images }] = await Promise.all([
     supabase
       .from('intent_decisions')
       .select('*')
@@ -51,7 +54,12 @@ export default async function RoomPage({
       .order('created_at', { ascending: false }),
     supabase.from('intent_open_questions').select('*').eq('room_id', roomId).order('created_at'),
     supabase.from('intent_redline_notes').select('*').eq('room_id', roomId).order('created_at'),
+    supabase.from('intent_inspo_images').select('*').eq('room_id', roomId).order('created_at'),
   ])
+
+  const defaults = defaultsForRoom(room.section_code, room.name)
+  const decidedTopics = new Set((decisions || []).filter((d) => d.status === 'active').map((d) => d.topic))
+  const openDefaults = defaults.filter((d) => !decidedTopics.has(d.topic))
 
   // group by topic: active first, superseded under it
   const byTopic = new Map<string, typeof decisions>()
@@ -161,6 +169,72 @@ export default async function RoomPage({
               Add decision (supersedes previous on same topic)
             </button>
           </form>
+        </section>
+
+        {/* DEFAULTS IN EFFECT */}
+        <section>
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+            Runbook defaults in effect ({openDefaults.length} topics with no decision → §4 default)
+          </h2>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl divide-y divide-slate-800/60">
+            {openDefaults.map((d) => (
+              <div key={d.topic} className="flex items-start justify-between gap-4 px-4 py-2.5 text-sm">
+                <div>
+                  <span className="font-mono text-xs text-slate-500 mr-2">{d.topic}</span>
+                  <span className="text-slate-300">{d.value}</span>
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-800/60 rounded-full px-2 py-0.5 shrink-0">
+                  default
+                </span>
+              </div>
+            ))}
+            {!openDefaults.length && (
+              <div className="px-4 py-3 text-sm text-slate-600">
+                Every default topic has an explicit decision above — nothing builds from §4 defaults in this room.
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-slate-600 mt-2">
+            Accepting defaults (review-state button up top) means these build as-is. Override any of them by adding a
+            decision on that topic above.
+          </p>
+        </section>
+
+        {/* ASSIGNED IMAGES */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              Assigned inspo ({images?.length || 0})
+            </h2>
+            <Link
+              href={`/projects/${id}/images`}
+              className="text-xs text-amber-400 hover:text-amber-300 underline"
+            >
+              manage image pool →
+            </Link>
+          </div>
+          {(images || []).length ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {images!.map((img) => (
+                <div key={img.id} className="rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`${SUPABASE_URL}/storage/v1/object/public/intent-inspo/${img.storage_path}`}
+                    alt={img.notes || 'inspo'}
+                    className="w-full h-28 object-cover"
+                  />
+                  {img.notes && <div className="text-[10px] text-slate-500 px-2 py-1.5 truncate">{img.notes}</div>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-slate-600 border border-dashed border-slate-800 rounded-xl p-4 text-center">
+              No inspo assigned to this room.{' '}
+              <Link href={`/projects/${id}/images`} className="text-amber-400 underline">
+                Assign some →
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* OPEN QUESTIONS */}
