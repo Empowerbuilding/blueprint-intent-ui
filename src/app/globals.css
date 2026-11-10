@@ -47,7 +47,7 @@ body {
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap;
   }
-  .pill-neutral { @apply bg-slate-800 text-slate-300; }
+  .pill-neutral { @apply bg-zinc-800 text-zinc-300; }
   .pill-gold    { @apply bg-amber-900/50 text-gold-light; }
   .pill-green   { @apply bg-emerald-900/50 text-emerald-300; }
   .pill-blue    { @apply bg-sky-900/50 text-sky-300; }

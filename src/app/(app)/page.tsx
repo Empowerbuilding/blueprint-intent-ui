@@ -63,7 +63,7 @@ export default async function Home() {
                 <Pill tone={PROJECT_STATUS_TONE[p.status] || 'neutral'}>{p.status}</Pill>
               </div>
               <div className="text-sm text-slate-400 mb-4">{p.client || '—'}</div>
-              <div className="text-xs text-slate-600 flex items-center gap-2">
+              <div className="text-xs text-slate-500 flex items-center gap-2">
                 <span>
                   Created{' '}
                   {new Date(p.created_at).toLocaleDateString(undefined, {
