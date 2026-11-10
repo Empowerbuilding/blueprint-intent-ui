@@ -114,6 +114,17 @@ export function runMathGate(
 
   const results: RuleResult[] = []
 
+  // Empty geometry is a hard fail, not a vacuous pass — an outline with no
+  // valid elements has nothing to check and must be redrawn.
+  if (elements.length === 0) {
+    results.push({
+      rule_key: 'geometry',
+      description: 'Outline geometry has no valid elements',
+      status: 'fail',
+      detail: 'nothing drawn — push geometry with elements (kind, x, y, w, h in inches)',
+    })
+  }
+
   for (const rule of rules) {
     if (!rule.active) continue
     if (!ruleAppliesToRoom(rule, room) || !ruleAppliesToOutlineType(rule, outlineType)) {
