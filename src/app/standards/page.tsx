@@ -37,9 +37,9 @@ type VersionRow = {
 export default async function StandardsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; saved?: string }>
+  searchParams: Promise<{ error?: string; saved?: string; nochange?: string }>
 }) {
-  const { error, saved } = await searchParams
+  const { error, saved, nochange } = await searchParams
   const supabase = await createClient()
 
   const [{ data: standards }, { data: versions }] = await Promise.all([
@@ -78,9 +78,14 @@ export default async function StandardsPage({
         {error && (
           <div className="bg-red-950/50 border border-red-900 rounded-xl p-4 text-sm text-red-300">{error}</div>
         )}
-        {saved && (
+        {saved && !nochange && (
           <div className="bg-emerald-950/40 border border-emerald-800 rounded-xl p-4 text-sm text-emerald-300">
             Saved — new version snapshotted and Blueprint notified in blueprint-mitch to pull the update.
+          </div>
+        )}
+        {saved && nochange && (
+          <div className="bg-slate-800/40 border border-slate-600 rounded-xl p-4 text-sm text-slate-300">
+            No changes detected — nothing saved, no version bump, Blueprint not notified.
           </div>
         )}
 

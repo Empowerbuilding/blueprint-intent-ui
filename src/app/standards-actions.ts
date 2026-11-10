@@ -46,10 +46,13 @@ export async function saveStandard(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: std } = await supabase
     .from('intent_standards')
-    .select('id, slug, title, version')
+    .select('id, slug, title, version, content')
     .eq('id', id)
     .single()
   if (!std) redirect('/standards?error=not+found')
+
+  // No-op guard: identical content = nothing saved, no version bump, no Blueprint wake.
+  if (content === std.content) redirect(`/standards?saved=${std.slug}&nochange=1`)
 
   const nextVersion = (std.version || 1) + 1
   const { error } = await supabase
