@@ -39,7 +39,9 @@ async function notifyBlueprint(text: string) {
 export async function saveStandard(formData: FormData) {
   const supabase = await createClient()
   const id = String(formData.get('id') || '')
-  const content = String(formData.get('content') || '')
+  // normalize line endings — browsers/OSes can submit CRLF, which would read as
+  // a "change" on byte-identical content and fire a false wake
+  const content = String(formData.get('content') || '').replace(/\r\n/g, '\n')
   const note = String(formData.get('note') || '').trim()
   if (!id || !content.trim()) redirect('/standards?error=empty+content')
 

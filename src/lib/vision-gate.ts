@@ -58,9 +58,10 @@ For EACH decision, judge only what this drawing type can show:
 - "confirmed" — the drawing visibly reflects the decision
 - "missing" — the decision is not visible in this drawing (may belong to another view — that is still "missing" here)
 - "conflict" — the drawing contradicts the decision
+- "na" — the decision is not something ANY drawing of this type could ever show: hardware, finishes/materials by name, colors, sheens, budgets, brand preferences, non-spatial requirements. Judge the TOPIC's spatialness, not the drawing.
 
 Return ONLY valid JSON, no markdown fences, no commentary:
-{"results": [{"topic": "<the topic exactly as given>", "verdict": "confirmed|missing|conflict", "note": "<one short sentence of evidence>"}]}`
+{"results": [{"topic": "<the topic exactly as given>", "verdict": "confirmed|missing|conflict|na", "note": "<one short sentence of evidence>"}]}`
 
   // max_tokens 4000: GLM-4.6v spends a large thinking block FIRST — with a small
   // budget it hits max_tokens inside thinking and never emits text (verified live:

@@ -1,11 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { buildAndEmit, serviceClient } from '@/lib/emit-core'
 
-// POST /api/emit — programmatic emission (secret-gated, for tests + automation).
+// POST /api/emit — programmatic emission (for tests + automation).
 // Body: { "project_id": "...", "dry_run": true|false }
+//
+// Auth: x-emit-secret header (EMIT_SECRET env) — SEPARATE from the prefill
+// secret on purpose: the push secret is shared with automation that must never
+// be able to lock/emit. Emission is human-driven (UI) unless this secret is
+// explicitly granted.
 export async function POST(request: NextRequest) {
-  const secret = request.headers.get('x-prefill-secret')
-  if (!process.env.PREFILL_SECRET || secret !== process.env.PREFILL_SECRET) {
+  const secret = request.headers.get('x-emit-secret')
+  if (!process.env.EMIT_SECRET) {
+    return NextResponse.json({ error: 'emit secret not configured — emission is UI-only' }, { status: 503 })
+  }
+  if (secret !== process.env.EMIT_SECRET) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
   }
 
   const slug = typeof body.slug === 'string' ? body.slug.trim() : ''
-  const content = typeof body.content === 'string' ? body.content : ''
+  // normalize CRLF — pushes from Windows tooling must not read as changes
+  const content = typeof body.content === 'string' ? body.content.replace(/\r\n/g, '\n') : ''
   if (!slug || !content.trim()) {
     return NextResponse.json({ error: 'slug and content are required' }, { status: 400 })
   }
@@ -71,12 +72,22 @@ export async function POST(request: NextRequest) {
   const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim() : null
   const sourcePath = typeof body.source_path === 'string' ? body.source_path : null
   const pushedBy = typeof body.pushed_by === 'string' ? body.pushed_by : 'blueprint'
+  const expectedVersion = typeof body.expected_version === 'number' ? body.expected_version : null
 
   const { data: existing } = await supabase
     .from('intent_standards')
     .select('id, version')
     .eq('slug', slug)
     .maybeSingle()
+
+  // optimistic concurrency: a push that expects an older version than what's
+  // live means someone edited in the UI in between — refuse instead of clobbering
+  if (existing && expectedVersion != null && expectedVersion !== existing.version) {
+    return NextResponse.json(
+      { error: `version conflict: expected v${expectedVersion} but v${existing.version} is live — pull, merge, re-push` },
+      { status: 409 }
+    )
+  }
 
   if (existing) {
     const nextVersion = (existing.version || 1) + 1

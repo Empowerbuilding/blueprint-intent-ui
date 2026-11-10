@@ -91,6 +91,37 @@ export async function buildAndEmit(
       .map((i) => ({ storage_path: i.storage_path, notes: i.notes, tags: i.tags || [] })),
   }))
 
+  // ---- house-level content (room_id NULL) must not be dropped ----
+  // Global decisions/opens/redlines merge into the HOUSE section — synthesized
+  // if the board has no HOUSE room — so "one material per role, house-wide"
+  // style decisions actually reach the contract.
+  const houseDecisions = activeDecisions.filter((d) => !d.room_id).map((d) => byId.get(d.id)!).filter(Boolean)
+  const houseOpens = (opens || []).filter((o) => !o.room_id)
+  const houseRedlines = (redlines || []).filter((n) => !n.room_id)
+  if (houseDecisions.length || houseOpens.length || houseRedlines.length) {
+    let house = contractRooms.find((r) => r.section_code === 'HOUSE')
+    if (!house) {
+      const houseRoomRow = (rooms || []).find((r) => r.section_code === 'HOUSE')
+      house = {
+        section_code: 'HOUSE',
+        name: houseRoomRow?.name || 'House',
+        review_state: houseRoomRow?.review_state || 'n/a — global',
+        area_sf: houseRoomRow?.area_sf || null,
+        model_state: houseRoomRow?.model_state || {},
+        decisions: [],
+        open_questions: [],
+        redline_notes: [],
+        images: [],
+      }
+      contractRooms.push(house)
+    }
+    house.decisions.push(...houseDecisions)
+    house.open_questions.push(
+      ...houseOpens.map((o) => ({ question: o.question, answer: o.answer, default_if_unanswered: o.default_if_unanswered, blocking: o.blocking }))
+    )
+    house.redline_notes.push(...houseRedlines.map((n) => ({ note_type: n.note_type, text: n.text, source_ref: n.source_ref })))
+  }
+
   const version = (project.emitted_version || 0) + 1
   const contract: Contract = {
     project: { name: project.name, client: project.client, emitted_version: version, emitted_at: new Date().toISOString() },

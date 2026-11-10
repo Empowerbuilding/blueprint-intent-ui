@@ -205,7 +205,13 @@ export function runMathGate(
           e,
           d: axis === 'w' ? e.w : axis === 'h' ? e.h : Math.min(e.w, e.h),
         }))
-        const worst = dims.reduce((a, b) => (a.d < b.d ? a : b))
+        // min_dimension: the SMALLEST element must clear the minimum (all must comply).
+        // max_dimension: the LARGEST element must stay under the maximum (all must comply)
+        // — checking the smallest let a 30" soffit pass because a 10" one existed.
+        const worst =
+          rule.rule_type === 'min_dimension'
+            ? dims.reduce((a, b) => (a.d < b.d ? a : b))
+            : dims.reduce((a, b) => (a.d > b.d ? a : b))
         const ok = rule.rule_type === 'min_dimension' ? worst.d >= limit : worst.d <= limit
         results.push({
           rule_key: rule.rule_key,

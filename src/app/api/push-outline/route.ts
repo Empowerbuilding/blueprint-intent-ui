@@ -123,13 +123,15 @@ export async function POST(request: NextRequest) {
   const geometry = body.outline?.geometry || {}
 
   // ---- supersede previous active outlines with same (room, type, label) ----
+  // (rejected included — a redraft replaces the rejected draft; the feedback
+  // stays on the superseded row in the DB)
   const { data: previous } = await supabase
     .from('intent_outlines')
     .select('id')
     .eq('room_id', room.id)
     .eq('outline_type', outlineType)
     .eq('label', label)
-    .in('status', ['pushed', 'approved'])
+    .in('status', ['pushed', 'approved', 'rejected'])
   let replacedId: string | null = null
   if (previous?.length) {
     replacedId = previous[0]!.id
