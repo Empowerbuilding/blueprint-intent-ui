@@ -231,14 +231,14 @@ export default async function RoomPage({
 
                     {/* math gate */}
                     <div className="text-xs mb-2">
-                      <span className={math ? (mathFails.length ? 'text-red-400' : 'text-emerald-400') : 'text-slate-600'}>
+                      <span className={math ? (mathFails.length ? 'text-red-400' : math?.passed === null ? 'text-slate-400' : 'text-emerald-400') : 'text-slate-600'}>
                         Math gate:{' '}
                         {math
                           ? mathFails.length
                             ? `${mathFails.length} FAIL / ${mathPass.length} pass`
                             : mathPass.length
                               ? `${mathPass.length} pass`
-                              : 'nothing measured — no rules applied to this geometry'
+                              : 'not measured — no rules applied to this geometry (eye review)'
                           : 'not run'}
                         {math?.rulebook_version ? (
                           <span className="text-slate-600"> (rulebook v{math.rulebook_version})</span>
@@ -342,7 +342,12 @@ export default async function RoomPage({
                             <input type="hidden" name="project_id" value={id} />
                             <input type="hidden" name="room_id" value={roomId} />
                             <input type="hidden" name="outline_id" value={o.id} />
-                            <button className="btn-success-sm">✓ Approve 2D</button>
+                            <button
+                              className={mathFails.length ? 'btn-success-sm !bg-red-900/70 !text-red-100 hover:!bg-red-800' : 'btn-success-sm'}
+                              title={mathFails.length ? `MATH GATE FAILED (${mathFails.length} rule${mathFails.length > 1 ? 's' : ''}) — approving overrides the rulebook. Make sure this is intentional.` : 'Approve this 2D outline'}
+                            >
+                              {mathFails.length ? `⚠ Approve 2D (math failed — override)` : '✓ Approve 2D'}
+                            </button>
                           </form>
                           <form action={rejectOutline} className="flex gap-2 flex-1 min-w-[260px]">
                             <input type="hidden" name="project_id" value={id} />

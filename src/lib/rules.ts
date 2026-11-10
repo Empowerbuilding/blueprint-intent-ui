@@ -58,7 +58,9 @@ export type RuleResult = {
 export type MathCheck = {
   ran_at: string
   rulebook_version: number | null
-  passed: boolean
+  // null = nothing measured (no rule applied to this geometry) — distinct from
+  // false (a rule failed). Not-measured goes to human eye review, not redraft.
+  passed: boolean | null
   results: RuleResult[]
 }
 
@@ -324,10 +326,12 @@ export function runMathGate(
     }
   }
 
-  // A gate that measured nothing is not a pass: no fails AND at least one rule
-  // actually evaluated (empty/na-only outlines must not pass vacuously).
-  const passed =
-    results.every((r) => r.status !== 'fail') && results.some((r) => r.status === 'pass')
+  // Three outcomes: pass (≥1 measured pass, no fails) · fail (any fail, or
+  // empty geometry via the synthetic rule) · null = nothing measured (all na,
+  // non-empty geometry — human eye review, not a redraft flag).
+  const failCount = results.filter((r) => r.status === 'fail').length
+  const passCount = results.filter((r) => r.status === 'pass').length
+  const passed = failCount > 0 ? false : passCount > 0 ? true : null
 
   return {
     ran_at: ranAt,

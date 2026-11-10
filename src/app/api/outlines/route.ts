@@ -66,7 +66,9 @@ export async function GET(request: NextRequest) {
       name: r.name,
       review_state: r.review_state,
       two_d_gate: {
-        can_approve_2d: r.review_state === 'confirmed' && pending === 0,
+        // gate parity with the set2dApproved action: confirmed + nothing pushed
+        // + at least one APPROVED outline (a room never drawn can't be 2D-approved)
+        can_approve_2d: r.review_state === 'confirmed' && pending === 0 && approved > 0,
         pending,
         approved,
         rejected: rejected.map((o) => ({

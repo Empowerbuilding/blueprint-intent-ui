@@ -51,17 +51,24 @@ export async function runVisionGate(opts: {
 
   const prompt = `You are checking a ${typeLabel} for the "${opts.roomName}" of a custom home against CONFIRMED design decisions.
 
+YOUR JOB IS TO READ THE DRAWING, NOT THE DECISION LIST. The decisions are claims; the drawing is the evidence. Never derive a verdict from the decision text itself — if you find yourself confirming a decision because it matches its own wording, STOP: that is the failure mode this check exists to catch.
+
+For each decision, work in this order:
+1. Find the relevant element(s) in the drawing. Read their labels AND their actually-drawn dimensions/positions.
+2. Compare what the drawing ACTUALLY shows against the decision.
+3. Verdict — and for any dimensional decision, the note MUST state the value as drawn (e.g. "island label reads 48x30"), never the value from the decision:
+
 DECISIONS:
 ${decisionLines}
 
-For EACH decision, judge only what this drawing type can show:
-- "confirmed" — the drawing visibly reflects the decision
+Verdicts:
+- "confirmed" — the drawing visibly reflects the decision, with evidence you can cite from the drawing itself. If you cannot cite drawn evidence, it is not confirmed.
+- "conflict" — the drawing contradicts the decision (state the drawn value vs the decision value, e.g. "drawn 48x30 but decision says 84x42")
 - "missing" — the decision is not visible in this drawing (may belong to another view — that is still "missing" here)
-- "conflict" — the drawing contradicts the decision
 - "na" — the decision is not something ANY drawing of this type could ever show: hardware, finishes/materials by name, colors, sheens, budgets, brand preferences, non-spatial requirements. Judge the TOPIC's spatialness, not the drawing.
 
 Return ONLY valid JSON, no markdown fences, no commentary:
-{"results": [{"topic": "<the topic exactly as given>", "verdict": "confirmed|missing|conflict|na", "note": "<one short sentence of evidence>"}]}`
+{"results": [{"topic": "<the topic exactly as given>", "verdict": "confirmed|missing|conflict|na", "note": "<one short sentence citing drawn evidence; for dimensions, the value as drawn>"}]}`
 
   // max_tokens 4000: GLM-4.6v spends a large thinking block FIRST — with a small
   // budget it hits max_tokens inside thinking and never emits text (verified live:
