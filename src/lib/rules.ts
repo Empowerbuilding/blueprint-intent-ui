@@ -253,14 +253,25 @@ export function runMathGate(
         const count = elements.filter((e) => e.kind === kind).length
         if (rule.rule_type === 'forbidden_kind') {
           const max = num(p.max_count) ?? 0
-          results.push({
-            rule_key: rule.rule_key,
-            description: desc,
-            status: count > max ? 'fail' : 'pass',
-            measured: `${count}`,
-            required: `≤ ${max}`,
-            detail: `"${kind}" elements`,
-          })
+          // 0-found is "nothing to forbid", not a measured pass — an outline
+          // whose rules are all absence-checks hasn't actually been gate-checked.
+          if (count === 0) {
+            results.push({
+              rule_key: rule.rule_key,
+              description: desc,
+              status: 'na',
+              detail: `no "${kind}" elements in this outline`,
+            })
+          } else {
+            results.push({
+              rule_key: rule.rule_key,
+              description: desc,
+              status: count > max ? 'fail' : 'pass',
+              measured: `${count}`,
+              required: `≤ ${max}`,
+              detail: `"${kind}" elements`,
+            })
+          }
         } else {
           const min = num(p.min_count) ?? 1
           results.push({
