@@ -296,10 +296,15 @@ export function runMathGate(
     }
   }
 
+  // A gate that measured nothing is not a pass: no fails AND at least one rule
+  // actually evaluated (empty/na-only outlines must not pass vacuously).
+  const passed =
+    results.every((r) => r.status !== 'fail') && results.some((r) => r.status === 'pass')
+
   return {
     ran_at: ranAt,
     rulebook_version: rulebookVersion,
-    passed: results.every((r) => r.status !== 'fail'),
+    passed,
     results,
   }
 }

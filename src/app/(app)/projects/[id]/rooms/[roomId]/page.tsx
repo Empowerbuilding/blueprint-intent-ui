@@ -236,7 +236,9 @@ export default async function RoomPage({
                         {math
                           ? mathFails.length
                             ? `${mathFails.length} FAIL / ${mathPass.length} pass`
-                            : `${mathPass.length} pass`
+                            : mathPass.length
+                              ? `${mathPass.length} pass`
+                              : 'nothing measured — no rules applied to this geometry'
                           : 'not run'}
                         {math?.rulebook_version ? (
                           <span className="text-slate-600"> (rulebook v{math.rulebook_version})</span>

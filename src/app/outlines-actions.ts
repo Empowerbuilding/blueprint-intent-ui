@@ -152,6 +152,17 @@ export async function set2dApproved(roomId: string, projectId: string) {
     redirect(`/projects/${projectId}/rooms/${roomId}?err2d=${pending}+outline(s)+still+awaiting+review`)
   }
 
+  // 2D approval requires at least one APPROVED outline — a room that was never
+  // drawn (or whose outlines were all rejected) cannot be 2D-approved.
+  const { count: approvedOutlines } = await supabase
+    .from('intent_outlines')
+    .select('id', { count: 'exact', head: true })
+    .eq('room_id', roomId)
+    .eq('status', 'approved')
+  if ((approvedOutlines || 0) === 0) {
+    redirect(`/projects/${projectId}/rooms/${roomId}?err2d=no+approved+outline+—+at+least+one+outline+must+be+approved+before+2D+approval`)
+  }
+
   await supabase.from('intent_rooms').update({ review_state: '2d_approved' }).eq('id', roomId)
   revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
   revalidatePath(`/projects/${projectId}`)

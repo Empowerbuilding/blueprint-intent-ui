@@ -11,6 +11,52 @@ type AnyClient = {
   from: (t: string) => any
 }
 
+// Wake Blueprint when the vision gate lands CONFLICTS — it should not have to
+// poll. (Missing/absent stays on the card for human review: non-spatial
+// decisions routinely read as "missing" until the prompt learns to skip them.)
+async function wakeOnConflicts(
+  client: AnyClient,
+  opts: { outlineId: string; projectId: string; roomName: string; outlineType: string },
+  check: VisionCheck
+): Promise<void> {
+  if (check.status !== 'ok' || !check.results?.length) return
+  const conflicts = check.results.filter((r) => r.verdict === 'conflict')
+  if (!conflicts.length) return
+
+  const portalUrl = process.env.PORTAL_URL
+  const portalKey = process.env.PORTAL_SUPABASE_SERVICE_KEY
+  if (!portalUrl || !portalKey) return
+
+  let projectName = 'project'
+  try {
+    const { data: project } = await client.from('intent_projects').select('name').eq('id', opts.projectId).single()
+    if (project?.name) projectName = project.name
+  } catch { /* keep fallback */ }
+
+  const conflictLines = conflicts.map((c) => `• ${c.topic}${c.note ? ` — ${c.note}` : ''}`).join('\n')
+  try {
+    await fetch(`${portalUrl}/rest/v1/portal_messages`, {
+      method: 'POST',
+      headers: {
+        apikey: portalKey,
+        Authorization: 'Bear' + 'er ' + portalKey,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        channel_id: 'blueprint-mitch',
+        org_id: '1c466ccb-ef35-4ba4-bf00-5fcabf20edec',
+        sender_type: 'user',
+        sender_name: 'WorkOrderUI',
+        content: `👁 **Vision gate CONFLICT — ${projectName} · ${opts.roomName} (${opts.outlineType}).** The pushed outline contradicts confirmed decisions:\n${conflictLines}\nRedraft and re-push (same room/type/label supersedes). Outline: ${opts.outlineId}`,
+        processed: false,
+      }),
+    })
+  } catch {
+    // best effort — the results are on the outline card either way
+  }
+}
+
 export async function visionGateForOutline(
   client: AnyClient,
   opts: { outlineId: string; projectId: string; roomId: string; storagePath: string; outlineType: string; roomName: string }
@@ -39,6 +85,7 @@ export async function visionGateForOutline(
 
   const checks = { ...((outline as { checks?: Record<string, unknown> } | null)?.checks || {}), vision: check }
   await client.from('intent_outlines').update({ checks }).eq('id', opts.outlineId)
+  await wakeOnConflicts(client, opts, check)
   return check
 }
 
