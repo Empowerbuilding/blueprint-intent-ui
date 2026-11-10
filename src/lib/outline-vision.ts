@@ -71,16 +71,23 @@ export async function visionGateForOutline(
       .eq('project_id', opts.projectId)
       .is('room_id', null)
       .eq('status', 'active'),
-    client.from('intent_outlines').select('checks').eq('id', opts.outlineId).single(),
+    client.from('intent_outlines').select('checks, geometry').eq('id', opts.outlineId).single(),
   ])
 
   const mediaType = /\.(jpe?g|webp|gif)$/i.exec(opts.storagePath)?.[1]?.toLowerCase()
+  const geoElements = (((outline as { geometry?: { elements?: unknown[] } } | null)?.geometry?.elements) || []) as {
+    kind: string
+    label?: string
+    w?: number
+    h?: number
+  }[]
   const check = await runVisionGate({
     imageUrl: `${supabaseUrl}/storage/v1/object/public/intent-outlines/${opts.storagePath}`,
     mediaType: mediaType === 'jpeg' || mediaType === 'webp' || mediaType === 'gif' ? `image/${mediaType}` : 'image/png',
     outlineType: opts.outlineType,
     roomName: opts.roomName,
     decisions: [...(roomDecisions || []), ...(houseDecisions || [])] as { topic: string; value: string }[],
+    geometryElements: geoElements,
   })
 
   const checks = { ...((outline as { checks?: Record<string, unknown> } | null)?.checks || {}), vision: check }
