@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { saveRule, toggleRule } from '@/app/rules-actions'
+import { Pill } from '@/components/pill'
 import Link from 'next/link'
 
 const RULE_TYPES: { value: string; label: string; params: string }[] = [
@@ -32,23 +33,23 @@ export default async function RulesPage({
   ])
 
   return (
-    <div className="min-h-screen bg-bh-black text-white">
-      <header className="border-b border-bh-border bg-bh-panel/70">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-slate-500 hover:text-white text-sm transition-colors">
+    <main>
+      <header className="border-b border-bh-border bg-bh-panel/40">
+        <div className="app-container py-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Link href="/" className="text-xs text-slate-500 hover:text-white transition-colors">
               ← Projects
             </Link>
-            <span className="text-lg font-bold">Rulebook</span>
-            <span className="text-xs text-slate-500 border border-bh-border rounded-full px-2 py-0.5">
-              math gate · v{versions?.[0]?.version || 1} latest
-            </span>
+            <div className="flex items-center gap-3 mt-1">
+              <h1 className="text-xl font-semibold text-white">Rulebook</h1>
+              <Pill tone="outline">math gate · v{versions?.[0]?.version || 1} latest</Pill>
+            </div>
           </div>
           <span className="text-xs text-slate-500">Michael&apos;s clearance rules — executed against pushed 2D geometry</span>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-10">
+      <div className="app-container py-8 space-y-10">
         {error && (
           <div className="bg-red-950/50 border border-red-900 rounded-xl p-4 text-sm text-red-300">{error}</div>
         )}
@@ -216,7 +217,7 @@ export default async function RulesPage({
             against, so any approval can be traced to the exact ruleset.
           </p>
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
   )
 }

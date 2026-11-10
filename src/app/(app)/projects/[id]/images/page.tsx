@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { assignImageForm } from '@/app/emit-actions'
 import UploadInspo from '@/components/UploadInspo'
+import { PageHeader } from '@/components/page-header'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -39,9 +40,9 @@ export default async function ImagesPage({
   const card = (img: InspoImg, state: 'unassigned' | 'parked' | 'assigned') => (
     <div
       key={img.id}
-      className={`rounded-xl overflow-hidden border ${
-        state === 'unassigned' ? 'border-red-900/60' : state === 'parked' ? 'border-bh-border' : 'border-emerald-900/50'
-      } bg-bh-card`}
+      className={`card overflow-hidden ${
+        state === 'unassigned' ? 'border-amber-900/50' : state === 'assigned' ? 'border-emerald-900/40' : ''
+      }`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={publicUrl(img.storage_path)} alt={img.notes || 'inspo'} className="w-full h-40 object-cover" />
@@ -50,14 +51,14 @@ export default async function ImagesPage({
           {state === 'assigned'
             ? `→ ${roomName.get(img.room_id!) || 'room'}`
             : state === 'parked'
-              ? '🅿️ parked (explicitly not used)'
-              : '⚠️ unassigned — blocks Lock & Emit'}
+              ? 'Parked — explicitly not used'
+              : 'Unassigned — blocks Lock & Emit'}
         </div>
         {(img.tags || []).length > 0 && (
           <div className="flex flex-wrap gap-1">
             {(img.tags as string[]).slice(0, 6).map((t) => (
-              <span key={t} className="text-[9px] bg-bh-border/60 text-slate-400 rounded-full px-1.5 py-0.5">
-                {t.replace('color:', '🎨 ')}
+              <span key={t} className="text-[10px] bg-bh-border/60 text-slate-400 rounded-full px-1.5 py-0.5">
+                {t}
               </span>
             ))}
           </div>
@@ -69,69 +70,69 @@ export default async function ImagesPage({
           <select
             name="room_id"
             defaultValue={img.room_id ?? (img.parked ? 'PARK' : '')}
-            className="flex-1 bg-bh-black border border-bh-border rounded-lg px-2 py-1.5 text-xs"
+            className="field flex-1 !px-2 !py-1.5 !text-xs"
           >
             <option value="">— unassigned —</option>
-            <option value="PARK">🅿️ park (not used)</option>
+            <option value="PARK">Park (not used)</option>
             {(rooms || []).map((r) => (
               <option key={r.id} value={r.id}>
                 {r.section_code} · {r.name}
               </option>
             ))}
           </select>
-          <button className="bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-1.5 text-xs font-medium">
-            Set
-          </button>
+          <button className="btn-secondary-sm">Set</button>
         </form>
       </div>
     </div>
   )
 
+  const grid = (children: React.ReactNode) => (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{children}</div>
+  )
+
   return (
-    <div className="min-h-screen bg-bh-black text-white">
-      <header className="border-b border-bh-border bg-bh-panel/70">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href={`/projects/${id}`} className="text-slate-500 hover:text-white text-sm transition-colors">
-              ← {project.name}
-            </Link>
-            <span className="text-lg font-bold">Inspo Images</span>
-          </div>
-          <UploadInspo projectId={id} />
-        </div>
-      </header>
+    <main>
+      <PageHeader back={`/projects/${id}`} backLabel={project.name} title="Inspo Images">
+        <UploadInspo projectId={id} />
+      </PageHeader>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
-        <section>
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-1">
-            Unassigned ({unassigned.length}) — every image must be assigned or parked before Lock &amp; Emit
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {unassigned.map((i) => card(i, 'unassigned'))}
-            {!unassigned.length && <div className="text-sm text-slate-600">None — all clean.</div>}
+      <div className="app-container py-8 space-y-10">
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h2 className="section-title">Unassigned ({unassigned.length})</h2>
+            <span className="text-xs text-slate-600">every image must be assigned or parked before Lock &amp; Emit</span>
           </div>
+          {unassigned.length ? (
+            grid(unassigned.map((i) => card(i, 'unassigned')))
+          ) : (
+            <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-6 text-center">
+              All clean — nothing waiting on assignment.
+            </div>
+          )}
         </section>
 
-        <section>
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
-            Assigned ({assigned.length})
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {assigned.map((i) => card(i, 'assigned'))}
-            {!assigned.length && <div className="text-sm text-slate-600">Nothing assigned yet.</div>}
-          </div>
+        <section className="space-y-4">
+          <h2 className="section-title">Assigned ({assigned.length})</h2>
+          {assigned.length ? (
+            grid(assigned.map((i) => card(i, 'assigned')))
+          ) : (
+            <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-6 text-center">
+              Nothing assigned yet.
+            </div>
+          )}
         </section>
 
-        <section>
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
-            Parked ({parked.length})
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {parked.map((i) => card(i, 'parked'))}
-            {!parked.length && <div className="text-sm text-slate-600">Nothing parked.</div>}
-          </div>
+        <section className="space-y-4">
+          <h2 className="section-title">Parked ({parked.length})</h2>
+          {parked.length ? (
+            grid(parked.map((i) => card(i, 'parked')))
+          ) : (
+            <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-6 text-center">
+              Nothing parked.
+            </div>
+          )}
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
   )
 }

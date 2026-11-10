@@ -59,14 +59,14 @@ export default async function StandardsPage({
   }
 
   return (
-    <div className="min-h-screen bg-bh-black text-white">
-      <header className="border-b border-bh-border bg-bh-panel/70">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-slate-500 hover:text-white text-sm transition-colors">
+    <main>
+      <header className="border-b border-bh-border bg-bh-panel/40">
+        <div className="app-container py-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Link href="/" className="text-xs text-slate-500 hover:text-white transition-colors">
               ← Projects
             </Link>
-            <span className="text-lg font-bold">Standards</span>
+            <h1 className="text-xl font-semibold text-white mt-1">Standards</h1>
           </div>
           <Link href="/rules" className="text-xs text-slate-400 hover:text-gold-light transition-colors">
             2D clearance rulebook →
@@ -74,7 +74,7 @@ export default async function StandardsPage({
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-10">
+      <div className="app-container py-8 space-y-10 max-w-5xl">
         {error && (
           <div className="bg-red-950/50 border border-red-900 rounded-xl p-4 text-sm text-red-300">{error}</div>
         )}
@@ -226,7 +226,7 @@ export default async function StandardsPage({
           Seeded from Blueprint&apos;s standing docs on 11/9. Blueprint keeps its workspace copies — the UI
           is now the shared source of truth; every save tells it to pull.
         </p>
-      </main>
-    </div>
+      </div>
+    </main>
   )
 }

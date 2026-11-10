@@ -19,3 +19,65 @@ body {
   background: var(--color-bh-black);
   color: #e8e8e8;
 }
+
+/* ---------- design system ---------- */
+
+@layer components {
+  /* buttons: gold = primary only. secondary = neutral. semantic colors reserved. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary-sm {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-slate-950 transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-bh-border bg-bh-card px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:text-white;
+  }
+  .btn-secondary-sm {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-bh-border bg-bh-card px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-white;
+  }
+  .btn-success-sm {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-emerald-100 transition-colors hover:bg-emerald-700;
+  }
+  .btn-danger-sm {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-900/70 px-3 py-1.5 text-xs font-semibold text-red-100 transition-colors hover:bg-red-800;
+  }
+
+  /* status pills — one shape, tone by state. never alarm-red for "pending". */
+  .pill {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap;
+  }
+  .pill-neutral { @apply bg-slate-800 text-slate-300; }
+  .pill-gold    { @apply bg-amber-900/50 text-gold-light; }
+  .pill-green   { @apply bg-emerald-900/50 text-emerald-300; }
+  .pill-blue    { @apply bg-sky-900/50 text-sky-300; }
+  .pill-violet  { @apply bg-violet-900/50 text-violet-300; }
+  .pill-red     { @apply bg-red-900/50 text-red-300; }
+  .pill-outline { @apply border border-bh-border text-slate-400; }
+
+  /* form fields */
+  .field {
+    @apply w-full rounded-lg border border-bh-border bg-bh-black px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 transition-colors focus:border-gold focus:outline-none;
+  }
+
+  /* section headings inside pages */
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-[0.15em] text-slate-400;
+  }
+
+  /* cards */
+  .card {
+    @apply rounded-xl border border-bh-border bg-bh-card;
+  }
+}
+
+/* thin dark scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #141414; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* app container width — designers work on wide monitors */
+@layer utilities {
+  .app-container { @apply mx-auto w-full max-w-7xl px-6; }
+}

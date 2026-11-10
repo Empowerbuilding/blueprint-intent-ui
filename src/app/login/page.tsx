@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { signIn } from '@/app/actions'
-import Link from 'next/link'
 
 export default async function LoginPage({
   searchParams,
@@ -19,44 +18,36 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen flex items-center justify-center bg-bh-black px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="text-3xl font-bold text-white">Design Intent</div>
-          <div className="text-sm text-slate-400 mt-1">Barnhaus · Work Order UI</div>
+        <div className="mb-10 flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-full.png" alt="Barnhaus Steel Builders" className="h-36 w-auto" />
+          <div className="mt-6 text-center">
+            <div className="text-lg font-semibold text-white">Design Intent</div>
+            <div className="text-xs text-slate-500 mt-1 uppercase tracking-[0.18em]">
+              Work Order UI
+            </div>
+          </div>
         </div>
-        <form action={signIn} className="bg-bh-card border border-bh-border rounded-xl p-6 space-y-4">
+        <form action={signIn} className="card p-6 space-y-4">
           {error && (
             <div className="text-sm text-red-400 bg-red-950/50 border border-red-900 rounded-lg px-3 py-2">
               Sign-in failed — check email and password.
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
-            <input
-              name="email"
-              type="email"
-              required
-              className="w-full bg-bh-black border border-bh-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold"
-              placeholder="you@barnhaussteelbuilders.com"
-            />
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+            <input name="email" type="email" required className="field" placeholder="you@barnhaussteelbuilders.com" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Password</label>
-            <input
-              name="password"
-              type="password"
-              required
-              className="w-full bg-bh-black border border-bh-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold"
-            />
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
+            <input name="password" type="password" required className="field" />
           </div>
-          <button
-            type="submit"
-            className="w-full bg-gold hover:bg-gold-light-light text-slate-950 font-semibold rounded-lg px-3 py-2 text-sm transition-colors"
-          >
+          <button type="submit" className="btn-primary w-full">
             Sign in
           </button>
         </form>
-        <div className="mt-4 text-center text-xs text-slate-600">
-          Accounts are provisioned by Mitch — contact him for access.
+        <div className="mt-5 text-center text-xs text-slate-600">
+          Accounts are provisioned by Mitch.
         </div>
       </div>
     </div>
