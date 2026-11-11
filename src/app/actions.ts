@@ -102,9 +102,52 @@ export async function reopenRoom(roomId: string, projectId: string) {
   revalidatePath('/')
 }
 
+// ---- decisions ----
+// A topic can hold many active lines (a board push adds one per transcript line), so every
+// change is addressed to ONE line by id:
+//   addDecision      adds a line. It never replaces anything.
+//   replaceDecision  replaces one line; the old one stays on record, crossed out under its replacement.
+//   removeDecision   takes one line out of the build; it stays listed, crossed out, and can be put back.
+//   restoreDecision  puts a removed line back.
+// "Removed" is status 'superseded' with no superseded_by. status_changed_at records a hand
+// removal / put-back so a locked contract shows as out of date (see lib/overview.ts).
+
+function decideUrl(projectId: string, roomId: string, opts: { err?: string; anchor?: string } = {}) {
+  return (
+    `/projects/${projectId}/rooms/${roomId}?view=decide` +
+    (opts.err ? '&err=' + encodeURIComponent(opts.err) : '') +
+    (opts.anchor ? '#' + opts.anchor : '')
+  )
+}
+
+function revalidateDecisions(projectId: string, roomId: string | null) {
+  if (roomId) revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
+}
+
+type DecisionLine = { id: string; project_id: string; room_id: string | null; topic: string; status: string; superseded_by: string | null }
+
+// the line a form points at — only if it really belongs to that project and room
+async function findLine(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  formData: FormData,
+): Promise<{ projectId: string; roomId: string; line: DecisionLine | null }> {
+  const projectId = String(formData.get('project_id') || '')
+  const roomId = String(formData.get('room_id') || '')
+  const decisionId = String(formData.get('decision_id') || '')
+  if (!projectId || !roomId || !decisionId) return { projectId, roomId, line: null }
+  const { data } = await supabase
+    .from('intent_decisions')
+    .select('id, project_id, room_id, topic, status, superseded_by')
+    .eq('id', decisionId)
+    .single()
+  const line = data as DecisionLine | null
+  return { projectId, roomId, line: line && line.project_id === projectId && line.room_id === roomId ? line : null }
+}
+
 export async function addDecision(formData: FormData) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
   const projectId = String(formData.get('project_id'))
   const roomId = String(formData.get('room_id') || '') || null
   const topic = String(formData.get('topic') || '').trim()
@@ -114,32 +157,88 @@ export async function addDecision(formData: FormData) {
   const meetingDate = String(formData.get('meeting_date') || '') || null
   if (!topic || !value) return
 
-  // supersede chain: any active decision on the same (room, topic) becomes superseded
-  let q = supabase
-    .from('intent_decisions')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('topic', topic)
-    .eq('status', 'active')
-  q = roomId ? q.eq('room_id', roomId) : q.is('room_id', null)
-  const { data: existing } = await q
-
-  const { data: inserted } = await supabase
+  await supabase
     .from('intent_decisions')
     .insert({ project_id: projectId, room_id: roomId, topic, value, source, source_ref: sourceRef, meeting_date: meetingDate })
-    .select('id')
-    .single()
 
-  if (existing?.length && inserted) {
-    await supabase
-      .from('intent_decisions')
-      .update({ status: 'superseded', superseded_by: inserted.id })
-      .in('id', existing.map((d: { id: string }) => d.id))
+  revalidateDecisions(projectId, roomId)
+}
+
+export async function replaceDecision(formData: FormData) {
+  const supabase = await createClient()
+  const { projectId, roomId, line } = await findLine(supabase, formData)
+  if (!projectId || !roomId) return
+  const value = String(formData.get('value') || '').trim()
+  const source = String(formData.get('source') || 'manual')
+  const sourceRef = String(formData.get('source_ref') || '') || null
+  const meetingDate = String(formData.get('meeting_date') || '') || null
+  if (!line || line.status !== 'active') {
+    redirect(decideUrl(projectId, roomId, { err: 'That line was already changed or removed. Nothing was changed.' }))
+  }
+  if (!value) {
+    redirect(decideUrl(projectId, roomId, { err: 'The new wording was empty. Nothing was changed.', anchor: 'd-' + line.id }))
   }
 
-  if (roomId) revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
-  revalidatePath(`/projects/${projectId}`)
-  revalidatePath('/')
+  const { data: inserted, error } = await supabase
+    .from('intent_decisions')
+    .insert({ project_id: projectId, room_id: roomId, topic: line.topic, value, source, source_ref: sourceRef, meeting_date: meetingDate })
+    .select('id')
+    .single()
+  if (error || !inserted) {
+    redirect(decideUrl(projectId, roomId, { err: 'The change could not be saved' + (error ? ': ' + error.message : '.'), anchor: 'd-' + line.id }))
+  }
+
+  // only this line, and only if it is still active
+  const { error: updateError } = await supabase
+    .from('intent_decisions')
+    .update({ status: 'superseded', superseded_by: inserted.id })
+    .eq('id', line.id)
+    .eq('status', 'active')
+  revalidateDecisions(projectId, roomId)
+  if (updateError) {
+    redirect(
+      decideUrl(projectId, roomId, {
+        err: 'The new line was added, but the old one could not be crossed out (' + updateError.message + '). Remove the old line by hand.',
+        anchor: 'd-' + line.id,
+      }),
+    )
+  }
+  redirect(decideUrl(projectId, roomId, { anchor: 'd-' + inserted.id }))
+}
+
+export async function removeDecision(formData: FormData) {
+  const supabase = await createClient()
+  const { projectId, roomId, line } = await findLine(supabase, formData)
+  if (!projectId || !roomId) return
+  if (!line || line.status !== 'active') {
+    redirect(decideUrl(projectId, roomId, { err: 'That line was already changed or removed. Nothing was changed.' }))
+  }
+  const { error } = await supabase
+    .from('intent_decisions')
+    .update({ status: 'superseded', superseded_by: null, status_changed_at: new Date().toISOString() })
+    .eq('id', line.id)
+    .eq('status', 'active')
+  revalidateDecisions(projectId, roomId)
+  if (error) redirect(decideUrl(projectId, roomId, { err: 'The line could not be removed: ' + error.message, anchor: 'd-' + line.id }))
+  redirect(decideUrl(projectId, roomId, { anchor: 'd-' + line.id }))
+}
+
+export async function restoreDecision(formData: FormData) {
+  const supabase = await createClient()
+  const { projectId, roomId, line } = await findLine(supabase, formData)
+  if (!projectId || !roomId) return
+  // only a line that was removed outright; one that was replaced has a newer wording in its place
+  if (!line || line.status !== 'superseded' || line.superseded_by) {
+    redirect(decideUrl(projectId, roomId, { err: 'That line cannot be put back: it is already active, or it was replaced by a newer line.' }))
+  }
+  const { error } = await supabase
+    .from('intent_decisions')
+    .update({ status: 'active', status_changed_at: new Date().toISOString() })
+    .eq('id', line.id)
+    .eq('status', 'superseded')
+  revalidateDecisions(projectId, roomId)
+  if (error) redirect(decideUrl(projectId, roomId, { err: 'The line could not be put back: ' + error.message, anchor: 'd-' + line.id }))
+  redirect(decideUrl(projectId, roomId, { anchor: 'd-' + line.id }))
 }
 
 export async function addOpenQuestion(formData: FormData) {

@@ -5,8 +5,11 @@ import {
   addDecision,
   addOpenQuestion,
   addRedlineNote,
+  removeDecision,
   reopenRoom,
+  replaceDecision,
   resolveOpen,
+  restoreDecision,
   setReviewState,
 } from '@/app/actions'
 import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
@@ -52,6 +55,7 @@ type Decision = {
   source: string
   source_ref: string | null
   meeting_date: string | null
+  superseded_by: string | null
 }
 type OpenQuestion = {
   id: string
@@ -99,7 +103,7 @@ function DecisionForm({
       <input
         name="value"
         required
-        placeholder={topic ? 'New decision for “' + topic + '”' : 'Decision (e.g. 12 ft flat)'}
+        placeholder={topic ? 'Decision for “' + topic + '”' : 'Decision (e.g. 12 ft flat)'}
         className={'field ' + (topic ? 'sm:col-span-2' : '')}
       />
       <select name="source" defaultValue="manual" className="field">
@@ -115,6 +119,48 @@ function DecisionForm({
       <input name="meeting_date" type="date" className="field" aria-label="Meeting date" />
       <button className="btn-primary-sm justify-self-start self-center">{cta}</button>
     </form>
+  )
+}
+
+// Change or remove ONE line. Opened from the line's "Change" link (?edit=<line id>), so a topic
+// holding a couple of hundred lines does not carry a couple of hundred forms.
+function LineEditor({ d, projectId, roomId, cancelHref }: { d: Decision; projectId: string; roomId: string; cancelHref: string }) {
+  return (
+    <div className="mt-2 rounded-lg border border-bh-border bg-bh-black/40 p-3 space-y-3">
+      <form action={replaceDecision} className="grid gap-3 sm:grid-cols-2 text-sm">
+        <input type="hidden" name="project_id" value={projectId} />
+        <input type="hidden" name="room_id" value={roomId} />
+        <input type="hidden" name="decision_id" value={d.id} />
+        <label className="sm:col-span-2 text-[11px] text-slate-500">
+          New wording for this line
+          <textarea name="value" required rows={2} defaultValue={d.value} className="field mt-1" />
+        </label>
+        <select name="source" defaultValue="manual" className="field" aria-label="Source of the change">
+          {Object.entries(SOURCE_LABEL)
+            .filter(([v]) => v !== 'default')
+            .map(([v, l]) => (
+              <option key={v} value={v}>
+                source: {l}
+              </option>
+            ))}
+        </select>
+        <input name="source_ref" placeholder="Where it came from (timestamp / page) — optional" className="field" />
+        <input name="meeting_date" type="date" className="field" aria-label="Meeting date" />
+        <div className="flex flex-wrap items-center gap-3 self-center">
+          <button className="btn-primary-sm">Save — replaces this line only</button>
+          <Link href={cancelHref} className="text-[11px] text-slate-500 hover:text-gold-light">
+            Cancel
+          </Link>
+        </div>
+      </form>
+      <form action={removeDecision} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-bh-border pt-3">
+        <input type="hidden" name="project_id" value={projectId} />
+        <input type="hidden" name="room_id" value={roomId} />
+        <input type="hidden" name="decision_id" value={d.id} />
+        <button className="btn-secondary-sm">Remove this line</button>
+        <span className="text-[11px] text-slate-600">It stays listed, crossed out, and can be put back.</span>
+      </form>
+    </div>
   )
 }
 
@@ -349,10 +395,11 @@ export default async function RoomPage({
   searchParams,
 }: {
   params: Promise<{ id: string; roomId: string }>
-  searchParams: Promise<{ view?: string; err2d?: string }>
+  searchParams: Promise<{ view?: string; err2d?: string; err?: string; edit?: string }>
 }) {
   const { id, roomId } = await params
-  const { view: viewParam, err2d } = await searchParams
+  const { view: viewParam, err2d: err2dParam, err: errParam, edit: editId } = await searchParams
+  const err2d = err2dParam || errParam
   const supabase = await createClient()
 
   const { data: room } = await supabase
@@ -367,7 +414,7 @@ export default async function RoomPage({
       supabase.from('intent_projects').select('name, emitted_version').eq('id', id).single(),
       supabase
         .from('intent_decisions')
-        .select('id, topic, value, status, source, source_ref, meeting_date')
+        .select('id, topic, value, status, source, source_ref, meeting_date, superseded_by')
         .eq('room_id', roomId)
         .order('topic')
         .order('created_at', { ascending: false }),
@@ -396,6 +443,30 @@ export default async function RoomPage({
   const byTopic = new Map<string, Decision[]>()
   for (const d of decisions) byTopic.set(d.topic, [...(byTopic.get(d.topic) || []), d])
   const activeCount = decisions.filter((d) => d.status === 'active').length
+  // Lines that are no longer active, sorted by what happened to them:
+  //   replaced -> listed under the active line that took their place (following the chain)
+  //   removed  -> no replacement (superseded_by empty): listed under the topic, can be put back
+  //   the rest -> their replacement was itself removed: listed under the topic, read-only
+  const decisionById = new Map(decisions.map((d) => [d.id, d]))
+  const replacedBy = new Map<string, Decision[]>()
+  const removedLines = new Map<string, Decision[]>()
+  const strandedLines = new Map<string, Decision[]>()
+  const push = (m: Map<string, Decision[]>, k: string, d: Decision) => m.set(k, [...(m.get(k) || []), d])
+  for (const d of decisions) {
+    if (d.status === 'active') continue
+    if (!d.superseded_by) {
+      push(removedLines, d.topic, d)
+      continue
+    }
+    let cur: Decision | undefined = d
+    const seen = new Set<string>()
+    while (cur && cur.status !== 'active' && cur.superseded_by && !seen.has(cur.id)) {
+      seen.add(cur.id)
+      cur = decisionById.get(cur.superseded_by)
+    }
+    if (cur && cur.status === 'active') push(replacedBy, cur.id, d)
+    else push(strandedLines, d.topic, d)
+  }
   const decidedTopics = new Set(decisions.filter((d) => d.status === 'active').map((d) => d.topic))
   const openDefaults = defaultsForRoom(room.section_code, room.name).filter((d) => !decidedTopics.has(d.topic))
 
@@ -536,58 +607,95 @@ export default async function RoomPage({
                 <div>
                   <h2 className="section-title">What gets built here</h2>
                   <p className="text-xs text-slate-600 mt-1">
-                    {activeCount} decided · {openDefaults.length} built from defaults. Change any line to override it.
+                    {activeCount} decided · {openDefaults.length} built from defaults. Each line is changed or removed on
+                    its own.
                   </p>
                 </div>
 
                 <div className="card divide-y divide-slate-800/60">
                   {[...byTopic.entries()].map(([topic, list]) => {
                     const active = list.filter((d) => d.status === 'active')
-                    const superseded = list.filter((d) => d.status === 'superseded')
-                    if (!active.length) return null
+                    const removed = removedLines.get(topic) || []
+                    const stranded = strandedLines.get(topic) || []
+                    if (!active.length && !removed.length) return null
                     return (
                       <div key={topic} className="px-4 py-3">
                         {/* a topic can hold several active lines (board pushes add one per transcript line):
-                            one row per line, and the source — often a long transcript quote — wraps under it */}
+                            one row per line, and the source — often a long transcript quote — wraps under it.
+                            Every line is changed or removed on its own. */}
                         <div className="flex items-start justify-between gap-x-4">
                           <span className="font-mono text-xs text-gold-light/80 min-w-0 break-words">{topic}</span>
                           <span className="flex items-center gap-2 shrink-0 text-[11px] text-slate-500">
                             {active.length > 1 ? active.length + ' lines' : null}
-                            <Pill tone="green">decided</Pill>
+                            {active.length ? <Pill tone="green">decided</Pill> : <Pill tone="outline">all removed</Pill>}
                           </span>
                         </div>
                         <ul className="mt-1 space-y-2">
                           {active.map((d) => (
-                            <li key={d.id} className="min-w-0">
-                              <div className="text-sm text-slate-100 break-words">{d.value}</div>
-                              <div className="text-[11px] text-slate-500 break-words">
-                                {SOURCE_LABEL[d.source] || d.source}
-                                {d.source_ref ? ' · ' + d.source_ref : ''}
-                                {d.meeting_date ? ' · ' + d.meeting_date : ''}
+                            <li key={d.id} id={'d-' + d.id} className="min-w-0 scroll-mt-36">
+                              <div className="flex items-start justify-between gap-x-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm text-slate-100 break-words">{d.value}</div>
+                                  <div className="text-[11px] text-slate-500 break-words">
+                                    {SOURCE_LABEL[d.source] || d.source}
+                                    {d.source_ref ? ' · ' + d.source_ref : ''}
+                                    {d.meeting_date ? ' · ' + d.meeting_date : ''}
+                                  </div>
+                                </div>
+                                {editId !== d.id && (
+                                  <Link
+                                    href={here + '?view=decide&edit=' + d.id + '#d-' + d.id}
+                                    className="shrink-0 text-[11px] text-slate-600 hover:text-gold-light"
+                                  >
+                                    Change
+                                  </Link>
+                                )}
                               </div>
+                              {(replacedBy.get(d.id) || []).map((old) => (
+                                <div key={old.id} className="text-xs text-slate-600 mt-1 break-words">
+                                  <span className="line-through">{old.value}</span>
+                                  <span className="ml-2">
+                                    (replaced · {old.meeting_date || 'earlier'} · {SOURCE_LABEL[old.source] || old.source})
+                                  </span>
+                                </div>
+                              ))}
+                              {editId === d.id && (
+                                <LineEditor d={d} projectId={id} roomId={roomId} cancelHref={here + '?view=decide#d-' + d.id} />
+                              )}
                             </li>
                           ))}
                         </ul>
-                        {superseded.map((d) => (
-                          <div key={d.id} className="text-xs text-slate-600 mt-1">
+                        {removed.map((d) => (
+                          <div
+                            key={d.id}
+                            id={'d-' + d.id}
+                            className="mt-2 flex items-start justify-between gap-x-3 text-xs text-slate-600 scroll-mt-36"
+                          >
+                            <div className="min-w-0 break-words">
+                              <span className="line-through">{d.value}</span>
+                              <span className="ml-2">(removed · not built)</span>
+                            </div>
+                            <form action={restoreDecision} className="shrink-0">
+                              <input type="hidden" name="project_id" value={id} />
+                              <input type="hidden" name="room_id" value={roomId} />
+                              <input type="hidden" name="decision_id" value={d.id} />
+                              <button className="text-[11px] text-slate-500 underline hover:text-gold-light">Put back</button>
+                            </form>
+                          </div>
+                        ))}
+                        {stranded.map((d) => (
+                          <div key={d.id} className="text-xs text-slate-600 mt-1 break-words">
                             <span className="line-through">{d.value}</span>
                             <span className="ml-2">
-                              ({d.meeting_date || 'earlier'} · {SOURCE_LABEL[d.source] || d.source})
+                              (earlier wording · {d.meeting_date || 'earlier'} · {SOURCE_LABEL[d.source] || d.source})
                             </span>
                           </div>
                         ))}
-                        <details className="mt-1">
-                          <summary className="cursor-pointer text-[11px] text-slate-600 hover:text-gold-light">Change</summary>
-                          <DecisionForm
-                            projectId={id}
-                            roomId={roomId}
-                            topic={topic}
-                            cta={
-                              active.length > 1
-                                ? 'Save — replaces all ' + active.length + ' lines above'
-                                : 'Save — replaces the line above'
-                            }
-                          />
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-[11px] text-slate-600 hover:text-gold-light">
+                            Add a line to this topic
+                          </summary>
+                          <DecisionForm projectId={id} roomId={roomId} topic={topic} cta="Add line — nothing is replaced" />
                         </details>
                       </div>
                     )

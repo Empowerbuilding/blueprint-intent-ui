@@ -52,7 +52,7 @@ export type ProjectOverview = {
   progress: Progress
 }
 
-type Stamp = { project_id: string; created_at: string }
+type Stamp = { project_id: string; created_at: string; status_changed_at?: string | null }
 
 export async function loadOverview(projectId?: string): Promise<ProjectOverview[]> {
   const supabase = await createClient()
@@ -111,14 +111,16 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
   const changes = new Map<string, number>()
   if (emittedIds.length) {
     const [dec, ques, red] = await Promise.all([
-      supabase.from('intent_decisions').select('project_id, created_at').in('project_id', emittedIds),
+      supabase.from('intent_decisions').select('project_id, created_at, status_changed_at').in('project_id', emittedIds),
       supabase.from('intent_open_questions').select('project_id, created_at').in('project_id', emittedIds),
       supabase.from('intent_redline_notes').select('project_id, created_at').in('project_id', emittedIds),
     ])
     const stamps = [...((dec.data || []) as Stamp[]), ...((ques.data || []) as Stamp[]), ...((red.data || []) as Stamp[])]
     for (const s of stamps) {
       const at = emittedAt.get(s.project_id)
-      if (at && s.created_at > at) changes.set(s.project_id, (changes.get(s.project_id) || 0) + 1)
+      // a decision line removed or put back by hand after the lock counts too (status_changed_at)
+      if (at && (s.created_at > at || (s.status_changed_at && s.status_changed_at > at)))
+        changes.set(s.project_id, (changes.get(s.project_id) || 0) + 1)
     }
     for (const i of images) {
       const at = emittedAt.get(i.project_id)

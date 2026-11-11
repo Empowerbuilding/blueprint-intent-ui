@@ -74,6 +74,9 @@ const db = {
     dec('d7', P.deu, 'r-d103', 'general', 'Appliance garage left of the fridge', 'active', 1500, { source_ref: "[23:51] Client: I think we do an appliance garage over there by the fridge, that way the coffee stuff is not sitting out on the counter all the time, and it lines up with the uppers" }),
     dec('d8', P.deu, 'r-d103', 'general', 'Trash pullout at the sink, right side', 'active', 1400, { source_ref: '38:01 — yeah, trash pullout next to the sink, right-hand side, double bin, and keep it out of the dishwasher swing' }),
     dec('d9', P.deu, 'r-d103', 'general', 'No microwave drawer in the island', 'active', 1300),
+    // one line taken out by hand (superseded, nothing in its place) and a topic whose only line was taken out
+    dec('d10', P.deu, 'r-d103', 'general', 'Wine fridge under the bar end', 'superseded', 1200, { status_changed_at: t(100) }),
+    dec('d11', P.deu, 'r-d103', 'pot rack', 'Hanging pot rack over the island', 'superseded', 1100, { status_changed_at: t(90) }),
   ],
   intent_open_questions: [
     { id: 'q1', project_id: P.deu, room_id: 'r-d103', question: 'Floating shelves or uppers on the window wall?', answer: null, default_if_unanswered: 'Uppers to 10 ft', blocking: true, created_at: t(2500) },

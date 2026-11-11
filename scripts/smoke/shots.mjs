@@ -23,6 +23,7 @@ const pages = [
   ['06-room-2d', W + '/rooms/r-wb3'],
   ['07-room-decide', W + '/rooms/r-wb3?view=decide'],
   ['08-room-intake', D + '/rooms/r-d103'],
+  ['08b-room-edit-line', D + '/rooms/r-d103?view=decide&edit=d8'],
   ['09-room-2d-approved', W + '/rooms/r-wb5'],
   ['10-checks', '/rulebook/checks'],
   ['11-checks-new', '/rulebook/checks?new=min_clearance'],

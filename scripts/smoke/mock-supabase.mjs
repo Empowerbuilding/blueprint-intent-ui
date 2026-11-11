@@ -101,6 +101,7 @@ http
           id: crypto.randomUUID(),
           created_at: new Date().toISOString(),
           ...(table === 'intent_rules' ? { active: true, version: 1, updated_at: new Date().toISOString() } : {}),
+          ...(table === 'intent_decisions' ? { status: 'active', superseded_by: null } : {}), // column defaults in the real table
           ...r,
         }))
         const uniq = UNIQUE[table]
