@@ -9,7 +9,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 10
+   "sort_order": 10,
+   "target_need": "location",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "opening.replace",
@@ -20,7 +23,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 20
+   "sort_order": 20,
+   "target_need": "element",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "opening.modify",
@@ -31,7 +37,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 30
+   "sort_order": 30,
+   "target_need": "element",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "room.config",
@@ -42,7 +51,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 40
+   "sort_order": 40,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "room.palette",
@@ -53,7 +65,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 50
+   "sort_order": 50,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "casework.place",
@@ -64,7 +79,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 60
+   "sort_order": 60,
+   "target_need": "location",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "casework.modify",
@@ -75,7 +93,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 70
+   "sort_order": 70,
+   "target_need": "element",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "casework.rehost",
@@ -86,7 +107,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 80
+   "sort_order": 80,
+   "target_need": "element",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "casework.counter",
@@ -97,7 +121,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 90
+   "sort_order": 90,
+   "target_need": "location",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "appliance.place",
@@ -108,7 +135,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 100
+   "sort_order": 100,
+   "target_need": "location",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "plumbing.place",
@@ -119,7 +149,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 110
+   "sort_order": 110,
+   "target_need": "location",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "plumbing.sink",
@@ -130,7 +163,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 120
+   "sort_order": 120,
+   "target_need": "location",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "plumbing.niche",
@@ -141,7 +177,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 130
+   "sort_order": 130,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "surface.floor",
@@ -152,7 +191,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 140
+   "sort_order": 140,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "surface.ceiling",
@@ -163,7 +205,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 150
+   "sort_order": 150,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "surface.wall",
@@ -174,7 +219,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 160
+   "sort_order": 160,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "surface.beam",
@@ -185,7 +233,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 170
+   "sort_order": 170,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "surface.soffit",
@@ -196,7 +247,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 180
+   "sort_order": 180,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "finish.material",
@@ -207,7 +261,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 190
+   "sort_order": 190,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "roof.modify",
@@ -218,7 +275,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 200
+   "sort_order": 200,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "structure.stairs",
@@ -229,7 +289,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 210
+   "sort_order": 210,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "structure.modify",
@@ -240,7 +303,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 220
+   "sort_order": 220,
+   "target_need": "element",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "structure.resize",
@@ -251,7 +317,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 230
+   "sort_order": 230,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "structure.foundation",
@@ -262,7 +331,10 @@
    "status": "draft",
    "stage_scope": "d2_to_d3",
    "active": true,
-   "sort_order": 240
+   "sort_order": 240,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "site.modify",
@@ -273,7 +345,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 250
+   "sort_order": 250,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "site.fence",
@@ -284,7 +359,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 260
+   "sort_order": 260,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "site.pool",
@@ -295,7 +373,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 270
+   "sort_order": 270,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "sheet.create",
@@ -306,7 +387,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 280
+   "sort_order": 280,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "sheet.view",
@@ -317,7 +401,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 290
+   "sort_order": 290,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "sheet.annotate",
@@ -328,7 +415,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 300
+   "sort_order": 300,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "mep.electrical",
@@ -339,7 +429,10 @@
    "status": "draft",
    "stage_scope": "d2_to_d3",
    "active": true,
-   "sort_order": 310
+   "sort_order": 310,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "mep.plumbing",
@@ -350,7 +443,10 @@
    "status": "draft",
    "stage_scope": "d2_to_d3",
    "active": true,
-   "sort_order": 320
+   "sort_order": 320,
+   "target_need": "any",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "qa.run",
@@ -361,7 +457,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 330
+   "sort_order": 330,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "export.pdf",
@@ -372,7 +471,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 340
+   "sort_order": 340,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "export.render",
@@ -383,7 +485,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 350
+   "sort_order": 350,
+   "target_need": "none",
+   "target_need_by": null,
+   "target_need_at": null
   },
   {
    "kind": "context",
@@ -394,7 +499,10 @@
    "status": "draft",
    "stage_scope": null,
    "active": true,
-   "sort_order": 9000
+   "sort_order": 9000,
+   "target_need": null,
+   "target_need_by": null,
+   "target_need_at": null
   }
  ],
  "model_rules": [

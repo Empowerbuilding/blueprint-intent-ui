@@ -6,13 +6,16 @@ import { CONTEXT_KIND, ROLE_ALIASES, ROOM_ROLES, SHELL_KINDS } from '@/lib/vocab
 // GET /api/vocabulary — the controlled words contract v2 is written in, for machine clients (Blueprint).
 // -> { status: "draft" | "locked", locked: n, draft: n,
 //      by_backing: { command: n, recipe: n, unmapped: n },
-//      kinds: [{ kind, family, label, description, status, stage_scope, bridge_commands, locked_build, status_note, backing, recipe }],
+//      kinds: [{ kind, family, label, description, status, stage_scope, bridge_commands, locked_build, status_note, backing, recipe, target_need }],
 //      context_marker, shell_kinds, roles: [...], role_aliases: {...} }
 // A kind is "locked" when every bridge command it names is on the live bridge and its parameters were read from the
 // bridge source at locked_build. Locked is not proven: whether a command has been run is on the Capabilities page.
 // backing says how a kind is built: "command" = named bridge commands; "recipe" = direct Revit calls sent through the
 // bridge's general-purpose commands, which ran on a real project (recipe = { summary, calls, receipts, proven, proven_note });
 // "unmapped" = neither a command nor a recipe that has run.
+// target_need says what a work item of that kind must be pinned to before a build phase may write: "element" (an existing
+// element), "location" (a drawn position on the approved 2D), "any" (either), "none" (house-wide or room-wide). Mitch or
+// Michael change it on the Kinds of work page; the compiler reads it here at every compile.
 // context_marker is NOT a kind: a line typed with it is carried as room-level context, never as a work item.
 // "draft" means the list has not been checked against a live bridge yet: nothing is locked.
 // Read only. Kinds are changed by an approver. Auth: x-prefill-secret header, or a signed-in user.
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await client
     .from('intent_kinds')
-    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe')
+    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe, target_need')
     .order('sort_order')
   if (error || !data) return NextResponse.json({ error: 'the list of kinds could not be read' }, { status: 500 })
   const kinds = (data as { active: boolean; status: string; executable: boolean; backing: string | null }[]).filter((k) => k.active && k.executable)

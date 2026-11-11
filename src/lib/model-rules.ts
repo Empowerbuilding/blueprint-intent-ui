@@ -58,7 +58,19 @@ export type KindOption = {
   status_note: string | null
   /** how the kind is built: command = named bridge commands; recipe = direct Revit calls that ran on a real project; unmapped = neither */
   backing: 'command' | 'recipe' | 'unmapped' | null
+  target_need: TargetNeed | null
+  target_need_by: string | null
+  target_need_at: string | null
   recipe: KindRecipe | null
+}
+/** what a kind must be pinned to before a build phase may write. The compiler reads this from /api/vocabulary. */
+export const TARGET_NEEDS = ['element', 'location', 'any', 'none'] as const
+export type TargetNeed = (typeof TARGET_NEEDS)[number]
+export const TARGET_NEED_LABEL: Record<TargetNeed, string> = {
+  element: 'an existing element in the model',
+  location: 'a drawn position on the approved 2D',
+  any: 'an existing element or a drawn position',
+  none: 'nothing single (house-wide or room-wide work)',
 }
 export type KindRecipe = {
   summary: string
@@ -72,7 +84,7 @@ export type KindRecipe = {
 export async function loadKinds(client: AnyClient): Promise<KindOption[] | null> {
   const { data, error } = await client
     .from('intent_kinds')
-    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe')
+    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe, target_need, target_need_by, target_need_at')
     .order('sort_order')
   if (error || !data) return null
   return data as KindOption[]

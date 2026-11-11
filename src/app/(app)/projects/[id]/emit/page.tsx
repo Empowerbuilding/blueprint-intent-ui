@@ -2,6 +2,7 @@ import { fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
 import { buildV2 } from '@/lib/emit-core'
+import { loadModelRules } from '@/lib/model-rules'
 import { PageHeader } from '@/components/page-header'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -51,6 +52,10 @@ export default async function EmitPage({
     redlines: v2Redlines || [],
     images: v2Images || [],
   })
+  // the queue of model checks: only accepted ones are attached to work items, so an empty accepted list means empty phase exits
+  const modelRules = await loadModelRules(supabase)
+  const checksAccepted = (modelRules || []).filter((m) => m.status === 'accepted').length
+  const checksProposed = (modelRules || []).filter((m) => m.status === 'proposed').length
   const roomIdByCode = new Map((rooms || []).map((r) => [r.section_code, r.id]))
   // a gap names its room ("Room 103 Kitchen: ..." / "House-level — ..."): link it there
   const gapHref = (gap: string) => {
@@ -210,6 +215,22 @@ export default async function EmitPage({
               </ul>
             )}
           </div>
+          {modelRules !== null && (
+            <div className={`card p-4 text-sm ${checksAccepted === 0 ? 'border-amber-900/60' : ''}`}>
+              <div className={checksAccepted === 0 ? 'text-amber-400' : 'text-slate-300'}>
+                Model checks: {checksAccepted} accepted, {checksProposed} waiting to be accepted.
+              </div>
+              <div className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Only accepted checks are attached to work items and decide whether a build phase passed.{' '}
+                {checksAccepted === 0 ? 'None is accepted yet, so a build from this contract would have nothing to pass. ' : ''}
+                Mitch or Michael accept them in the{' '}
+                <Link href="/rulebook/model-checks" className="text-gold-light hover:underline">
+                  Rulebook, Model checks
+                </Link>
+                .
+              </div>
+            </div>
+          )}
           <p className="text-xs text-slate-600 leading-relaxed">
             This does not block Lock &amp; Emit. The contract is emitted as it always was; the typed contract is written beside it only
             when every room has a role and a 2D yes/no, and every decision and redline note has a kind of work. Nothing is guessed.
