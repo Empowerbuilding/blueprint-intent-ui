@@ -5,6 +5,8 @@ import { loadOverview, type ProjectOverview } from '@/lib/overview'
 import { summariseChecks, ago, type CheckSummary } from '@/lib/outline-summary'
 import { Pill } from '@/components/pill'
 import { PageHeader } from '@/components/page-header'
+import { createClient } from '@/lib/supabase/server'
+import { approverNames, loadApprovers, loadLessons } from '@/lib/lessons'
 
 // INBOX — everything waiting on a person, across all projects, grouped by project.
 // One card per project that needs you: the single next step, plus the individual
@@ -121,6 +123,12 @@ export default async function InboxPage() {
   const onBlueprint = all.filter((o) => o.progress.next.who === 'blueprint')
   const complete = all.filter((o) => o.progress.next.who === 'nobody')
 
+  // lessons Blueprint has proposed and nobody has decided yet
+  const supabase = await createClient()
+  const [{ data: auth }, approvers, lessons] = await Promise.all([supabase.auth.getUser(), loadApprovers(supabase), loadLessons(supabase)])
+  const toAccept = lessons.filter((l) => l.status === 'proposed')
+  const isApprover = !!auth.user && approvers.some((a) => a.user_id === auth.user!.id)
+
   return (
     <main>
       <PageHeader eyebrow="Everything waiting on a person" title="Inbox">
@@ -150,6 +158,33 @@ export default async function InboxPage() {
             </div>
           )}
         </section>
+
+        {toAccept.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="section-title">Lessons to accept ({toAccept.length})</h2>
+            <div className="card overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0 text-xs text-slate-500">
+                  {isApprover
+                    ? 'Blueprint proposed these. It does not work from a lesson until one of you accepts it.'
+                    : 'Blueprint proposed these. They wait on ' + approverNames(approvers) + '.'}
+                </div>
+                <Link href="/blueprint/lessons" className={isApprover ? 'btn-primary shrink-0' : 'btn-secondary shrink-0'}>
+                  {isApprover ? 'Review lessons →' : 'Open lessons →'}
+                </Link>
+              </div>
+              <div className="border-t border-bh-border px-4 py-1 divide-y divide-slate-800/60">
+                {toAccept.slice(0, MAX_ROWS).map((l) => (
+                  <Link key={l.id} href={'/blueprint/lessons#l-' + l.id} className="group block py-2 text-sm">
+                    <span className="text-slate-200 group-hover:text-gold-light transition-colors break-words">{l.title}</span>
+                    {l.project_name && <span className="text-slate-500"> · {l.project_name}</span>}
+                  </Link>
+                ))}
+              </div>
+              {toAccept.length > MAX_ROWS && <div className="text-xs text-slate-600 px-4 pb-3">+ {toAccept.length - MAX_ROWS} more</div>}
+            </div>
+          </section>
+        )}
 
         {onBlueprint.length > 0 && (
           <section className="space-y-3">

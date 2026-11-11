@@ -16,6 +16,10 @@ const dec = (id, project_id, room_id, topic, value, status, minsAgo, extra = {})
   id, project_id, room_id, topic, value, status, source: 'transcript', source_ref: '11/06 14:22', meeting_date: '2026-11-06',
   superseded_by: null, created_at: t(minsAgo), ...extra,
 })
+const lesson = (id, status, kind, title, what_happened, proposed_rule, minsAgo, extra = {}) => ({
+  id, status, kind, title, what_happened, proposed_rule, accepted_rule: null, project_id: null, project_name: null, source: 'blueprint', source_ref: null,
+  proposed_by: 'blueprint', decided_by: null, decided_by_email: null, decided_at: null, accepted_at: null, decision_note: null, created_at: t(minsAgo), ...extra,
+})
 const math = (results) => ({
   ran_at: t(118), rulebook_version: 2,
   passed: results.some((r) => r.status === 'fail') ? false : results.some((r) => r.status === 'pass') ? true : null,
@@ -139,6 +143,18 @@ const db = {
     { id: 'sv2', standard_id: 's-run', version: 2, content: runbookV2, note: 'Room numbering pass moved early (Mitch 11/10)', edited_by: null, created_at: t(1300) },
     { id: 'sv3', standard_id: 's-run', version: 3, content: runbook, note: 'Removed a stray line', edited_by: 'user-mitch', created_at: t(1250) },
     { id: 'sv4', standard_id: 's-build', version: 1, content: build, note: 'created by blueprint', edited_by: null, created_at: t(1400) },
+  ],
+  // lessons: Blueprint proposes, only the two approvers decide
+  intent_approvers: [
+    { user_id: 'user-mitch', email: 'mitch@barnhaus.test', name: 'Mitch', added_at: t(5000) },
+    { user_id: 'user-michael', email: 'michael@barnhaus.test', name: 'Michael', added_at: t(5000) },
+  ],
+  intent_lessons: [
+    lesson('l1', 'proposed', 'modeling', 'Read every edit back after a write batch', 'The bridge reported success on a transaction that Revit had rolled back, so a stair edit was reported as done when it was not.', 'After every write batch, read the changed elements back and compare before reporting done.', 400, { project_id: P.whi, project_name: 'Whitaker', source_ref: 'blueprint-michael 11-10 22:59Z' }),
+    lesson('l2', 'proposed', 'app', 'Test screens with data shaped like the real pushes', 'Sample data had one decision line per topic; real board pushes store many, and a page scrolled sideways once live.', 'Before calling a screen done, shape the sample data from what the push tools actually write.', 300),
+    lesson('l3', 'accepted', 'components', 'No built-in backsplash on any countertop', 'A stock counter family carried an integral 4 in splash.', 'Counter families are slab-only; backsplash is always its own element.', 3000, { accepted_rule: 'Countertops are slab-only. A backsplash is always its own element, only where the design calls for it.', decided_by: 'user-michael', decided_by_email: 'michael@barnhaus.test', decided_at: t(2800), accepted_at: t(2800), decision_note: 'Applies to every project' }),
+    lesson('l4', 'dismissed', 'process', 'Ask before every save', '', 'Ask Mitch before saving the model.', 3200, { decided_by: 'user-mitch', decided_by_email: 'mitch@barnhaus.test', decided_at: t(3100), decision_note: 'No: Blueprint saves, I am not the save button' }),
+    lesson('l5', 'retired', 'construction_docs', 'Schedules on the plan sheet', '', 'Put door and window schedules on the plan sheet.', 6000, { accepted_rule: 'Door and window schedules go on the plan sheet.', decided_by: 'user-mitch', decided_by_email: 'mitch@barnhaus.test', decided_at: t(1000), accepted_at: t(5900), decision_note: 'Schedules moved to their own sheet 11/10', source: 'person', proposed_by: 'michael@barnhaus.test' }),
   ],
 }
 fs.writeFileSync(out, JSON.stringify(db))

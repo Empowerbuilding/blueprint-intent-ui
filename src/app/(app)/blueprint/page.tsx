@@ -1,28 +1,31 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader } from '@/components/page-header'
+import { BlueprintHeader } from '@/components/blueprint-header'
+import { loadApprovers, loadLessons, whoLabel } from '@/lib/lessons'
 import { Pill } from '@/components/pill'
 import Link from 'next/link'
 
 // BLUEPRINT · WHAT CHANGED — a dated feed of everything that changed in what
-// Blueprint works from: standards documents, the checks rulebook, and locked
-// contracts. Built entirely from history the app already records.
+// Blueprint works from: standards documents, the checks rulebook, locked
+// contracts, and lessons that were accepted or retired.
 
 type Event = {
   at: string
-  kind: 'standard' | 'checks' | 'contract'
+  kind: 'standard' | 'checks' | 'contract' | 'lesson'
   title: string
   detail: string | null
   who: 'blueprint' | 'person' | null
   href: string
   cta: string
+  by?: string
 }
 
 const KINDS: { key: Event['kind']; label: string }[] = [
   { key: 'standard', label: 'Standards' },
   { key: 'checks', label: 'Checks' },
   { key: 'contract', label: 'Contracts' },
+  { key: 'lesson', label: 'Lessons' },
 ]
 
 export default async function BlueprintPage({
@@ -53,6 +56,7 @@ export default async function BlueprintPage({
       .limit(30),
     supabase.from('intent_projects').select('id, name'),
   ])
+  const [lessons, approvers] = await Promise.all([loadLessons(supabase), loadApprovers(supabase)])
 
   const standardById = new Map(
     ((standardsRes.data || []) as { id: string; slug: string; title: string }[]).map((s) => [s.id, s])
@@ -102,6 +106,33 @@ export default async function BlueprintPage({
     })
   }
 
+  for (const l of lessons) {
+    if (l.accepted_at) {
+      events.push({
+        at: l.accepted_at,
+        kind: 'lesson',
+        title: 'Lesson accepted: ' + l.title,
+        detail: l.accepted_rule,
+        who: null,
+        href: '/blueprint/lessons#l-' + l.id,
+        cta: 'Open lesson',
+        by: 'accepted by ' + whoLabel(l.decided_by_email, approvers),
+      })
+    }
+    if (l.status === 'retired' && l.decided_at) {
+      events.push({
+        at: l.decided_at,
+        kind: 'lesson',
+        title: 'Lesson retired: ' + l.title,
+        detail: l.decision_note,
+        who: null,
+        href: '/blueprint/lessons#l-' + l.id,
+        cta: 'Open lesson',
+        by: 'retired by ' + whoLabel(l.decided_by_email, approvers),
+      })
+    }
+  }
+
   const shown = events.filter((e) => !filter || e.kind === filter).sort((a, b) => (a.at < b.at ? 1 : -1))
   const days = new Map<string, Event[]>()
   for (const e of shown) {
@@ -111,7 +142,7 @@ export default async function BlueprintPage({
 
   return (
     <main>
-      <PageHeader eyebrow="What changed, day by day" title="Blueprint" />
+      <BlueprintHeader active="changes" toAccept={lessons.filter((l) => l.status === 'proposed').length} />
 
       <div className="app-container py-8 space-y-8 max-w-4xl">
         <div className="flex flex-wrap items-center gap-2">
@@ -140,8 +171,8 @@ export default async function BlueprintPage({
                 <div key={i} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Pill tone={e.kind === 'standard' ? 'violet' : e.kind === 'checks' ? 'gold' : 'green'}>
-                        {e.kind === 'standard' ? 'standard' : e.kind === 'checks' ? 'checks' : 'contract'}
+                      <Pill tone={e.kind === 'standard' ? 'violet' : e.kind === 'checks' ? 'gold' : e.kind === 'lesson' ? 'blue' : 'green'}>
+                        {e.kind}
                       </Pill>
                       <span className="text-sm text-slate-100">{e.title}</span>
                     </div>
@@ -149,6 +180,7 @@ export default async function BlueprintPage({
                     <div className="text-[11px] text-slate-600 mt-1">
                       {new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                       {e.who === 'blueprint' ? ' · pushed by Blueprint' : e.who === 'person' ? ' · done in the app' : ''}
+                      {e.by ? ' · ' + e.by : ''}
                     </div>
                   </div>
                   <Link href={e.href} className="text-xs text-gold-light hover:text-gold shrink-0">
@@ -167,9 +199,8 @@ export default async function BlueprintPage({
 
         <section className="rounded-xl border border-bh-border bg-bh-panel/40 px-4 py-4 text-sm text-slate-400 leading-relaxed">
           <div className="font-semibold text-slate-200 mb-1">Not recorded here yet</div>
-          Two things Blueprint learns from do not appear in this feed yet: corrections you give it in chat, and what the
-          Revit bridge can do on each machine (and which version it is on). Both need new storage in the database and
-          are the next step of the reorganisation.
+          What the Revit bridge can do on each machine, and which version it is on, does not appear here yet. Corrections
+          you give Blueprint in chat appear once Blueprint has written them up as a lesson and one of you has accepted it.
         </section>
       </div>
     </main>

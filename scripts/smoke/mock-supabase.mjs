@@ -56,7 +56,14 @@ http
       if (u.searchParams.get('clear')) unknown.clear()
       return send(res, 200, [...unknown])
     }
-    if (u.pathname === '/auth/v1/user') return send(res, 200, db.__user)
+    if (u.pathname === '/auth/v1/user') {
+      // the signed-in person is whoever the session token names (the tests sign in as more than one person)
+      try {
+        const claims = JSON.parse(Buffer.from(String(req.headers.authorization || '').split('.')[1] || '', 'base64url').toString())
+        if (claims.sub && claims.sub !== db.__user.id) return send(res, 200, { ...db.__user, id: claims.sub, email: claims.email })
+      } catch {}
+      return send(res, 200, db.__user)
+    }
     if (u.pathname === '/__db') return send(res, 200, db)
     if (u.pathname === '/__calls') return send(res, 200, calls)
     if (u.pathname === '/__mode') {
