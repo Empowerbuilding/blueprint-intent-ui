@@ -12,13 +12,36 @@ export async function approveOutline(formData: FormData) {
   const projectId = String(formData.get('project_id'))
   const roomId = String(formData.get('room_id'))
   const outlineId = String(formData.get('outline_id'))
-  await supabase
-    .from('intent_outlines')
-    .update({ status: 'approved', approved_by: user?.id ?? null, approved_at: new Date().toISOString() })
-    .eq('id', outlineId)
-    .eq('status', 'pushed')
+  const reason = String(formData.get('override_reason') || '').trim()
+
+  const { data: outline } = await supabase.from('intent_outlines').select('checks').eq('id', outlineId).single()
+  if (!outline) return
+
+  // Approving a drawing that failed a rule overrides the rulebook. That is
+  // allowed, but never silently: the reason is required and stored on the
+  // outline (checks.override) so the rule can be corrected instead of failing
+  // the same way on the next project.
+  const checks = (outline.checks || {}) as Record<string, unknown>
+  const mathResults = (checks.math as { results?: { rule_key?: string; status?: string }[] } | undefined)?.results || []
+  const failed = mathResults.filter((r) => r.status === 'fail')
+  if (failed.length > 0 && !reason) {
+    redirect(
+      `/projects/${projectId}/rooms/${roomId}?view=2d&err2d=${encodeURIComponent('A rule failed on that drawing. Say why it is OK before approving it.')}#o-${outlineId}`
+    )
+  }
+
+  const now = new Date().toISOString()
+  const update: Record<string, unknown> = { status: 'approved', approved_by: user?.id ?? null, approved_at: now }
+  if (failed.length > 0) {
+    update.checks = {
+      ...checks,
+      override: { reason, by: user?.email ?? null, at: now, failed_rules: failed.map((r) => r.rule_key) },
+    }
+  }
+  await supabase.from('intent_outlines').update(update).eq('id', outlineId).eq('status', 'pushed')
   revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
 
 export async function rejectOutline(formData: FormData) {
@@ -72,6 +95,7 @@ export async function rejectOutline(formData: FormData) {
 
   revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
 
 export async function rerunOutlineChecks(formData: FormData) {
@@ -140,7 +164,7 @@ export async function set2dApproved(roomId: string, projectId: string) {
   if (!room) return
 
   if (room.review_state !== 'confirmed') {
-    redirect(`/projects/${projectId}/rooms/${roomId}?err2d=room+must+be+confirmed+first`)
+    redirect(`/projects/${projectId}/rooms/${roomId}?view=2d&err2d=${encodeURIComponent('Mark the room confirmed first.')}`)
   }
 
   const { count: pending } = await supabase
@@ -149,7 +173,7 @@ export async function set2dApproved(roomId: string, projectId: string) {
     .eq('room_id', roomId)
     .eq('status', 'pushed')
   if ((pending || 0) > 0) {
-    redirect(`/projects/${projectId}/rooms/${roomId}?err2d=${pending}+outline(s)+still+awaiting+review`)
+    redirect(`/projects/${projectId}/rooms/${roomId}?view=2d&err2d=${encodeURIComponent(pending + ' drawing(s) are still awaiting review.')}`)
   }
 
   // 2D approval requires at least one APPROVED outline — a room that was never
@@ -160,10 +184,11 @@ export async function set2dApproved(roomId: string, projectId: string) {
     .eq('room_id', roomId)
     .eq('status', 'approved')
   if ((approvedOutlines || 0) === 0) {
-    redirect(`/projects/${projectId}/rooms/${roomId}?err2d=no+approved+outline+—+at+least+one+outline+must+be+approved+before+2D+approval`)
+    redirect(`/projects/${projectId}/rooms/${roomId}?view=2d&err2d=${encodeURIComponent('No drawing in this room is approved yet. At least one must be approved before the room can be 2D approved.')}`)
   }
 
   await supabase.from('intent_rooms').update({ review_state: '2d_approved' }).eq('id', roomId)
   revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }

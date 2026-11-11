@@ -21,7 +21,7 @@ const TONE_TEXT: Record<CheckSummary['visionTone'], string> = {
 
 const MAX_ROWS = 8
 
-function ProjectCard({ o, now }: { o: ProjectOverview; now: number }) {
+function ProjectCard({ o }: { o: ProjectOverview }) {
   const { project, progress } = o
   const roomById = new Map(o.rooms.map((r) => [r.id, r]))
   const roomLabel = (id: string | null) => {
@@ -54,7 +54,7 @@ function ProjectCard({ o, now }: { o: ProjectOverview; now: number }) {
           <div className="section-title mb-2">2D outlines to review ({pending.length})</div>
           <div className="divide-y divide-slate-800/60">
             {pending.slice(0, MAX_ROWS).map((x) => {
-              const c = summariseChecks(x.checks, now)
+              const c = summariseChecks(x.checks)
               return (
                 <Link
                   key={x.id}
@@ -72,7 +72,7 @@ function ProjectCard({ o, now }: { o: ProjectOverview; now: number }) {
                   <span className="flex flex-wrap items-center gap-x-3 text-xs shrink-0">
                     <span className={TONE_TEXT[c.mathTone]}>{c.mathText}</span>
                     <span className={TONE_TEXT[c.visionTone]}>{c.visionText}</span>
-                    <span className="text-slate-600">{ago(x.pushed_at, now)}</span>
+                    <span className="text-slate-600">{ago(x.pushed_at)}</span>
                   </span>
                 </Link>
               )
@@ -117,7 +117,6 @@ function ProjectCard({ o, now }: { o: ProjectOverview; now: number }) {
 
 export default async function InboxPage() {
   const all = await loadOverview()
-  const now = Date.now()
   const onYou = all.filter((o) => o.progress.next.who === 'you')
   const onBlueprint = all.filter((o) => o.progress.next.who === 'blueprint')
   const complete = all.filter((o) => o.progress.next.who === 'nobody')
@@ -134,7 +133,7 @@ export default async function InboxPage() {
         <section className="space-y-4">
           <h2 className="section-title">Waiting on you ({onYou.length})</h2>
           {onYou.map((o) => (
-            <ProjectCard key={o.project.id} o={o} now={now} />
+            <ProjectCard key={o.project.id} o={o} />
           ))}
           {onYou.length === 0 && (
             <div className="text-sm text-slate-500 border border-dashed border-bh-border rounded-xl p-10 text-center">

@@ -138,6 +138,8 @@ export async function addDecision(formData: FormData) {
   }
 
   if (roomId) revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
 
 export async function addOpenQuestion(formData: FormData) {
@@ -154,6 +156,8 @@ export async function addOpenQuestion(formData: FormData) {
     blocking: formData.get('blocking') === 'on',
   })
   if (roomId) revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
 
 export async function resolveOpen(formData: FormData) {
@@ -170,6 +174,7 @@ export async function resolveOpen(formData: FormData) {
     .eq('id', id)
   if (roomId) revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
   revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
 
 export async function addRedlineNote(formData: FormData) {
@@ -187,6 +192,8 @@ export async function addRedlineNote(formData: FormData) {
     source_ref: String(formData.get('source_ref') || '') || null,
   })
   if (roomId) revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
 }
 
 // The stage shown in the UI is derived from the data (src/lib/progress.ts). The
