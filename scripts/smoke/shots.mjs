@@ -58,9 +58,14 @@ ws.onmessage = (ev) => {
   if (msg.id && pending.has(msg.id)) {
     const { resolve, reject } = pending.get(msg.id)
     pending.delete(msg.id)
-    msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result)
+    if (msg.error) reject(new Error(msg.error.message))
+    else resolve(msg.result)
   } else if (msg.method) {
-    for (const w of [...waiters]) if (w.method === msg.method && w.sessionId === msg.sessionId) (waiters.splice(waiters.indexOf(w), 1), w.resolve(msg.params))
+    for (const w of [...waiters]) {
+      if (w.method !== msg.method || w.sessionId !== msg.sessionId) continue
+      waiters.splice(waiters.indexOf(w), 1)
+      w.resolve(msg.params)
+    }
   }
 }
 const send = (method, params = {}, sessionId) =>

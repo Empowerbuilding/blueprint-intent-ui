@@ -8,6 +8,8 @@ import { runVisionGate, type VisionCheck } from '@/lib/vision-gate'
 
 // minimal structural type for what we use
 type AnyClient = {
+  // the two Supabase clients (user session, service role) have different generics; only .from() is used
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   from: (t: string) => any
 }
 
