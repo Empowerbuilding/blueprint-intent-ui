@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   const { data: rooms } = await client
     .from('intent_rooms')
-    .select('id, section_code, name, review_state')
+    .select('id, section_code, name, review_state, level, sheet_group')
     .eq('project_id', projectId)
     .order('sort_order')
 
@@ -70,6 +70,9 @@ export async function GET(request: NextRequest) {
       section_code: r.section_code,
       name: r.name,
       review_state: r.review_state,
+      // contract v2 (SPEC A71): the level the room is on, and its interior sheet group (null = nobody has said, '' = none)
+      level: r.level ?? null,
+      sheet_group: r.sheet_group ?? null,
       two_d_gate: {
         // gate parity with the set2dApproved action: confirmed + nothing pushed
         // + at least one APPROVED outline (a room never drawn can't be 2D-approved)

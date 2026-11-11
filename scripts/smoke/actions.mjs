@@ -524,7 +524,7 @@ ok('typed push with an unknown kind and role: 422, both named, NOTHING written',
 res = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body: JSON.stringify({
   project: { name: 'Scratch v2', doc: 'Scratch v2 D2.rvt' },
   rooms: [
-    { section_code: '201', name: 'Kitchen', source: 'model_scan', area_sf: 300, model_state: { casework: 4, scanned_at: '2026-11-11T06:00:00Z', bridge_build: 'f98f724' }, role: 'kitchen', needs_2d: true,
+    { section_code: '201', name: 'Kitchen', source: 'model_scan', area_sf: 300, model_state: { casework: 4, scanned_at: '2026-11-11T06:00:00Z', bridge_build: 'f98f724', level: 'Level 1.0' }, role: 'kitchen', needs_2d: true, sheet_group: 'pushed-by-a-machine',
       decisions: [
         { topic: 'island', value: '84 x 42 island', kind: 'casework.place', params: { width_in: 84, depth_in: 42 } },
         { topic: 'counter', value: 'Marble slab, no waterfall', kind: 'casework.counter' },
@@ -533,7 +533,7 @@ res = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body:
         { topic: 'hood', value: 'Plaster hood, no wood' },
       ],
       redline_notes: [{ note_type: 'beam', text: 'Beam, not a wall', source_ref: 'A101.1', kind: 'surface.beam' }] },
-    { section_code: '202', name: 'Bath 2', source: 'model_scan', role: 'bath', shell_changed: true,
+    { section_code: '202', name: 'Bath 2', source: 'model_scan', role: 'bath', shell_changed: true, level: ' Level  2.0 ',
       decisions: [{ topic: 'wall', value: 'Move the toilet wall 6 in', kind: 'surface.wall' }, { topic: 'mirror lights', value: 'Side lights at the mirror', kind: 'mep.electrical' }] },
     { section_code: '203', name: 'Golf Room', source: 'model_scan', role: 'golf-room' },
     { section_code: 'HOUSE', name: 'House-Level (global)', decisions: [{ topic: 'cabinet material', value: 'White oak everywhere', kind: 'finish.material' }, { topic: 'fencing', value: 'Only around the pool', kind: 'site.fence' }] },
@@ -546,6 +546,7 @@ const sRoom = (d, code) => d.intent_rooms.find((x) => x.project_id === SP && x.s
 const sDec = (d, topic) => d.intent_decisions.find((x) => x.project_id === SP && x.topic === topic)
 ok('typed push: project, rooms and lines stored with their kinds, numbers and roles', res.status === 200 && made.rooms === 4 && made.decisions.inserted === 9 && made.redline_notes === 1 && db.intent_projects.find((p) => p.id === SP).doc_title === 'Scratch v2 D2.rvt' && sRoom(db, '201').role === 'kitchen' && sRoom(db, '203').role === 'game-room' && sRoom(db, '202').shell_changed === true && sDec(db, 'island').kind === 'casework.place' && same(sDec(db, 'island').params, { width_in: 84, depth_in: 42 }) && sDec(db, 'island').kind_set_by === 'blueprint' && !sDec(db, 'hood').kind && db.intent_redline_notes.find((n) => n.project_id === SP).kind === 'surface.beam', JSON.stringify(made))
 ok('typed push: a machine cannot say a room gets 2D drawings', db.intent_rooms.filter((x) => x.project_id === SP).every((x) => x.needs_2d == null))
+ok('typed push: the level comes from the scan (the field, or the scan record); a machine cannot set a sheet group', sRoom(db, '201').level === 'Level 1.0' && sRoom(db, '202').level === 'Level 2.0' && sRoom(db, '203').level == null && db.intent_rooms.filter((x) => x.project_id === SP).every((x) => x.sheet_group == null), JSON.stringify(db.intent_rooms.filter((x) => x.project_id === SP).map((x) => [x.section_code, x.level, x.sheet_group])))
 
 // test setup only: the rooms are marked reviewed straight in the mock (the review buttons are covered in section C)
 await fetch(mock + '/rest/v1/intent_rooms?project_id=eq.' + SP, { method: 'PATCH', body: JSON.stringify({ review_state: 'confirmed', sort_order: 0 }) })
@@ -576,11 +577,13 @@ const roomPath = (code) => '/projects/' + SP + '/rooms/' + sRoom(db, code).id
 html = (await page(roomPath('201') + '?view=decide')).replace(/<!-- -->/g, '')
 ok('room page: role is saved from the push, 2D is only a suggestion', html.includes('Gets 2D drawings before it is built — suggested, not saved yet') && html.includes('room not set · 1 line without a kind') && html.includes('kind: Casework: place') && html.includes('context only — nothing is built from this line') && html.includes('Nothing to build — context only') && html.includes('no kind of work yet'))
 h = form(html, (f) => f.includes('name="needs_2d"'), 'room typing form (201)')
-r = await post(roomPath('201'), h, { role: 'kitchen', needs_2d: 'yes' })
+ok('room typing: the form shows the level from the scan and proposes the role as the sheet group, unsaved', /name="level"[^>]*value="Level 1.0"/.test(html) && /name="sheet_group"[^>]*value="kitchen"/.test(html) && html.includes('suggested from what the room is, not saved yet') && sRoom(db, '201').sheet_group == null)
+r = await post(roomPath('201'), h, { role: 'kitchen', needs_2d: 'yes', level: 'Level 1.0', sheet_group: ' Kitchen  and pantry ' })
 r2 = await post(roomPath('203'), form(await page(roomPath('203') + '?view=decide'), (f) => f.includes('name="needs_2d"'), 'room typing form (203)'), { role: 'game-room', needs_2d: 'no' })
 h = form(await page(roomPath('202') + '?view=decide'), (f) => f.includes('name="needs_2d"'), 'room typing form (202)')
-r3 = await post(roomPath('202'), h, { role: 'bath', needs_2d: 'yes', shell_changed: 'on' })
+r3 = await post(roomPath('202'), h, { role: 'bath', needs_2d: 'yes', shell_changed: 'on', level: 'Level 2.0', sheet_group: '' })
 db = await getDb()
+ok('room typing: the sheet group is saved as typed; saved empty = no interior sheet; a form without the field leaves it unsaid', sRoom(db, '201').sheet_group === 'Kitchen and pantry' && sRoom(db, '202').sheet_group === '' && sRoom(db, '203').sheet_group == null && sRoom(db, '202').level === 'Level 2.0', JSON.stringify(['201', '202', '203'].map((c) => [sRoom(db, c).level, sRoom(db, c).sheet_group])))
 ok('room typing: saved by a person, with who and when', [r, r2, r3].every((x) => x.status === 303 && x.location.endsWith('?view=decide#typing')) && sRoom(db, '201').needs_2d === true && sRoom(db, '203').needs_2d === false && sRoom(db, '202').needs_2d === true && sRoom(db, '202').shell_changed === true && sRoom(db, '201').typed_by === 'mitch@barnhaus.test' && !!sRoom(db, '201').typed_at, JSON.stringify([r, r2, r3]))
 r = await post(roomPath('202'), h, { role: 'spa', needs_2d: 'yes' })
 ok('room typing: a role that is not in the list is refused', r.location.includes('is not in the list of room roles') && sRoom(await getDb(), '202').role === 'bath', JSON.stringify(r))
@@ -726,6 +729,7 @@ const k2room = (code) => K2.rooms.find((x) => x.section_code === code)
 ok('SCRATCH PROJECT EMITS A VALID v2: fetched by the machine route and valid against the vocabulary', res.status === 200 && c2.schema === 'intent-contract/2.0' && c2.version === 2 && same(V2.validateContractV2(K2, kindRows), []), JSON.stringify(V2.validateContractV2(K2, kindRows)))
 ok('v2: project, version and fingerprint', same(K2.project, { name: 'Scratch v2', slug: 'scratch-v2', doc: 'Scratch v2 D2.rvt', client: null }) && K2.version === 2 && K2.sha256_intent === V2.contractSha(K2) && K2.vocabulary.status === 'draft')
 ok('v2: rooms carry role, 2D yes/no and shell-changed; HOUSE is not a room', same(K2.rooms.map((x) => [x.section_code, x.role, x.needs_2d, x.shell_changed]), [['201', 'kitchen', true, false], ['202', 'bath', true, true], ['203', 'game-room', false, false]]), JSON.stringify(K2.rooms.map((x) => [x.section_code, x.role, x.needs_2d, x.shell_changed])))
+ok('v2: rooms carry the level and the sheet group; a room nobody placed has both empty', same(K2.rooms.map((x) => [x.section_code, x.level, x.sheet_group]), [['201', 'Level 1.0', 'Kitchen and pantry'], ['202', 'Level 2.0', null], ['203', null, null]]), JSON.stringify(K2.rooms.map((x) => [x.section_code, x.level, x.sheet_group])))
 ok('v2: kitchen work items are typed, with numbers and where they came from', same(k2room('201').work_items.map((w) => w.kind).sort(), ['casework.counter', 'casework.place', 'casework.place', 'plumbing.sink', 'surface.beam']) && same(k2room('201').work_items.find((w) => w.summary.startsWith('island')).params, { width_in: 84, depth_in: 42 }) && same(k2room('201').work_items.find((w) => w.kind === 'plumbing.sink').params, { bowl_in: 30 }) && k2room('201').work_items.find((w) => w.summary.startsWith('island')).provenance.decision_id === sDec(db, 'island').id, JSON.stringify(k2room('201').work_items.map((w) => [w.kind, w.summary])))
 ok('v2: only accepted checks are attached', same(k2room('201').work_items.find((w) => w.summary.startsWith('island')).acceptance, ['casework.no_overlap']) && same(k2room('201').work_items.find((w) => w.kind === 'casework.counter').acceptance, ['casework.no_overlap', 'counter.no_builtin_splash']) && same(k2room('201').work_items.find((w) => w.kind === 'surface.beam').acceptance, []), JSON.stringify(k2room('201').work_items.map((w) => w.acceptance)))
 ok('v2: the no-work line is carried as context with its provenance, never as a work item', same(k2room('201').context.map((x) => x.text), ['under the stair: Leave it open']) && k2room('201').context[0].provenance.decision_id === sDec(db, 'under the stair').id && k2room('201').context[0].provenance.source === 'meeting' && !k2room('201').work_items.some((w) => w.summary.includes('under the stair')) && K2.vocabulary.kinds === 35)

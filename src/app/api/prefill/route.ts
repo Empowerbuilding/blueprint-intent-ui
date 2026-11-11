@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { normaliseRole } from '@/lib/vocab'
+import { normaliseRole, tidyName } from '@/lib/vocab'
 
 // POST /api/prefill — design-brain pushes transcript-derived intent into the UI.
 // Auth: x-prefill-secret header (PREFILL_SECRET env).
@@ -27,10 +27,12 @@ import { normaliseRole } from '@/lib/vocab'
 //   project.doc            the Revit file title Blueprint works in
 //   room.role              one of the room roles (GET /api/vocabulary)
 //   room.shell_changed     true when a decision changes the room's walls / size
+//   room.level             the model's level name for the room; when absent, model_state.level is used (SPEC A71)
 //   decision.kind, .params the kind of work (GET /api/vocabulary) and its numbers
 //   redline_note.kind
 // A kind or role that is not in the vocabulary refuses the WHOLE push (422, nothing written).
-// Whether a room gets 2D drawings is NOT accepted here: a person says so in the app.
+// Whether a room gets 2D drawings is NOT accepted here: a person says so in the app. The same goes for the room's
+// interior sheet group: a push cannot set it.
 
 type PrefillDecision = {
   topic: string
@@ -49,9 +51,16 @@ type PrefillRoom = {
   model_state?: Record<string, unknown>
   role?: string | null
   shell_changed?: boolean
+  level?: string | null
   decisions?: PrefillDecision[]
   open_questions?: { question: string; default_if_unanswered?: string | null; blocking?: boolean }[]
   redline_notes?: { note_type: string; text: string; source_ref?: string | null; kind?: string | null }[]
+}
+
+/** the level a pushed room is on: the explicit field, else what the scan recorded in model_state. '' = the push says nothing */
+const levelOf = (room: PrefillRoom): string => {
+  const raw = typeof room.level === 'string' ? room.level : typeof room.model_state?.level === 'string' ? room.model_state.level : ''
+  return tidyName(raw)
 }
 
 export async function POST(request: NextRequest) {
@@ -143,6 +152,7 @@ export async function POST(request: NextRequest) {
           ...(room.model_state ? { model_state: room.model_state } : {}),
           ...(room.role ? { role: normaliseRole(room.role), typed_by: 'blueprint', typed_at: new Date().toISOString() } : {}),
           ...(room.shell_changed === true ? { shell_changed: true } : {}),
+          ...(levelOf(room) ? { level: levelOf(room) } : {}),
         },
         { onConflict: 'project_id,section_code' }
       )

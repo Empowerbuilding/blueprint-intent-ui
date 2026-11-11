@@ -4,7 +4,7 @@ import { lineDiff, foldDiff, diffStats } from '../src/lib/diff.ts'
 import { describeRule, describeScope, ruleToFields, fieldsToRule, keyFromDescription } from '../src/lib/rule-text.ts'
 import { roomNameMatches, runMathGate } from '../src/lib/rules.ts'
 import { deterministicDimensionCheck } from '../src/lib/dimension-check.ts'
-import { normaliseRole, suggestKind, suggestNeeds2d, suggestRole } from '../src/lib/vocab.ts'
+import { normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGroup } from '../src/lib/vocab.ts'
 import { buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
 import fs from 'node:fs'
 let fails = 0
@@ -156,7 +156,25 @@ eq('v2: work item ids are stable and unique', [/^wi-[0-9a-f]{8}$/.test(room('201
 eq('v2: fingerprint matches, and changes with the content', [C.sha256_intent === contractSha(C), C.sha256_intent.length, buildContractV2({ ...base, version: 4 }).contract.sha256_intent === C.sha256_intent], [true, 64, false])
 eq('v2: valid against the vocabulary', validateContractV2(C, KINDS), [])
 eq('v2: validation catches a tampered contract', validateContractV2({ ...C, rooms: [{ ...C.rooms[0], role: 'other' }, ...C.rooms.slice(1)] }, KINDS).length, 2)
-eq('v2: warnings do not stop it (no scan time on two rooms)', v2.warnings.length, 2)
+eq('v2: warnings do not stop it (no scan time on two rooms; no level and no sheet group anywhere)', [v2.warnings.length, v2.warnings.filter((w) => /No room carries a level|No room has a sheet group/.test(w)).length], [4, 2])
+// level and sheet group (SPEC A71): additive, never required, never guessed
+eq('v2: a room without a level or a sheet group is emitted with both empty', [room('201').level, room('201').sheet_group, 'level' in room('203'), 'sheet_group' in room('203')], [null, null, true, true])
+{
+  const withFields = buildContractV2({ ...base, rooms: [
+    vRoom('r1', '201', 'Kitchen', { role: 'kitchen', needs_2d: true, level: ' Level  1.0 ', sheet_group: 'kitchen', model_state: { scanned_at: 's', level: 'Level 9' } }),
+    vRoom('r2', '202', 'Bath 2', { role: 'bath', needs_2d: true, sheet_group: '', model_state: { scanned_at: 's', level: 'Level 2.0' } }),
+    vRoom('r3', '203', 'Bedroom 2', { role: 'bedroom', needs_2d: false, model_state: { scanned_at: 's' } }),
+    vRoom('rh', 'HOUSE', 'House-Level (global)'),
+  ] })
+  const R = (code) => withFields.contract.rooms.find((x) => x.section_code === code)
+  eq('v2: the saved level wins over the scan; without one the scan level is used; neither = empty', [R('201').level, R('202').level, R('203').level], ['Level 1.0', 'Level 2.0', null])
+  eq('v2: the sheet group is what a person saved; saved empty and never said are both empty in the contract', [R('201').sheet_group, R('202').sheet_group, R('203').sheet_group], ['kitchen', null, null])
+  eq('v2: the rooms without a level or a say on the sheet group are named, one line each', withFields.warnings, ['Room 203 Bedroom 2: no level, so its floors and ceilings are compiled apart from the rooms that have one', 'Room 203 Bedroom 2: nobody has said which interior sheet it goes on, so no interior sheet is compiled for it'])
+  eq('v2: valid with the two fields, and the fingerprint covers them', [validateContractV2(withFields.contract, KINDS), withFields.contract.sha256_intent === contractSha(withFields.contract), contractSha({ ...withFields.contract, rooms: withFields.contract.rooms.map((x) => ({ ...x, sheet_group: 'baths' })) }) === withFields.contract.sha256_intent], [[], true, false])
+  eq('v2: a contract emitted before the fields existed is still valid', validateContractV2((() => { const old = { ...C, rooms: C.rooms.map((x) => { const y = { ...x }; delete y.level; delete y.sheet_group; return y }) }; old.sha256_intent = contractSha(old); return old })(), KINDS), [])
+  eq('v2: a field that is not a name is caught', validateContractV2((() => { const bad = { ...C, rooms: [{ ...C.rooms[0], level: 2 }, ...C.rooms.slice(1)] }; bad.sha256_intent = contractSha(bad); return bad })(), KINDS), ['room 201: level must be a name or empty'])
+}
+eq('sheet group: the proposal is the room role, in words; no role = no proposal', [suggestSheetGroup('primary-bath'), suggestSheetGroup('golf-room'), suggestSheetGroup('kitchen'), suggestSheetGroup(null), suggestSheetGroup('spa')], ['primary bath', 'game room', 'kitchen', null, null])
 
 // anything missing is listed — never guessed, never dropped
 v2 = buildContractV2({ ...base, rooms: [vRoom('r1', '201', 'Kitchen'), vRoom('r2', '202', 'Bath 2', { role: 'spa', needs_2d: true }), base.rooms[2], base.rooms[3]], decisions: [vDec('d1', 'r1', 'island', '84 x 42 island', null), vDec('d2', 'r1', 'counter', 'Marble', 'counter.slab'), vDec('d7', null, 'fencing', 'Only around the pool', null)], redlines: [{ id: 'n1', room_id: 'r1', note_type: 'beam', text: 'Beam, not a wall', source_ref: null, kind: null }] })

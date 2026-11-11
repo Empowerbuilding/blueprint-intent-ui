@@ -10,7 +10,7 @@
 // Relative imports and erasable types only: scripts/test-libs.mjs imports this file directly.
 
 import { createHash } from 'node:crypto'
-import { CONTEXT_KIND, SHELL_KINDS, isHouseSection, normaliseRole } from './vocab.ts'
+import { CONTEXT_KIND, SHELL_KINDS, isHouseSection, normaliseRole, tidyName } from './vocab.ts'
 
 export const V2_SCHEMA = 'intent-contract/2.0'
 
@@ -25,6 +25,10 @@ export type V2RoomIn = {
   needs_2d: boolean | null
   shell_changed: boolean | null
   model_state: Record<string, unknown> | null
+  /** the model's level name for the room; when empty, the level the scan recorded in model_state is used */
+  level?: string | null
+  /** the interior sheet group a person chose. null = nobody has said; '' = no interior sheet */
+  sheet_group?: string | null
 }
 export type V2DecisionIn = {
   id: string
@@ -61,6 +65,10 @@ export type V2Room = {
   role: string
   needs_2d: boolean
   shell_changed: boolean
+  /** the level the room is on, as the model names it. null = not known: the compiler does not split by level on a guess */
+  level: string | null
+  /** the room group whose interior sheet this room is drawn on. null = no interior sheet, or nobody has said */
+  sheet_group: string | null
   model_state: Record<string, unknown>
   work_items: WorkItem[]
   context: ContextLine[]
@@ -207,6 +215,8 @@ export function buildContractV2(input: {
 
   // ---- rooms ----
   const rooms: V2Room[] = []
+  const noLevel: string[] = []
+  const noGroup: string[] = []
   for (const r of input.rooms) {
     if (isHouseSection(r.section_code)) continue
     const label = 'Room ' + r.section_code + ' ' + r.name
@@ -217,6 +227,10 @@ export function buildContractV2(input: {
     const mine = items.get(r.section_code) || []
     const ms = (r.model_state || {}) as Record<string, unknown>
     if (ms.scanned_at == null) warnings.push(label + ': the model scan carries no scan time, so a stale scan cannot be detected')
+    const level = tidyName(r.level) || tidyName(typeof ms.level === 'string' ? ms.level : '') || null
+    const sheetGroup = tidyName(r.sheet_group) || null
+    if (!level) noLevel.push(label)
+    if (r.sheet_group == null) noGroup.push(label)
     rooms.push({
       section_code: r.section_code,
       name: r.name,
@@ -224,6 +238,8 @@ export function buildContractV2(input: {
       needs_2d: r.needs_2d === true,
       // marked by a person, or implied by a line that moves a wall, a stair or the structure in this room
       shell_changed: r.shell_changed === true || mine.some((w) => SHELL_KINDS.includes(w.kind)),
+      level,
+      sheet_group: sheetGroup,
       model_state: { ...ms, scanned_at: ms.scanned_at ?? null, bridge_build: ms.bridge_build ?? null },
       work_items: mine,
       context: context.get(r.section_code) || [],
@@ -233,6 +249,11 @@ export function buildContractV2(input: {
         .map((i) => ({ storage_path: i.storage_path, notes: i.notes, tags: i.tags || [] })),
     })
   }
+  // level and sheet group are additive (SPEC A71): a room without one is emitted, and the list says what follows from it
+  if (rooms.length && noLevel.length === rooms.length) warnings.push('No room carries a level, so floors and ceilings are compiled as one phase for the whole house.')
+  else for (const l of noLevel) warnings.push(l + ': no level, so its floors and ceilings are compiled apart from the rooms that have one')
+  if (rooms.length && noGroup.length === rooms.length) warnings.push('No room has a sheet group yet, so the sheets are compiled as one phase and the interior sheets are not split by room group.')
+  else for (const l of noGroup) warnings.push(l + ': nobody has said which interior sheet it goes on, so no interior sheet is compiled for it')
   const codes = rooms.map((r) => r.section_code)
   for (const c of new Set(codes.filter((c, i) => codes.indexOf(c) !== i))) errors.push('Room number ' + c + ' is on the board twice')
 
@@ -294,6 +315,11 @@ export function validateContractV2(contract: unknown, kinds: { kind: string }[])
     if (!normaliseRole(r.role)) out.push(at + ': role "' + r.role + '" is not in the list')
     if (typeof r.needs_2d !== 'boolean') out.push(at + ': needs_2d must be true or false')
     if (typeof r.shell_changed !== 'boolean') out.push(at + ': shell_changed must be true or false')
+    // additive fields: a contract emitted before 2026-11-11 21:50Z does not have them
+    for (const f of ['level', 'sheet_group'] as const) {
+      const v = (r as Record<string, unknown>)[f]
+      if (v !== undefined && v !== null && (typeof v !== 'string' || !v.trim())) out.push(at + ': ' + f + ' must be a name or empty')
+    }
     if (!Array.isArray(r.work_items) || !Array.isArray(r.opens) || !Array.isArray(r.inspo)) {
       out.push(at + ': work_items, opens and inspo must be lists')
       continue

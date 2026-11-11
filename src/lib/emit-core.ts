@@ -33,7 +33,7 @@ export async function buildV2(
       project: { name: args.name, client: args.client, doc_title: (docRow as { doc_title?: string | null } | null)?.doc_title || null },
       version: args.version,
       emittedAt: args.emittedAt,
-      rooms: args.rooms.map((r) => ({ id: r.id, section_code: r.section_code, name: r.name, role: r.role ?? null, needs_2d: r.needs_2d ?? null, shell_changed: r.shell_changed ?? null, model_state: r.model_state || {} })),
+      rooms: args.rooms.map((r) => ({ id: r.id, section_code: r.section_code, name: r.name, role: r.role ?? null, needs_2d: r.needs_2d ?? null, shell_changed: r.shell_changed ?? null, model_state: r.model_state || {}, level: r.level ?? null, sheet_group: r.sheet_group ?? null })),
       decisions: args.activeDecisions.map((d) => ({ id: d.id, room_id: d.room_id ?? null, topic: d.topic, value: d.value, source: d.source, source_ref: d.source_ref ?? null, kind: d.kind ?? null, params: d.params ?? null })),
       opens: args.opens.map((o) => ({ room_id: o.room_id ?? null, question: o.question, answer: o.answer ?? null, default_if_unanswered: o.default_if_unanswered ?? null, blocking: !!o.blocking })),
       redlines: args.redlines.map((n) => ({ id: n.id, room_id: n.room_id ?? null, note_type: n.note_type, text: n.text, source_ref: n.source_ref ?? null, kind: n.kind ?? null })),

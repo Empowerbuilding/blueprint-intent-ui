@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { normaliseRole } from '@/lib/vocab'
+import { normaliseRole, tidyName } from '@/lib/vocab'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -50,7 +50,17 @@ export async function setRoomTyping(formData: FormData) {
   const needs2d = n2d === 'yes' ? true : n2d === 'no' ? false : null
   const { data: changed, error } = await supabase
     .from('intent_rooms')
-    .update({ role, needs_2d: needs2d, shell_changed: formData.get('shell_changed') === 'on', typed_by: user.email || user.id, typed_at: new Date().toISOString() })
+    .update({
+      role,
+      needs_2d: needs2d,
+      shell_changed: formData.get('shell_changed') === 'on',
+      // level: empty = not known. sheet group: saved empty = a person said this room gets no interior sheet (SPEC A71).
+      // A form that does not carry a field leaves it as it is.
+      ...(formData.has('level') ? { level: tidyName(String(formData.get('level') || '')) || null } : {}),
+      ...(formData.has('sheet_group') ? { sheet_group: tidyName(String(formData.get('sheet_group') || '')) } : {}),
+      typed_by: user.email || user.id,
+      typed_at: new Date().toISOString(),
+    })
     .eq('id', roomId)
     .eq('project_id', projectId)
     .select('id')

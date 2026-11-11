@@ -79,6 +79,15 @@ export function suggestNeeds2d(roomName: string, sectionCode: string): boolean {
   return DESIGNED_NAME.test(roomName)
 }
 
+/** a sheet group or a level as stored: trimmed, single spaces. '' stays '' */
+export const tidyName = (raw: string | null | undefined) => String(raw || '').replace(/\s+/g, ' ').trim()
+/** the interior sheet group proposed for a room: its role (Tony 2026-11-11, SPEC A71). A suggestion only: a person saves it,
+ *  renames it to share a sheet with another room (Schwan: "mud pantry laundry"), or clears it for a room with no interior sheet. */
+export function suggestSheetGroup(role: string | null | undefined): string | null {
+  const r = normaliseRole(role)
+  return r ? roleLabel(r) : null
+}
+
 export const CONTEXT_KIND = 'context'
 /** kinds that change the room shell (spec amendment A12) */
 export const SHELL_KINDS = ['structure.resize', 'structure.modify', 'structure.stairs', 'surface.wall']

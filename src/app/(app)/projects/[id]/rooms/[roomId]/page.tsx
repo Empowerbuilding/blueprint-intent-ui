@@ -15,7 +15,7 @@ import {
 import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
 import { setDecisionKind, setRedlineKind, setRoomTyping, setTopicKind } from '@/app/typing-actions'
 import { loadKinds, type KindOption } from '@/lib/model-rules'
-import { ROOM_ROLES, isHouseSection, roleLabel, suggestKind, suggestNeeds2d, suggestRedlineKind, suggestRole } from '@/lib/vocab'
+import { ROOM_ROLES, isHouseSection, roleLabel, suggestKind, suggestNeeds2d, suggestRedlineKind, suggestRole, suggestSheetGroup } from '@/lib/vocab'
 import { defaultsForRoom, loadDefaults } from '@/lib/defaults'
 import { INSPO_BUCKET, OUTLINES_BUCKET, signedUrls } from '@/lib/storage'
 import { summariseChecks, ago, type CheckSummary, type MathResult, type VisionResult } from '@/lib/outline-summary'
@@ -471,7 +471,7 @@ export default async function RoomPage({
 
   const { data: room } = await supabase
     .from('intent_rooms')
-    .select('id, project_id, section_code, name, review_state, area_sf, model_state, source, role, needs_2d, shell_changed')
+    .select('id, project_id, section_code, name, review_state, area_sf, model_state, source, role, needs_2d, shell_changed, level, sheet_group')
     .eq('id', roomId)
     .single()
   if (!room || room.project_id !== id) notFound()
@@ -493,7 +493,7 @@ export default async function RoomPage({
       supabase.from('intent_redline_notes').select('id, note_type, text, source_ref, kind').eq('room_id', roomId).order('created_at'),
       supabase.from('intent_inspo_images').select('id, storage_path, notes').eq('room_id', roomId).order('created_at'),
       supabase.from('intent_outlines').select('*').eq('room_id', roomId).order('pushed_at', { ascending: false }),
-      supabase.from('intent_rooms').select('id, section_code, name, review_state').eq('project_id', id).order('sort_order'),
+      supabase.from('intent_rooms').select('id, section_code, name, review_state, sheet_group').eq('project_id', id).order('sort_order'),
       supabase.from('intent_outlines').select('room_id').eq('project_id', id).eq('status', 'pushed'),
     ])
 
@@ -512,6 +512,10 @@ export default async function RoomPage({
   const isHouse = isHouseSection(room.section_code)
   const roleGuess = room.role ? null : suggestRole(room.name)
   const needs2dGuess = suggestNeeds2d(room.name, room.section_code)
+  // level: what a person saved, else what the model scan recorded. Sheet group: proposed from the role until a person saves one
+  const scanLevel = typeof (room.model_state as Record<string, unknown> | null)?.level === 'string' ? String((room.model_state as Record<string, unknown>).level) : ''
+  const sheetGroupGuess = room.sheet_group == null ? suggestSheetGroup(room.role || roleGuess) : null
+  const sheetGroups = [...new Set(((roomsRes.data || []) as { sheet_group?: string | null }[]).map((x) => x.sheet_group || '').filter(Boolean))].sort()
   const untypedLines = decisions.filter((d) => d.status === 'active' && !d.kind).length
   const untypedNotes = redlines.filter((n) => !n.kind).length
   const roomTyped = isHouse || (!!room.role && (room.needs_2d === true || room.needs_2d === false))
@@ -731,11 +735,25 @@ export default async function RoomPage({
                         <input type="checkbox" name="shell_changed" defaultChecked={!!room.shell_changed} className="mt-0.5" />
                         <span>A decision moves this room&apos;s walls or changes its size (its drawings are made on the new shape)</span>
                       </label>
+                      <label className="text-[11px] text-slate-500">
+                        Level{room.level ? '' : scanLevel ? ' — from the model scan' : ' — not known yet'}
+                        <input name="level" defaultValue={room.level || scanLevel} placeholder="e.g. Level 1.0" className="field mt-1" />
+                      </label>
+                      <label className="text-[11px] text-slate-500 sm:col-span-2">
+                        Interior sheet group{sheetGroupGuess ? ' — suggested from what the room is, not saved yet' : ''}
+                        <input name="sheet_group" list="sheet-groups" defaultValue={room.sheet_group ?? sheetGroupGuess ?? ''} placeholder="empty = no interior sheet for this room" className="field mt-1" />
+                        <datalist id="sheet-groups">
+                          {sheetGroups.map((g) => (
+                            <option key={g} value={g} />
+                          ))}
+                        </datalist>
+                        <span className="mt-1 block">Rooms with the same group share one interior sheet (enlarged plan, elevations, 3D views). Leave it empty for a room that gets none.</span>
+                      </label>
                       <div className="sm:col-span-3 flex flex-wrap items-center gap-3">
                         <button className="btn-secondary-sm">{roomTyped ? 'Save' : 'Save for this room'}</button>
                         <span className="text-[11px] text-slate-600">
                           {roomTyped
-                            ? 'Saved: ' + roleLabel(room.role || '') + ' · ' + (room.needs_2d ? '2D drawings first' : 'no 2D drawings') + (room.shell_changed ? ' · shape changes' : '')
+                            ? 'Saved: ' + roleLabel(room.role || '') + ' · ' + (room.needs_2d ? '2D drawings first' : 'no 2D drawings') + (room.shell_changed ? ' · shape changes' : '') + (room.level ? ' · ' + room.level : '') + (room.sheet_group ? ' · sheet group ' + room.sheet_group : room.sheet_group === '' ? ' · no interior sheet' : '')
                             : 'Nothing is saved until you press Save.'}
                         </span>
                       </div>
