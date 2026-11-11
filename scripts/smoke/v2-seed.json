@@ -592,7 +592,7 @@
   },
   {
    "rule_key": "opening.bbox_verified",
-   "description": "Every placed or swapped door and window exists where it was placed.",
+   "description": "Every placed or swapped door and window is in the wall the approved drawing puts it in, and sits where it was drawn: along that wall and on its centreline, each within the tolerance set on this check. The checker works the wall out itself from the drawing and the model, not from what the build phase says: it is the one wall behind the wall face the mark sits on, no further back than half the wall's thickness plus the host search margin set on this check. When it finds no such wall, or more than one, the check is reported as not run, never as passed. It does not check the swing side or the hand of a door.",
    "source": "runbook stage 3",
    "kinds": [
     "opening.place",
