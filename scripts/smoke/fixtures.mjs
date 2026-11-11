@@ -2,6 +2,7 @@
 // outlines in every review state, the live rulebook mirror, real standards text.
 // node scripts/smoke/fixtures.mjs <out.json>
 import fs from 'node:fs'
+import { DEFAULTS } from '../../src/lib/defaults.ts'
 
 const HERE = new URL('.', import.meta.url).pathname
 const now = Date.now()
@@ -145,6 +146,16 @@ const db = {
     { id: 'sv4', standard_id: 's-build', version: 1, content: build, note: 'created by blueprint', edited_by: null, created_at: t(1400) },
   ],
   portal_messages: [], // what the app tells Blueprint
+  // defaults are data: the built-in list, one line changed by Michael, one extra line turned off
+  intent_defaults: [
+    ...DEFAULTS.map((d, i) => ({ id: 'def-' + i, ...d, active: true, sort_order: (i + 1) * 10, updated_by: null, updated_by_email: null, updated_at: null, created_at: t(9000),
+      ...(d.topic === 'counter material' ? { updated_by: 'user-michael', updated_by_email: 'michael@barnhaus.test', updated_at: t(700) } : {}) })),
+    { id: 'def-off', topic: 'pot filler', value: 'none unless asked for', scope: 'house', active: false, sort_order: 900, updated_by: 'user-mitch', updated_by_email: 'mitch@barnhaus.test', updated_at: t(650), created_at: t(9000) },
+  ],
+  intent_defaults_history: [
+    { id: 'dh1', default_id: 'def-' + DEFAULTS.findIndex((d) => d.topic === 'counter material'), topic: 'counter material', action: 'changed', old_value: 'Counter Top = Quartz', new_value: 'Counter Top = Marble 05', old_scope: 'house', new_scope: 'house', note: 'Marble on every job now', changed_by: 'user-michael', changed_by_email: 'michael@barnhaus.test', changed_at: t(700) },
+    { id: 'dh2', default_id: 'def-off', topic: 'pot filler', action: 'turned_off', old_value: 'none unless asked for', new_value: 'none unless asked for', old_scope: 'house', new_scope: 'house', note: null, changed_by: 'user-mitch', changed_by_email: 'mitch@barnhaus.test', changed_at: t(650) },
+  ],
   // lessons: Blueprint proposes, only the two approvers decide
   intent_approvers: [
     { user_id: 'user-mitch', email: 'mitch@barnhaus.test', name: 'Mitch', added_at: t(5000) },

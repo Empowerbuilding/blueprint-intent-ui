@@ -369,6 +369,70 @@ r = await post(L, h, { title: '', proposed_rule: '' })
 ok('add a lesson with nothing in it: refused', r.location.includes('needs a one-line title') && (await getDb()).intent_lessons.length === db.intent_lessons.length)
 ok('lessons are never deleted', !(await (await fetch(mock + '/__calls')).json()).some((c) => c.op.startsWith('delete') && c.table === 'intent_lessons'))
 
+// ---------- C5. defaults: data that only Mitch or Michael change ----------
+const DF = '/rulebook/defaults'
+const defOf = (d, id) => d.intent_defaults.find((x) => x.id === id)
+const lastChange = (d) => d.intent_defaults_history[d.intent_defaults_history.length - 1]
+const roomDefaults = async () => (await page('/projects/p-whitaker/rooms/r-wb3?view=decide')).replace(/<!-- -->/g, '')
+ok('room shows the default from the saved list', (await roomDefaults()).includes('built in'))
+// read-only for a signed-in account that is not an approver
+html = await pageAs(DF, asBlueprint)
+ok('defaults, non-approver: list shown, read-only', html.includes('spice pullouts both sides of range') && html.includes('Only Mitch or Michael can change this list') && !html.includes('name="default_id"') && !html.includes('+ Add a default') && !html.includes('>Change<'))
+html = await pageAs(DF + '?edit=def-3', asBlueprint)
+ok('defaults, non-approver: the edit address shows no editor either', !html.includes('Save default') && !html.includes('name="default_id"'))
+html = await page(DF + '?edit=def-3')
+const saveFridge = form(html, (f) => f.includes('value="def-3"') && f.includes('name="value"'), 'save default (fridge)')
+const offFridge = form(html, (f) => f.includes('value="def-3"') && f.includes('Turn this default off'), 'turn off default (fridge)')
+const addDef = form(html, (f) => f.includes('name="topic"') && f.includes('Add default'), 'add default')
+before = await getDb()
+r = await postAs(DF, saveFridge, { value: 'self-approved', scope: 'house', note: '' }, asBlueprint)
+r2 = await postAs(DF, offFridge, {}, asBlueprint)
+let r3 = await postAs(DF, addDef, { topic: 'sneak', value: 'x', scope: 'house', note: '' }, asBlueprint)
+db = await getDb()
+ok('defaults, non-approver posts change / turn off / add: all refused, nothing changed', [r, r2, r3].every((x) => x.location.includes('Only Mitch or Michael can change a default')) && same(db.intent_defaults, before.intent_defaults) && same(db.intent_defaults_history, before.intent_defaults_history), JSON.stringify([r, r2, r3]))
+// an approver changes one
+const msgs = db.portal_messages.length
+r = await post(DF, saveFridge, { value: '   ', scope: 'house', note: '' })
+ok('default with empty value: refused', r.location.includes('was empty') && defOf(await getDb(), 'def-3').value === 'built in', JSON.stringify(r))
+r = await post(DF, saveFridge, { value: 'built in', scope: 'house', note: '' })
+ok('default saved with nothing different: refused, no history', r.location.includes('Nothing was different') && (await getDb()).intent_defaults_history.length === before.intent_defaults_history.length, JSON.stringify(r))
+r = await post(DF, saveFridge, { value: 'panel-ready, built in', scope: 'house', note: 'Per Mitch 11/11' })
+db = await getDb()
+ok('approver changes a default: stored with who and when', defOf(db, 'def-3').value === 'panel-ready, built in' && defOf(db, 'def-3').updated_by_email === 'mitch@barnhaus.test' && !!defOf(db, 'def-3').updated_at && r.location.includes('saved=fridge') && r.location.endsWith('#d-def-3'), JSON.stringify([defOf(db, 'def-3'), r]))
+ok('approver changes a default: the change is kept (was / now / who / why)', same([lastChange(db).action, lastChange(db).topic, lastChange(db).old_value, lastChange(db).new_value, lastChange(db).changed_by_email, lastChange(db).note], ['changed', 'fridge', 'built in', 'panel-ready, built in', 'mitch@barnhaus.test', 'Per Mitch 11/11']) && db.intent_defaults_history.length === before.intent_defaults_history.length + 1, JSON.stringify(lastChange(db)))
+wake = db.portal_messages[db.portal_messages.length - 1]
+ok('approver changes a default: Blueprint is told', db.portal_messages.length === msgs + 1 && wake.content.includes('Default changed: **fridge**') && wake.content.includes('was "built in"') && wake.content.includes('now "panel-ready, built in"') && wake.content.includes('mitch@barnhaus.test') && wake.content.includes('not a go'), JSON.stringify(wake))
+ok('room now shows the changed default', (await roomDefaults()).includes('panel-ready, built in'))
+ok('other defaults untouched', db.intent_defaults.filter((x) => x.id !== 'def-3').every((x) => same(x, defOf(before, x.id))))
+// machine read
+api = await (await fetch(app + '/api/defaults', { headers: SECRET })).json()
+ok('api defaults: the list in force, with the change', api.defaults.length === 28 && api.defaults.find((x) => x.topic === 'fridge').value === 'panel-ready, built in' && same(api.turned_off, ['pot filler']) && api.source === 'app' && !!api.updated_at, JSON.stringify(api).slice(0, 300))
+ok('api defaults: 401 without the secret or a login', (await fetch(app + '/api/defaults')).status === 401)
+ok('api defaults: read only (no POST)', (await fetch(app + '/api/defaults', { method: 'POST', headers: SECRET, body: '{}' })).status === 405)
+// turn off, then back on
+r = await post(DF, offFridge, {})
+db = await getDb()
+ok('turn a default off: kept, marked off, recorded', defOf(db, 'def-3').active === false && lastChange(db).action === 'turned_off' && db.intent_defaults.length === before.intent_defaults.length, JSON.stringify(defOf(db, 'def-3')))
+html = await roomDefaults()
+ok('room no longer builds that default', !html.includes('panel-ready, built in'))
+api = await (await fetch(app + '/api/defaults', { headers: SECRET })).json()
+ok('api defaults: turned-off default is not in force', api.defaults.length === 27 && api.turned_off.includes('fridge'))
+html = await page(DF)
+h = form(html, (f) => f.includes('value="def-3"') && f.includes('Turn back on'), 'turn default back on')
+r = await post(DF, h, {})
+db = await getDb()
+ok('turn it back on', defOf(db, 'def-3').active === true && lastChange(db).action === 'turned_on' && (await roomDefaults()).includes('panel-ready, built in'))
+// add one
+r = await post(DF, addDef, { topic: 'Hood', value: 'steel', scope: 'house', note: '' })
+ok('add a default whose topic already exists (any capitals): refused', r.location.includes('already a default for "hood"') && (await getDb()).intent_defaults.length === before.intent_defaults.length, JSON.stringify(r))
+r = await post(DF, addDef, { topic: 'pantry shelving', value: 'adjustable melamine, 16 in deep', scope: 'nowhere', note: '' })
+ok('add a default with a bad scope: refused', r.location.includes('Pick where the default applies') && (await getDb()).intent_defaults.length === before.intent_defaults.length)
+r = await post(DF, addDef, { topic: 'pantry shelving', value: 'adjustable melamine, 16 in deep', scope: 'house', note: 'Standard on every job' })
+db = await getDb()
+row = db.intent_defaults.find((x) => x.topic === 'pantry shelving')
+ok('approver adds a default: stored last in the list, recorded, shown in rooms', row && row.active === true && row.scope === 'house' && row.sort_order > 900 && row.updated_by_email === 'mitch@barnhaus.test' && lastChange(db).action === 'added' && lastChange(db).default_id === row.id && (await roomDefaults()).includes('adjustable melamine, 16 in deep'), JSON.stringify(row))
+ok('defaults and their history are never deleted', !(await (await fetch(mock + '/__calls')).json()).some((c) => c.op.startsWith('delete') && (c.table === 'intent_defaults' || c.table === 'intent_defaults_history')))
+
 // ---------- D. delete ----------
 const D = '/projects/p-deubner'
 html = await page(D)

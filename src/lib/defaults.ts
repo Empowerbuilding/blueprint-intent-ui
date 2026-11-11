@@ -1,7 +1,7 @@
-// Runbook §4 defaults — the values built when the transcript is silent.
-// Source: standards/D1_TO_D2_RUNBOOK.md §4 (Blueprint's doctrine). Shown in the
-// room defaults panel; accepting them (or leaving a topic silent) means the AI
-// builds exactly these.
+// Defaults — the values built when nobody decided otherwise.
+// They live in the database (intent_defaults) and are edited in the app by an approver
+// (Rulebook → Defaults). The list below is what the table was first filled from (2026-11-11);
+// it is only used again if the table cannot be read, so a room page never loses its defaults.
 
 export type DefaultRule = {
   topic: string
@@ -40,14 +40,69 @@ export const DEFAULTS: DefaultRule[] = [
   { topic: 'site plan', value: 'conceptual (no PL/APN) unless survey given', scope: 'house' },
 ]
 
-export function defaultsForRoom(sectionCode: string, roomName: string): DefaultRule[] {
+export const SCOPES: { key: DefaultRule['scope']; label: string }[] = [
+  { key: 'house', label: 'Whole house' },
+  { key: 'public', label: 'Public rooms' },
+  { key: 'master', label: 'Master suite' },
+  { key: 'secondary', label: 'Secondary rooms' },
+  { key: 'bath', label: 'Baths (and the master suite)' },
+  { key: 'garage', label: 'Garage and gym' },
+  { key: 'adu', label: 'ADU' },
+  { key: 'outdoor', label: 'Outdoor living' },
+]
+export const isScope = (s: string): s is DefaultRule['scope'] => SCOPES.some((x) => x.key === s)
+
+export type DefaultRow = DefaultRule & {
+  id: string
+  active: boolean
+  sort_order: number
+  updated_by_email: string | null
+  updated_at: string | null
+}
+export type DefaultChange = {
+  id: string
+  default_id: string | null
+  topic: string
+  action: 'added' | 'changed' | 'turned_off' | 'turned_on'
+  old_value: string | null
+  new_value: string | null
+  old_scope: string | null
+  new_scope: string | null
+  note: string | null
+  changed_by_email: string | null
+  changed_at: string
+}
+
+// the two Supabase clients (user session, service role) have different generics; only .from() is used
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyClient = { from: (t: string) => any }
+
+/** every default, on and off, in display order. null = the table could not be read */
+export async function loadDefaultRows(client: AnyClient): Promise<DefaultRow[] | null> {
+  const { data, error } = await client
+    .from('intent_defaults')
+    .select('id, topic, value, scope, active, sort_order, updated_by_email, updated_at')
+    .order('sort_order')
+    .order('topic')
+  if (error || !data) return null
+  return data as DefaultRow[]
+}
+
+/** the defaults in force. Falls back to the built-in list only if the table cannot be read. */
+export async function loadDefaults(client: AnyClient): Promise<DefaultRule[]> {
+  const rows = await loadDefaultRows(client)
+  if (!rows) return DEFAULTS
+  return rows.filter((r) => r.active).map((r) => ({ topic: r.topic, value: r.value, scope: r.scope }))
+}
+
+export function defaultsForRoom(sectionCode: string, roomName: string, list: DefaultRule[] = DEFAULTS): DefaultRule[] {
   const n = roomName.toLowerCase()
   const isBath = n.includes('bath')
   const isMaster = n.includes('master')
   const isGarage = n.includes('garage') || n.includes('gym')
   const isAdu = n.includes('adu')
   const isOutdoor = n.includes('outdoor') || n.includes('patio') || n.includes('porch')
-  return DEFAULTS.filter((d) => {
+  return list.filter((d) => {
     if (d.scope === 'house') return true
     if (d.scope === 'bath') return isBath || isMaster
     if (d.scope === 'garage') return isGarage

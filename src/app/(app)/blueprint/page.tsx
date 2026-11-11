@@ -13,7 +13,7 @@ import Link from 'next/link'
 
 type Event = {
   at: string
-  kind: 'standard' | 'checks' | 'contract' | 'lesson'
+  kind: 'standard' | 'checks' | 'contract' | 'lesson' | 'default'
   title: string
   detail: string | null
   who: 'blueprint' | 'person' | null
@@ -27,6 +27,7 @@ const KINDS: { key: Event['kind']; label: string }[] = [
   { key: 'checks', label: 'Checks' },
   { key: 'contract', label: 'Contracts' },
   { key: 'lesson', label: 'Lessons' },
+  { key: 'default', label: 'Defaults' },
 ]
 
 export default async function BlueprintPage({
@@ -59,6 +60,11 @@ export default async function BlueprintPage({
     supabase.from('intent_projects').select('id, name'),
   ])
   const [lessons, approvers] = await Promise.all([loadLessons(supabase), loadApprovers(supabase)])
+  const { data: defaultChanges } = await supabase
+    .from('intent_defaults_history')
+    .select('id, default_id, topic, action, old_value, new_value, note, changed_by_email, changed_at')
+    .order('changed_at', { ascending: false })
+    .limit(40)
 
   const standardById = new Map(
     ((standardsRes.data || []) as { id: string; slug: string; title: string }[]).map((s) => [s.id, s])
@@ -135,6 +141,33 @@ export default async function BlueprintPage({
     }
   }
 
+  for (const c of (defaultChanges || []) as {
+    id: string
+    default_id: string | null
+    topic: string
+    action: string
+    old_value: string | null
+    new_value: string | null
+    note: string | null
+    changed_by_email: string | null
+    changed_at: string
+  }[]) {
+    events.push({
+      at: c.changed_at,
+      kind: 'default',
+      title:
+        'Default ' +
+        (c.action === 'added' ? 'added' : c.action === 'changed' ? 'changed' : c.action === 'turned_off' ? 'turned off' : 'turned back on') +
+        ': ' +
+        c.topic,
+      detail: c.action === 'changed' ? 'Was: ' + c.old_value + ' — now: ' + c.new_value : c.action === 'turned_off' ? 'Was: ' + c.old_value : c.new_value,
+      who: null,
+      href: '/rulebook/defaults' + (c.default_id ? '#d-' + c.default_id : ''),
+      cta: 'Open defaults',
+      by: 'by ' + whoLabel(c.changed_by_email, approvers),
+    })
+  }
+
   const shown = events.filter((e) => !filter || e.kind === filter).sort((a, b) => (a.at < b.at ? 1 : -1))
   const days = new Map<string, Event[]>()
   for (const e of shown) {
@@ -168,7 +201,7 @@ export default async function BlueprintPage({
                 <div key={i} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Pill tone={e.kind === 'standard' ? 'violet' : e.kind === 'checks' ? 'gold' : e.kind === 'lesson' ? 'blue' : 'green'}>
+                      <Pill tone={e.kind === 'standard' ? 'violet' : e.kind === 'checks' ? 'gold' : e.kind === 'lesson' ? 'blue' : e.kind === 'default' ? 'outline' : 'green'}>
                         {e.kind}
                       </Pill>
                       <span className="text-sm text-slate-100">{e.title}</span>

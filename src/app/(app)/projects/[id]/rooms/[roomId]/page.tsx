@@ -13,7 +13,7 @@ import {
   setReviewState,
 } from '@/app/actions'
 import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
-import { defaultsForRoom } from '@/lib/defaults'
+import { defaultsForRoom, loadDefaults } from '@/lib/defaults'
 import { INSPO_BUCKET, OUTLINES_BUCKET, signedUrls } from '@/lib/storage'
 import { summariseChecks, ago, type CheckSummary, type MathResult, type VisionResult } from '@/lib/outline-summary'
 import { Pill } from '@/components/pill'
@@ -474,7 +474,8 @@ export default async function RoomPage({
     else push(strandedLines, d.topic, d)
   }
   const decidedTopics = new Set(decisions.filter((d) => d.status === 'active').map((d) => d.topic))
-  const openDefaults = defaultsForRoom(room.section_code, room.name).filter((d) => !decidedTopics.has(d.topic))
+  // defaults are data now (Rulebook → Defaults), not a list in the code
+  const openDefaults = defaultsForRoom(room.section_code, room.name, await loadDefaults(supabase)).filter((d) => !decidedTopics.has(d.topic))
 
   const unresolved = opens.filter((q) => !q.answer)
   const blockingOpen = unresolved.filter((q) => q.blocking).length
