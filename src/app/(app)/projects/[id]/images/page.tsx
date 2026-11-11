@@ -2,14 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { assignImageForm } from '@/app/emit-actions'
 import UploadInspo from '@/components/UploadInspo'
 import { PageHeader } from '@/components/page-header'
+import { INSPO_BUCKET, signedUrls } from '@/lib/storage'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-
-function publicUrl(path: string) {
-  return `${SUPABASE_URL}/storage/v1/object/public/intent-inspo/${path}`
-}
 
 export default async function ImagesPage({
   params,
@@ -31,6 +26,9 @@ export default async function ImagesPage({
     supabase.from('intent_rooms').select('id, section_code, name').eq('project_id', id).order('sort_order'),
   ])
 
+  // signed links for this render only (private bucket)
+  const urls = await signedUrls(supabase, INSPO_BUCKET, (images || []).map((i) => i.storage_path))
+
   const roomName = new Map((rooms || []).map((r) => [r.id, `${r.section_code} ${r.name}`]))
   const unassigned = (images || []).filter((i) => !i.room_id && !i.parked)
   const parked = (images || []).filter((i) => !i.room_id && i.parked)
@@ -44,8 +42,12 @@ export default async function ImagesPage({
         state === 'unassigned' ? 'border-amber-900/50' : state === 'assigned' ? 'border-emerald-900/40' : ''
       }`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={publicUrl(img.storage_path)} alt={img.notes || 'inspo'} className="w-full h-40 object-cover" />
+      {urls.get(img.storage_path) ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={urls.get(img.storage_path)} alt={img.notes || 'inspo'} className="w-full h-40 object-cover" />
+      ) : (
+        <div className="h-40 flex items-center justify-center text-xs text-slate-600">image unavailable</div>
+      )}
       <div className="p-3 space-y-2">
         <div className="text-xs text-slate-500">
           {state === 'assigned'

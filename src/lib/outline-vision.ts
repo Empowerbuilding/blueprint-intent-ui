@@ -5,12 +5,15 @@
 // shows "running…" and auto-refreshes until it lands).
 
 import { runVisionGate, type VisionCheck } from '@/lib/vision-gate'
+import { FETCH_URL_TTL, OUTLINES_BUCKET, signedUrl, type StorageClient } from '@/lib/storage'
 
 // minimal structural type for what we use
 type AnyClient = {
-  // the two Supabase clients (user session, service role) have different generics; only .from() is used
+  // the two Supabase clients (user session, service role) have different generics; only .from() and .storage are used
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   from: (t: string) => any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  storage: any
 }
 
 // Wake Blueprint when the vision gate lands CONFLICTS — it should not have to
@@ -63,8 +66,6 @@ export async function visionGateForOutline(
   client: AnyClient,
   opts: { outlineId: string; projectId: string; roomId: string; storagePath: string; outlineType: string; roomName: string }
 ): Promise<VisionCheck> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-
   const [{ data: roomDecisions }, { data: houseDecisions }, { data: outline }] = await Promise.all([
     client.from('intent_decisions').select('topic, value').eq('room_id', opts.roomId).eq('status', 'active'),
     client
@@ -83,8 +84,13 @@ export async function visionGateForOutline(
     w?: number
     h?: number
   }[]
+  // private bucket: a short-lived signed link, fetched by this server only. If it cannot be signed the
+  // link below is refused by storage and the gate reports "could not load outline image".
+  const imageUrl =
+    (await signedUrl(client as StorageClient, OUTLINES_BUCKET, opts.storagePath, FETCH_URL_TTL)) ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL + '/storage/v1/object/sign/' + OUTLINES_BUCKET + '/' + opts.storagePath
   const check = await runVisionGate({
-    imageUrl: `${supabaseUrl}/storage/v1/object/public/intent-outlines/${opts.storagePath}`,
+    imageUrl,
     mediaType: mediaType === 'jpeg' || mediaType === 'webp' || mediaType === 'gif' ? `image/${mediaType}` : 'image/png',
     outlineType: opts.outlineType,
     roomName: opts.roomName,

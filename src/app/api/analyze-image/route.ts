@@ -8,6 +8,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Runs GLM-4.6v (z.ai) over the image → description, tags, palette, suggested room.
 // Updates the intent_inspo_images row (notes + tags) and returns the analysis.
 
+import { FETCH_URL_TTL, INSPO_BUCKET, signedUrl, type StorageClient } from '@/lib/storage'
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
 type Analysis = {
@@ -17,12 +19,12 @@ type Analysis = {
   suggested_room: string
 }
 
-async function analyzeImage(publicUrl: string, mediaType: string): Promise<Analysis | null> {
+async function analyzeImage(imageUrl: string, mediaType: string): Promise<Analysis | null> {
   const key = process.env.ZAI_API_KEY
   if (!key) return null
 
   // fetch + base64 the image
-  const imgRes = await fetch(publicUrl)
+  const imgRes = await fetch(imageUrl)
   if (!imgRes.ok) return null
   const buf = Buffer.from(await imgRes.arrayBuffer())
   const b64 = buf.toString('base64')
@@ -109,14 +111,16 @@ export async function POST(request: NextRequest) {
     .single()
   if (error || !img) return NextResponse.json({ error: 'image not found' }, { status: 404 })
 
-  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/intent-inspo/${img.storage_path}`
+  // private bucket: a short-lived signed link, used by this server only
+  const imageUrl = await signedUrl(client as unknown as StorageClient, INSPO_BUCKET, img.storage_path, FETCH_URL_TTL)
+  if (!imageUrl) return NextResponse.json({ error: 'stored image could not be read' }, { status: 502 })
   const mediaType = img.storage_path.match(/\.(png|webp|gif)$/i)?.[0]?.toLowerCase() === 'png'
     ? 'image/png'
     : img.storage_path.match(/\.webp$/i)
       ? 'image/webp'
       : 'image/jpeg'
 
-  const analysis = await analyzeImage(publicUrl, mediaType)
+  const analysis = await analyzeImage(imageUrl, mediaType)
   if (!analysis) {
     return NextResponse.json({ error: 'analysis failed (vision model or key missing)' }, { status: 502 })
   }

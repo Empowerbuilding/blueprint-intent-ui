@@ -14,6 +14,7 @@ import {
 } from '@/app/actions'
 import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
 import { defaultsForRoom } from '@/lib/defaults'
+import { INSPO_BUCKET, OUTLINES_BUCKET, signedUrls } from '@/lib/storage'
 import { summariseChecks, ago, type CheckSummary, type MathResult, type VisionResult } from '@/lib/outline-summary'
 import { Pill } from '@/components/pill'
 import { PageHeader } from '@/components/page-header'
@@ -27,8 +28,6 @@ import { notFound } from 'next/navigation'
 //   2D review  the drawings Blueprint pushed: large image, failures open,
 //              passes folded, approve / reject. The job after the lock.
 // The page opens on whichever view has work in it.
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
 const SOURCE_LABEL: Record<string, string> = {
   transcript: 'transcript',
@@ -197,10 +196,10 @@ function VerdictRow({ v, tone }: { v: VisionResult; tone: 'red' | 'gold' | 'gree
   )
 }
 
-function OutlineCard({ o, projectId, roomId }: { o: Outline; projectId: string; roomId: string }) {
+// imageUrl is a signed link that expires (lib/storage.ts); null = the file could not be signed
+function OutlineCard({ o, projectId, roomId, imageUrl }: { o: Outline; projectId: string; roomId: string; imageUrl: string | null }) {
   const c = summariseChecks(o.checks)
   const elements = Array.isArray(o.geometry?.elements) ? o.geometry!.elements!.length : 0
-  const imageUrl = o.storage_path ? SUPABASE_URL + '/storage/v1/object/public/intent-outlines/' + o.storage_path : null
   const visionResults = c.vision?.status === 'ok' ? c.vision.results || [] : []
   const notDrawable = visionResults.filter((v) => v.verdict === 'na')
   const hidden = (
@@ -238,7 +237,9 @@ function OutlineCard({ o, projectId, roomId }: { o: Outline; projectId: string; 
               />
             </a>
           ) : (
-            <div className="p-10 text-center text-sm text-slate-600">No image was pushed with this outline.</div>
+            <div className="p-10 text-center text-sm text-slate-600">
+              {o.storage_path ? 'The drawing could not be loaded. Refresh the page; if it stays missing, tell Blueprint.' : 'No image was pushed with this outline.'}
+            </div>
           )}
         </div>
 
@@ -437,6 +438,11 @@ export default async function RoomPage({
   const images = (imagesRes.data || []) as Inspo[]
   const outlines = (outlinesRes.data || []) as Outline[]
   const rooms = (roomsRes.data || []) as RoomLite[]
+  // signed links for this render only; nothing here is a public URL
+  const [outlineUrls, inspoUrls] = await Promise.all([
+    signedUrls(supabase, OUTLINES_BUCKET, outlines.filter((o) => o.status === 'pushed' || o.status === 'approved').map((o) => o.storage_path)),
+    signedUrls(supabase, INSPO_BUCKET, images.map((i) => i.storage_path)),
+  ])
   const pendingElsewhere = ((pendingRes.data || []) as { room_id: string }[]).filter((p) => p.room_id !== roomId)
 
   // ---- decisions + defaults, one list ----
@@ -846,12 +852,12 @@ export default async function RoomPage({
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {images.map((img) => (
                       <div key={img.id} className="card overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={SUPABASE_URL + '/storage/v1/object/public/intent-inspo/' + img.storage_path}
-                          alt={img.notes || 'inspo'}
-                          className="w-full h-28 object-cover"
-                        />
+                        {inspoUrls.get(img.storage_path) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={inspoUrls.get(img.storage_path)} alt={img.notes || 'inspo'} className="w-full h-28 object-cover" />
+                        ) : (
+                          <div className="h-28 flex items-center justify-center text-[11px] text-slate-600">image unavailable</div>
+                        )}
                         {img.notes && <div className="text-[11px] text-slate-500 px-2 py-1.5 truncate">{img.notes}</div>}
                       </div>
                     ))}
@@ -890,12 +896,12 @@ export default async function RoomPage({
                 <h2 className="section-title">To review ({pending.length})</h2>
               )}
               {pending.map((o) => (
-                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} />
+                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} />
               ))}
 
               {approved.length > 0 && <h2 className="section-title pt-2">Approved ({approved.length})</h2>}
               {approved.map((o) => (
-                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} />
+                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} />
               ))}
 
               {rejected.length > 0 && (

@@ -7,6 +7,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 // state, and rejection feedback. Blueprint reads this to know what to redraft
 // and what the humans approved. Auth: x-prefill-secret OR logged-in session.
 
+import { OUTLINES_BUCKET, signedUrls, type StorageClient } from '@/lib/storage'
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
 export async function GET(request: NextRequest) {
@@ -49,6 +51,9 @@ export async function GET(request: NextRequest) {
     .neq('status', 'superseded')
     .order('pushed_at', { ascending: false })
 
+  // private bucket: image_url is a signed link that expires (same field, same shape)
+  const imageUrls = await signedUrls(client as unknown as StorageClient, OUTLINES_BUCKET, (outlines || []).map((o) => o.storage_path))
+
   const byRoom = new Map<string, typeof outlines>()
   for (const o of outlines || []) {
     const list = byRoom.get(o.room_id) || []
@@ -85,9 +90,7 @@ export async function GET(request: NextRequest) {
         status: o.status,
         pushed_at: o.pushed_at,
         pushed_by: o.pushed_by,
-        image_url: o.storage_path
-          ? `${SUPABASE_URL}/storage/v1/object/public/intent-outlines/${o.storage_path}`
-          : null,
+        image_url: (o.storage_path && imageUrls.get(o.storage_path)) || null,
         geometry: o.geometry,
         math: o.checks?.math || null,
         vision: o.checks?.vision || null,

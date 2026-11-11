@@ -8,7 +8,7 @@ const db = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
 const port = Number(process.argv[3] || 54399)
 const unknown = new Set()
 const calls = [] // every write, in order — the action tests assert on this
-let mode = { fk: 'cascade', loseBucket: '' }
+let mode = { fk: 'cascade', loseBucket: '', denySign: false }
 const CHILD_TABLES = ['intent_outlines', 'intent_emissions', 'intent_inspo_images', 'intent_redline_notes', 'intent_open_questions', 'intent_decisions', 'intent_rooms']
 const UNIQUE = { intent_rules: 'rule_key' }
 
@@ -52,7 +52,10 @@ const send = (res, status, body, headers = {}) => {
 http
   .createServer((req, res) => {
     const u = new URL(req.url, 'http://mock')
-    if (u.pathname === '/__unknown') return send(res, 200, [...unknown])
+    if (u.pathname === '/__unknown') {
+      if (u.searchParams.get('clear')) unknown.clear()
+      return send(res, 200, [...unknown])
+    }
     if (u.pathname === '/auth/v1/user') return send(res, 200, db.__user)
     if (u.pathname === '/__db') return send(res, 200, db)
     if (u.pathname === '/__calls') return send(res, 200, calls)
@@ -64,8 +67,25 @@ http
       return
     }
 
-    // storage: public image -> a stand-in drawing, so screenshots show how a real one sits on the page
-    if (u.pathname.startsWith('/storage/v1/object/public/') && req.method === 'GET') {
+    // storage: the buckets are PRIVATE. A public URL is refused, and counts as a request the app must not make.
+    if (u.pathname.startsWith('/storage/v1/object/public/')) {
+      unknown.add('public image URL requested: ' + u.pathname)
+      return send(res, 400, { statusCode: '404', error: 'Bucket not found', message: 'Bucket not found' })
+    }
+    // storage: sign a batch of paths (POST /storage/v1/object/sign/<bucket> {expiresIn, paths})
+    if (u.pathname.startsWith('/storage/v1/object/sign/') && req.method === 'POST') {
+      const bucket = u.pathname.slice('/storage/v1/object/sign/'.length)
+      readBody(req).then((b) => {
+        const paths = (b && b.paths) || []
+        calls.push({ op: 'storage.sign', bucket, paths, expiresIn: b && b.expiresIn })
+        if (mode.denySign) return send(res, 200, paths.map((path) => ({ path, signedURL: null, error: 'Either the object does not exist or you do not have access to it' })))
+        send(res, 200, paths.map((path) => ({ path, error: null, signedURL: '/object/sign/' + bucket + '/' + path + '?token=mock-' + (b && b.expiresIn) })))
+      })
+      return
+    }
+    // storage: a signed link -> a stand-in drawing, so screenshots show how a real one sits on the page
+    if (u.pathname.startsWith('/storage/v1/object/sign/') && req.method === 'GET') {
+      if (!(u.searchParams.get('token') || '').startsWith('mock-')) return send(res, 400, { error: 'InvalidJWT' })
       const wide = !u.pathname.includes('elev')
       const [w, h] = wide ? [1600, 1100] : [1600, 700]
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#fff"/><rect x="120" y="100" width="${w - 240}" height="${h - 200}" fill="none" stroke="#111" stroke-width="10"/><rect x="${w / 2 - 240}" y="${h / 2 - 90}" width="480" height="180" fill="#e9e2d0" stroke="#111" stroke-width="4"/><text x="${w / 2}" y="${h / 2 + 12}" font-family="sans-serif" font-size="40" text-anchor="middle" fill="#111">stand-in drawing</text></svg>`

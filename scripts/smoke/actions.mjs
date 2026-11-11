@@ -210,7 +210,22 @@ db = await getDb()
 ok('remove after lock: line removed', lineOf(db, 'd6').status === 'superseded' && lineOf(db, 'd6').superseded_by == null)
 ok('remove after lock: contract shows out of date', (await page('/projects/p-schwan')).includes('out of date'))
 
-// ---------- D. delete ----------
+// ---------- C3. stored images are handed out as expiring signed links only ----------
+let api = await (await fetch(app + '/api/outlines?project_id=p-whitaker', { headers: { cookie } })).json()
+let urls = (api.rooms || []).flatMap((x) => x.outlines || []).map((o) => o.image_url).filter(Boolean)
+ok('/api/outlines: image_url is a signed link, never a public one', urls.length > 0 && urls.every((x) => x.includes('/storage/v1/object/sign/intent-outlines/') && x.includes('token=')) , JSON.stringify(urls).slice(0, 300))
+ok('/api/outlines: the signed link loads', (await fetch(urls[0])).status === 200)
+ok('a public storage URL is refused', (await fetch(mock + '/storage/v1/object/public/intent-outlines/' + urls[0].split('/intent-outlines/')[1].split('?')[0])).status === 400)
+await fetch(mock + '/__unknown?clear=1') // the line above asked for a public URL on purpose
+await setMode({ denySign: true }) // storage refuses to sign: pages say so, and still carry no public URL
+html = await page('/projects/p-deubner/images')
+ok('images page when signing is refused: "image unavailable", no public URL', html.includes('image unavailable') && !html.includes('/object/public/') && !html.includes('/object/sign/'))
+html = await page('/projects/p-whitaker/rooms/r-wb3?view=2d')
+ok('room page when signing is refused: says the drawing could not be loaded, no public URL', html.includes('The drawing could not be loaded') && !html.includes('/object/public/'))
+api = await (await fetch(app + '/api/outlines?project_id=p-whitaker', { headers: { cookie } })).json()
+ok('/api/outlines when signing is refused: image_url is null', (api.rooms || []).flatMap((x) => x.outlines || []).every((o) => o.image_url === null))
+await setMode({ denySign: false })
+
 const D = '/projects/p-deubner'
 html = await page(D)
 h = form(html, (f) => f.includes('name="confirm_name"'), 'delete form')
