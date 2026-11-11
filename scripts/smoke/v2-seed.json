@@ -575,8 +575,8 @@
   },
   {
    "rule_key": "shell.outline_matches_model",
-   "description": "A shell-changed room's approved drawing matches the model after the change, within tolerance.",
-   "source": "spec amendment A12",
+   "description": "After the phase that moves walls, each room whose shape a decision changes matches its approved drawing within 0.25 ft (3 in). The 0.25 ft is a starting value for Michael to sanity-check: it is a whole-room shape tolerance, not the 1 in casework standard.",
+   "source": "spec amendment A12; 0.25 ft is the initial value (ruling 2026-11-11)",
    "kinds": [
     "structure.resize",
     "structure.modify",
