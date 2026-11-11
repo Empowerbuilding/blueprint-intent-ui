@@ -224,7 +224,7 @@ export async function deleteProject(formData: FormData) {
   const { data: project } = await supabase.from('intent_projects').select('id, name').eq('id', projectId).single()
   if (!project) redirect('/projects')
 
-  const fail = (message: string): never =>
+  const fail: (message: string) => never = (message) =>
     redirect(`/projects/${projectId}?delete_error=${encodeURIComponent(message)}#delete`)
 
   if (typed !== project.name) fail('The name you typed does not match the project name. Nothing was deleted.')

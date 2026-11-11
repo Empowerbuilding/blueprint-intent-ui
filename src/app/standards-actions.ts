@@ -43,7 +43,7 @@ export async function saveStandard(formData: FormData) {
   // a "change" on byte-identical content and fire a false wake
   const content = String(formData.get('content') || '').replace(/\r\n/g, '\n')
   const note = String(formData.get('note') || '').trim()
-  if (!id || !content.trim()) redirect('/standards?error=empty+content')
+  if (!id || !content.trim()) redirect('/rulebook/standards?error=' + encodeURIComponent('The document was empty — nothing was saved.'))
 
   const { data: { user } } = await supabase.auth.getUser()
   const { data: std } = await supabase
@@ -51,17 +51,17 @@ export async function saveStandard(formData: FormData) {
     .select('id, slug, title, version, content')
     .eq('id', id)
     .single()
-  if (!std) redirect('/standards?error=not+found')
+  if (!std) redirect('/rulebook/standards?error=' + encodeURIComponent('That document no longer exists.'))
 
   // No-op guard: identical content = nothing saved, no version bump, no Blueprint wake.
-  if (content === std.content) redirect(`/standards?saved=${std.slug}&nochange=1`)
+  if (content === std.content) redirect(`/rulebook/standards?doc=${std.slug}&saved=1&nochange=1`)
 
   const nextVersion = (std.version || 1) + 1
   const { error } = await supabase
     .from('intent_standards')
     .update({ content, version: nextVersion, updated_by: user?.id ?? null, updated_at: new Date().toISOString() })
     .eq('id', id)
-  if (error) redirect(`/standards?error=${encodeURIComponent(error.message)}`)
+  if (error) redirect(`/rulebook/standards?doc=${std.slug}&error=${encodeURIComponent(error.message)}`)
 
   await supabase.from('intent_standards_versions').insert({
     standard_id: id,
@@ -77,15 +77,16 @@ export async function saveStandard(formData: FormData) {
     ` Pull the new content: GET /api/standards?slug=${std.slug} (x-prefill-secret) and update your local copy (${std.slug}). These standards govern how you model and build construction docs — apply from the next build step onward.`
   )
 
-  revalidatePath('/standards')
-  redirect(`/standards?saved=${std.slug}`)
+  revalidatePath('/rulebook/standards')
+  revalidatePath('/blueprint')
+  redirect(`/rulebook/standards?doc=${std.slug}&saved=1`)
 }
 
 export async function restoreVersion(formData: FormData) {
   const supabase = await createClient()
   const id = String(formData.get('id') || '')
   const version = Number(formData.get('version') || 0)
-  if (!id || !version) redirect('/standards?error=bad+restore')
+  if (!id || !version) redirect('/rulebook/standards?error=' + encodeURIComponent('Could not tell which version to restore.'))
 
   const { data: { user } } = await supabase.auth.getUser()
   const { data: std } = await supabase
@@ -93,7 +94,7 @@ export async function restoreVersion(formData: FormData) {
     .select('id, slug, title, version')
     .eq('id', id)
     .single()
-  if (!std) redirect('/standards?error=not+found')
+  if (!std) redirect('/rulebook/standards?error=' + encodeURIComponent('That document no longer exists.'))
 
   const { data: snap } = await supabase
     .from('intent_standards_versions')
@@ -101,7 +102,7 @@ export async function restoreVersion(formData: FormData) {
     .eq('standard_id', id)
     .eq('version', version)
     .single()
-  if (!snap) redirect('/standards?error=version+not+found')
+  if (!snap) redirect(`/rulebook/standards?doc=${std.slug}&error=${encodeURIComponent('That version is not in the history.')}`)
 
   const nextVersion = (std.version || 1) + 1
   await supabase
@@ -120,6 +121,7 @@ export async function restoreVersion(formData: FormData) {
     `📐 **Standards restored in the UI: ${std.title} → v${nextVersion} (content of v${version}).** Pull via GET /api/standards?slug=${std.slug} (x-prefill-secret).`
   )
 
-  revalidatePath('/standards')
-  redirect(`/standards?saved=${std.slug}`)
+  revalidatePath('/rulebook/standards')
+  revalidatePath('/blueprint')
+  redirect(`/rulebook/standards?doc=${std.slug}&saved=1`)
 }
