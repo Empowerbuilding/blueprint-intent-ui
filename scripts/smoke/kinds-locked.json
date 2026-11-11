@@ -275,14 +275,17 @@
   },
   {
    "kind": "structure.stairs",
-   "status": "draft",
+   "status": "locked",
    "commands": [
-    "revit.create_stairs"
+    "revit.create_stairs",
+    "revit.batch_execute",
+    "revit.reflect_set",
+    "revit.invoke_method"
    ],
-   "note": "Draft: the bridge can create a stair but has no command that changes a stair run or its path. A recipe changed a stair run on Patel; it is recorded, not adopted.",
-   "backing": "command",
+   "note": "Changing a stair run is done by a recipe that ran on Patel (riser count read back). Setting a stair path: nothing covers it yet.",
+   "backing": "recipe",
    "recipe": {
-    "summary": "Not adopted. Change an existing stair inside one stair edit: remove the landings, set each run's start and end height, move the runs, rebuild the landings, commit.",
+    "summary": "Change an existing stair inside one stair edit: remove the landings, set each run's start and end height, move the runs, rebuild the landings, commit. Setting a stair's path is not covered.",
     "calls": [
      "StairsEditScope Start / Commit",
      "reflect_set BaseElevation / TopElevation on each run",
@@ -298,8 +301,8 @@
       "check": "west stair rebuilt to 27 risers (11 / 8 / 8), saved. Not a build-phase check"
      }
     ],
-    "proven": false,
-    "proven_note": "ran once on an existing stair; never passed a build-phase check"
+    "proven": true,
+    "proven_note": "Proven by its own measured read-back on a real project (ruling 2026-11-11). It has not passed a build-phase check yet."
    }
   },
   {
@@ -348,8 +351,8 @@
       "check": "6 walls shortened and rejoined, length measured; the unjoin left 4 doors covered by stone, repaired by stone_fix.py"
      }
     ],
-    "proven": false,
-    "proven_note": "ran and was measured by its own script; never passed a build-phase check; one run caused a defect that was repaired"
+    "proven": true,
+    "proven_note": "Proven by its own measured read-back on a real project (ruling 2026-11-11). It has not passed a build-phase check yet."
    }
   },
   {
@@ -380,7 +383,7 @@
     "revit.invoke_method",
     "revit.duplicate_family_type"
    ],
-   "note": "Two recipes have run. Neither went through a build-phase check; each was measured by its own script.",
+   "note": "Two recipes have run, each measured by its own script. Flat pad: a fence wall type. Open ground: a railing hosted on the terrain.",
    "backing": "recipe",
    "recipe": {
     "summary": "Two ways. On a flat pad: a fence wall type (a copy of a curtain wall type) drawn along the line, posts from the type. On open ground: a railing drawn along the line and hosted on the terrain so it follows the ground.",
@@ -402,8 +405,8 @@
       "check": "property-line fence created and following the terrain (size read back). Not a build-phase check"
      }
     ],
-    "proven": false,
-    "proven_note": "ran and was measured by its own script; never passed a build-phase check"
+    "proven": true,
+    "proven_note": "Proven by its own measured read-back on a real project (ruling 2026-11-11). It has not passed a build-phase check yet."
    }
   },
   {
@@ -478,12 +481,12 @@
   },
   {
    "kind": "mep.plumbing",
-   "status": "draft",
+   "status": "locked",
    "commands": [
     "revit.create_pipe",
     "revit.place_family_instance"
    ],
-   "note": "Draft: pipe routing and fixture placement exist by name; the path is not confirmed.",
+   "note": "Locked on names and parameters (create_pipe, place_family_instance). Never run: no recipe and no receipt yet.",
    "backing": "command",
    "recipe": null
   },
