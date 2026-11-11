@@ -24,6 +24,22 @@ npm i && npm run dev   # http://localhost:3000
 ```
 DB schema: `plans/work-order-ui/schema.sql` in the claw-workspace repo (already applied to Design OS — tables are `intent_*`).
 
+## Checks before pushing
+```
+npm ci --include=dev
+npx tsc --noEmit            # after one `next build` (generates route types)
+npx eslint
+node scripts/test-libs.mjs  # progress, rule wording/form mapping, diff
+sh scripts/smoke/run.sh     # builds, serves every page against a mock backend + fixtures, then drives the server actions
+```
+The smoke test needs no network and no credentials. It proves pages render and actions send the right changes; it does not prove behaviour against the real database (permissions, cascades, storage policies).
+
+## Layout (2026-11-11 reorganisation)
+- **Inbox** `/` — everything waiting on a person, grouped by project
+- **Projects** `/projects` — progress is derived from data (`src/lib/progress.ts`), never set by hand; delete lives on the project page
+- **Rulebook** `/rulebook/{checks,defaults,standards}` — `/rules` and `/standards` redirect here
+- **Blueprint** `/blueprint` — dated feed of what changed
+
 ## Model scan → room board (the intake flow)
 
 The room board should be born from the **actual model**, not a template. Before any intent capture, run the intake scan and push it:

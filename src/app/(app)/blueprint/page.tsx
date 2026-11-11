@@ -147,7 +147,7 @@ export default async function BlueprintPage({
                     </div>
                     {e.detail && <div className="text-xs text-slate-400 mt-1">{e.detail}</div>}
                     <div className="text-[11px] text-slate-600 mt-1">
-                      {new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                      {new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                       {e.who === 'blueprint' ? ' · pushed by Blueprint' : e.who === 'person' ? ' · done in the app' : ''}
                     </div>
                   </div>

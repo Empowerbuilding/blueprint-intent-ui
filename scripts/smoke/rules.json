@@ -1,0 +1,170 @@
+{
+ "_note": "Test fixture: the 7 seed rules as served by GET /api/rules (rulebook v2, 2026-11-10). Not read by the app.",
+ "rulebook_version": 2,
+ "rulebook_version_at": "2026-11-09T06:48:47.464312+00:00",
+ "rules": [
+  {
+   "rule_key": "closet_clearance_36",
+   "description": "Closet rods/shelves need 36\" minimum clear to walls, doors, beds, and each other.",
+   "rule_type": "min_clearance",
+   "params": {
+    "min_in": 36,
+    "between": [
+     [
+      "closet_rod",
+      "closet_shelf"
+     ],
+     [
+      "wall",
+      "door",
+      "bed",
+      "window"
+     ]
+    ]
+   },
+   "applies_to": {
+    "room_names": [
+     "Master Closet",
+     "Closet",
+     "Walk-in Closet",
+     "Master Bath",
+     "Bath"
+    ],
+    "outline_types": [
+     "plan"
+    ]
+   },
+   "version": 2
+  },
+  {
+   "rule_key": "door_clearance_36",
+   "description": "Doors need 36\" minimum clear to islands, beds, vanities, and appliances.",
+   "rule_type": "min_clearance",
+   "params": {
+    "min_in": 36,
+    "between": [
+     [
+      "door"
+     ],
+     [
+      "island",
+      "bed",
+      "vanity",
+      "appliance",
+      "fridge",
+      "range",
+      "toilet"
+     ]
+    ]
+   },
+   "applies_to": {
+    "room_names": "*",
+    "outline_types": [
+     "plan"
+    ]
+   },
+   "version": 2
+  },
+  {
+   "rule_key": "island_clearance_42",
+   "description": "Island needs 42\" minimum clear to counters, appliances, and tall cabinets.",
+   "rule_type": "min_clearance",
+   "params": {
+    "min_in": 42,
+    "between": [
+     [
+      "island"
+     ],
+     [
+      "counter",
+      "appliance",
+      "fridge",
+      "range",
+      "tall_cabinet"
+     ]
+    ]
+   },
+   "applies_to": {
+    "room_names": [
+     "Kitchen",
+     "Butler Pantry"
+    ],
+    "outline_types": [
+     "plan"
+    ]
+   },
+   "version": 2
+  },
+  {
+   "rule_key": "no_blind_corners",
+   "description": "Blind corner cabinets are forbidden — use hardware-accessible corners.",
+   "rule_type": "forbidden_kind",
+   "params": {
+    "kind": "blind_corner",
+    "max_count": 0
+   },
+   "applies_to": {
+    "room_names": [
+     "Kitchen",
+     "Butler Pantry"
+    ],
+    "outline_types": [
+     "plan"
+    ]
+   },
+   "version": 1
+  },
+  {
+   "rule_key": "soffit_max_18",
+   "description": "Soffits must not exceed 18\" in height/depth.",
+   "rule_type": "max_dimension",
+   "params": {
+    "axis": "h",
+    "kind": "soffit",
+    "max_in": 18
+   },
+   "applies_to": {
+    "room_names": "*",
+    "outline_types": [
+     "elevation",
+     "section"
+    ]
+   },
+   "version": 1
+  },
+  {
+   "rule_key": "uppers_aff_54",
+   "description": "Upper cabinets mount at 54\" above finished floor (±1\").",
+   "rule_type": "elevation_bottom_height",
+   "params": {
+    "aff": 54,
+    "kind": "upper_cabinet",
+    "tolerance": 1
+   },
+   "applies_to": {
+    "room_names": "*",
+    "outline_types": [
+     "elevation"
+    ]
+   },
+   "version": 1
+  },
+  {
+   "rule_key": "walkway_min_36",
+   "description": "Walkways must be at least 36\" wide.",
+   "rule_type": "min_dimension",
+   "params": {
+    "axis": "min",
+    "kind": "walkway",
+    "min_in": 36
+   },
+   "applies_to": {
+    "room_names": "*",
+    "outline_types": [
+     "plan"
+    ]
+   },
+   "version": 1
+  }
+ ]
+}

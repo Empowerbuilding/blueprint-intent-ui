@@ -59,7 +59,8 @@ export function NextStep({ progress, compact = false }: { progress: Progress; co
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <WhoPill who={n.who} />
-          <span className="text-sm font-semibold text-white">{n.label}</span>
+          {/* when it is on you, the button carries the action — do not say it twice */}
+          {n.who !== 'you' && <span className="text-sm font-semibold text-white">{n.label}</span>}
         </div>
         <div className="text-xs text-slate-500 mt-1">{n.detail}</div>
       </div>

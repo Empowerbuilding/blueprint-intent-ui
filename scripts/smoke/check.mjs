@@ -1,0 +1,75 @@
+// Fetches every page as a signed-in user against the mock backend and checks the
+// rendered text. node scripts/smoke/check.mjs <appUrl> <mockUrl> <outDir>
+import fs from 'node:fs'
+
+const [app, mock, out] = process.argv.slice(2)
+const b64u = (s) => Buffer.from(s).toString('base64url')
+const exp = Math.floor(Date.now() / 1000) + 86400 * 30
+const user = { id: 'user-mitch', aud: 'authenticated', role: 'authenticated', email: 'mitch@barnhaus.test', app_metadata: {}, user_metadata: {} }
+const jwt = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' })) + '.' + b64u(JSON.stringify({ sub: user.id, role: 'authenticated', aud: 'authenticated', exp, email: user.email })) + '.c2ln'
+const session = { access_token: jwt, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'mock-refresh', user }
+const cookie = 'sb-127-auth-token=base64-' + b64u(JSON.stringify(session))
+
+const decode = (s) => s.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+const textOf = (html) => decode(html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<!--.*?-->/g, '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+
+const W = '/projects/p-whitaker', D = '/projects/p-deubner'
+const pages = [
+  ['inbox', '/', 200, ['Inbox', 'Waiting on you (2)', 'Review 3 rooms', 'Re-emit the contract (v2)', 'contract out of date', '2D outlines to review (2)', '1 rule failed', '1 decision contradicted', 'Checking decisions', 'Blocking questions (1)', 'Floating shelves or uppers', 'Waiting on Blueprint (2)', 'Build in progress', 'Waiting on the room board', 'Complete (1)'], ['Banks — ']],
+  ['projects', '/projects', 200, ['Projects', 'Deubner', 'Whitaker', 'Mann', 'Schwan', 'Banks', 'Waiting on you', 'Waiting on Blueprint', 'Complete', '+ New project']],
+  ['project-deubner', D, 200, ['Deubner family', 'Review 3 rooms', '1/4 rooms reviewed · 1 blocking question · 2 unassigned images', 'Inspo images (2 unassigned)', 'Lock & Emit', 'Rooms (4)', 'Bath 2', '1 blocking question', 'Delete this project', 'Type the project name'], ['out of date', 'Mark build']],
+  ['project-whitaker', W, 200, ['Contract v1 is out of date', '1 item was added after it was locked', 'Re-emit the contract (v2)', 'contract v1 · out of date', '2D 1/2', '1 to review', '1/3 rooms approved']],
+  ['project-mann', '/projects/p-mann', 200, ['Waiting on the room board', 'Generate standard room set', 'No rooms yet']],
+  ['project-schwan', '/projects/p-schwan', 200, ['Build in progress', 'Mark build complete', '1/1 rooms approved'], ['Mark build started']],
+  ['project-banks', '/projects/p-banks', 200, ['Complete', 'Nothing left to do']],
+  ['room-2d', W + '/rooms/r-wb3', 200, ['2D review', 'To review (1)', 'Zone map', 'awaiting review', '1 rule failed', 'rulebook v2', 'drawn 38"', 'needs ≥ 42"', 'Island ↔ Range', '1 passed', '1 had nothing to measure here', '1 decision contradicted', 'decision says 96x48 but drawn island is 84x42', '1 not shown in this drawing', '2 confirmed', '1 not something a drawing can show', 'Why is this OK despite the failed rule?', 'Approve anyway (1 failed rule)', 'Reject and send back', 'Approved (1)', 'Approved despite a failed rule', 'Client is 6 ft 4', '1 rejected draft waiting on a redraw', 'Soffit should stop at the beam', '1 earlier version was replaced by redraws', 'Next to review: B2 Great Room / Living', 'In the model now: 402 SF'], ['What gets built here', 'Mark room 2D approved']],
+  ['room-decide', W + '/rooms/r-wb3?view=decide', 200, ['What gets built here', '2 decided', '96 x 48 island', 'Plaster hood, no wood', 'built from defaults', 'spice pullouts both sides of range', 'Override', 'Change', 'Open questions', 'Redline notes from the Draft 1 markup'], ['To review (1)', 'hood all-wood including neck']],
+  ['room-running', W + '/rooms/r-wb2', 200, ['To review (1)', 'Checking decisions…', '1 rule passed', 'Approve this drawing'], ['Approve anyway']],
+  ['room-2d-approved', W + '/rooms/r-wb5', 200, ['✓ 2D approved', 'Reopen', 'Reopening discards', 'Approved (1)', 'Decision check skipped'], ['unreviewed', 'Mark room 2D approved']],
+  ['room-intake', D + '/rooms/r-d103', 200, ['What gets built here', 'In the model now: 386 SF · windows: 3 · island: true · casework runs: 6', '84 x 42 island', 'Full-height slab behind the range only', 'Subway tile to the uppers', 'transcript · 11/06 14:22 · 2026-11-06', 'Floating shelves or uppers', 'blocking', 'Use the default', 'Default if unanswered: Uppers to 10 ft', 'Yes, centred on the range', 'Beam, not a wall', 'A101.1', 'Next unreviewed: 114 Bath 2', 'none yet'], ['To review']],
+  ['room-2d-empty', D + '/rooms/r-d103?view=2d', 200, ['No 2D drawings yet']],
+  ['checks', '/rulebook/checks', 200, ['Rulebook', 'Checks', 'Defaults', 'Standards', '8 active rules · rulebook v2', 'Every island keeps at least 42 in clear of any counter, appliance, fridge, range or tall cabinet.', 'Kitchen, Butler Pantry · plans', 'No soffit is more than 18 in tall (deep, on a plan).', 'All rooms · elevations and sections', 'The bottom of every upper cabinet sits 54 in above the finished floor (± 1 in).', 'At least 1 tub is drawn.', 'Turn off', 'Turn on', 'edited as raw JSON', 'Every fridge, range and dishwasher keep at least 3 in clear of each other.', 'Add a rule', 'Pick the kind of rule to start', 'Rulebook history', '“Bath” does not cover “Bath 2”'], ['params (JSON — see examples below)']],
+  ['checks-new', '/rulebook/checks?new=min_clearance', 200, ['Something must stay a minimum distance clear of other things', 'Which rooms', 'Which drawings', 'Add rule']],
+  ['checks-saved', '/rulebook/checks?saved=x', 200, ['Saved — the rulebook is now v2', 'keep their earlier result until their checks are re-run']],
+  ['defaults', '/rulebook/defaults', 200, ['Whole house', 'spice pullouts both sides of range', 'Baths (and the master suite)', 'cannot be edited here yet']],
+  ['standards', '/rulebook/standards', 200, ['Process', 'Modeling', 'D1 → D2 Runbook', 'Design Build Standard', 'Version 3', 'History', 'pushed by Blueprint', 'edited in the app', 'Room numbering pass moved early (Mitch 11/10)', 'What changed', 'Restore', 'Edit this document', 'Save as version 4'], ['What changed in version']],
+  ['standards-diff-2', '/rulebook/standards?doc=d1-to-d2-runbook&compare=2', 200, ['What changed in version 2', '+3 lines', '−0 lines', '+ A line that only existed in version 2.', 'unchanged lines']],
+  ['standards-diff-3', '/rulebook/standards?doc=d1-to-d2-runbook&compare=3', 200, ['What changed in version 3', '+0 lines', '−1 lines', '− A line that only existed in version 2.']],
+  ['standards-diff-1', '/rulebook/standards?doc=d1-to-d2-runbook&compare=1', 200, ['What changed in version 1 (first recorded version)']],
+  ['standards-other', '/rulebook/standards?doc=design-build-standard', 200, ['Design Build Standard', 'Version 1', 'Save as version 2']],
+  ['blueprint', '/blueprint', 200, ['What changed, day by day', 'D1 → D2 Runbook → version 3', 'Removed a stray line', 'done in the app', 'pushed by Blueprint', 'Checks rulebook → version 2', 'Whitaker — contract v1 locked', 'Not recorded here yet']],
+  ['blueprint-checks', '/blueprint?show=checks', 200, ['Checks rulebook → version 2'], ['Runbook → version']],
+  ['emit', W + '/emit', 200, ['Lock Gates', 'Emission History']],
+  ['images', D + '/images', 200, ['Unassigned (2)', 'Walnut island with waterfall edge']],
+  ['redirect-rules', '/rules', 307, []],
+  ['redirect-standards', '/standards?doc=d1-to-d2-runbook', 307, []],
+  ['redirect-rulebook', '/rulebook', 307, []],
+  ['missing-project', '/projects/nope', 404, []],
+  ['missing-room', W + '/rooms/r-d103', 404, []],
+]
+
+let fails = 0
+for (const [name, path, wantStatus, must, mustNot = []] of pages) {
+  const res = await fetch(app + path, { headers: { cookie }, redirect: 'manual' })
+  const html = await res.text()
+  fs.writeFileSync(out + '/' + name + '.html', html)
+  const text = textOf(html)
+  fs.writeFileSync(out + '/' + name + '.txt', text)
+  const problems = []
+  if (res.status !== wantStatus) problems.push('status ' + res.status + ' (want ' + wantStatus + ')' + (res.headers.get('location') ? ' -> ' + res.headers.get('location') : ''))
+  if (wantStatus === 200 && /Application error|Internal Server Error|__next_error__/i.test(html)) problems.push('error page rendered')
+  // visible text first; placeholders and other attributes are only in the markup
+  const markup = decode(html)
+  for (const s of must) if (!text.includes(s) && !markup.includes(s)) problems.push('missing: ' + s)
+  for (const s of mustNot) if (text.includes(s)) problems.push('should not show: ' + s)
+  if (wantStatus === 307) {
+    const loc = res.headers.get('location') || ''
+    if (!loc.includes('/rulebook/')) problems.push('redirect target ' + loc)
+  }
+  if (problems.length) fails += problems.length
+  console.log((problems.length ? 'FAIL ' : 'ok   ') + name.padEnd(20) + String(res.status).padEnd(5) + (text.length + ' chars').padEnd(13) + problems.join(' | '))
+}
+const unknown = await (await fetch(mock + '/__unknown')).json()
+if (unknown.length) { fails += unknown.length; console.log('FAIL mock saw requests it could not serve:', unknown.join(' ; ')) }
+console.log(fails ? 'SMOKE FAILED: ' + fails + ' problem(s)' : 'SMOKE PASS: ' + pages.length + ' pages')
+process.exit(fails ? 1 : 0)

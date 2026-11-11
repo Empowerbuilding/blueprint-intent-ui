@@ -8,7 +8,7 @@ const canon = (v) => Array.isArray(v) ? v.map(canon) : v && typeof v === 'object
 const eq = (name, got, want) => { const g = JSON.stringify(canon(got)), w = JSON.stringify(canon(want)); if (g !== w) { fails++; console.log('FAIL', name, '\n  got ', g, '\n  want', w) } else console.log('ok  ', name) }
 
 // ---- rule-text against the LIVE rulebook mirror ----
-const seed = JSON.parse(fs.readFileSync('/home/node/.openclaw/workspace/automation/rules_seed.json', 'utf8'))
+const seed = JSON.parse(fs.readFileSync(new URL('./smoke/rules.json', import.meta.url), 'utf8'))
 const rules = Array.isArray(seed) ? seed : seed.rules
 for (const r of rules) {
   console.log('    ', r.rule_key.padEnd(22), '|', describeRule(r), '|', describeScope(r))
