@@ -6,7 +6,9 @@ The authoring + review surface for Blueprint D2 intent contracts. Humans confirm
 
 ## What it does
 - **Project → room board (B1–B18 + HOUSE)** with a review-state gate: every room must be `confirmed` (or defaults accepted) before Lock & Emit
-- **Decisions with supersession chains** — adding a decision on the same topic auto-supersedes the old one; full timeline visible
+- **Decisions, one line at a time** — a topic can hold many lines; each is changed, removed or put back on its own, and the earlier wording stays visible
+- **Private image stores** — inspo photos and 2D outlines are only reachable through expiring signed links (src/lib/storage.ts)
+- **Lessons ledger** — Blueprint proposes what it learned; only an approver (intent_approvers) accepts; Blueprint works from accepted lessons (GET /api/lessons)
 - **Open questions** with blocking flag + documented defaults — resolve or accept before lock
 - **Typed redline notes** (beam / cabinet_run / delete / move / keep / note) — Michael's D1 markup becomes structured intent
 - **Emits** `intent.json` + `BRIEF.md` for Blueprint to compile into a work order (phase 4, pending)
