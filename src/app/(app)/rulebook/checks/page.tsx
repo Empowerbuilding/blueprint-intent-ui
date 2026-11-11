@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { fmtDate, fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { saveRule, saveRuleForm, toggleRule } from '@/app/rules-actions'
 import { Pill } from '@/components/pill'
@@ -154,7 +155,7 @@ function RuleForm({
               <input
                 name="room_names"
                 defaultValue={f.room_names}
-                placeholder="Room names, exactly as on the board: Kitchen, Butler Pantry"
+                placeholder="Room names: Kitchen, Butler Pantry, Bath"
                 className="field !py-1.5 !text-sm"
               />
               <input
@@ -163,6 +164,10 @@ function RuleForm({
                 placeholder="…and/or room numbers: 103, 104"
                 className="field !py-1.5 !text-sm"
               />
+              <span className="block text-[11px] text-slate-600">
+                A name also covers its numbered rooms (Bath covers Bath 2) and combined names (Butler Pantry covers Butler
+                Pantry / Dining). It does not cover a different room that contains the word (Bath does not cover Master Bath).
+              </span>
               <span className="block text-[11px] text-slate-600">
                 Names must match exactly (capitals do not matter). “Bath” does not cover “Bath 2”.
               </span>
@@ -239,9 +244,13 @@ function RawForm({ rule }: { rule: Rule }) {
 export default async function ChecksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; saved?: string; new?: string }>
+  searchParams: Promise<{ error?: string; saved?: string; new?: string; rechecked?: string; changed?: string; approved?: string; told?: string; recheck_failed?: string }>
 }) {
-  const { error, saved, new: newType } = await searchParams
+  const { error, saved, new: newType, rechecked, changed, approved, told, recheck_failed } = await searchParams
+  const tz = await viewerTimeZone()
+  const nRechecked = Number(rechecked || 0)
+  const nChanged = Number(changed || 0)
+  const nApproved = Number(approved || 0)
   const supabase = await createClient()
 
   const [{ data: ruleRows }, { data: versions }] = await Promise.all([
@@ -281,8 +290,29 @@ export default async function ChecksPage({
           <div className="bg-emerald-950/40 border border-emerald-900 rounded-xl p-4 text-sm text-emerald-300">
             Saved — the rulebook is now v{latest}.
             <span className="block text-emerald-400/70 mt-1">
-              Drawings that were already pushed keep their earlier result until their checks are re-run (↻ on the
-              drawing). New pushes use the new rulebook.
+              {recheck_failed
+                ? 'The drawings awaiting review could NOT be re-checked. Re-run their checks from the drawing (↻).'
+                : rechecked === undefined
+                  ? 'Drawings awaiting review are re-checked against the new rulebook when a rule changes.'
+                  : nRechecked === 0
+                    ? 'No drawings are awaiting review, so nothing needed re-checking.'
+                    : nRechecked +
+                      (nRechecked === 1 ? ' drawing' : ' drawings') +
+                      ' awaiting review ' +
+                      (nRechecked === 1 ? 'was' : 'were') +
+                      ' re-checked against it: ' +
+                      (nChanged === 0 ? 'no result changed.' : nChanged + (nChanged === 1 ? ' result changed.' : ' results changed.')) +
+                      ' They are in the Inbox.'}
+              {nApproved > 0 &&
+                ' ' +
+                  nApproved +
+                  (nApproved === 1 ? ' approved drawing' : ' approved drawings') +
+                  ' would fail the new rulebook; ' +
+                  (nApproved === 1 ? 'it stays' : 'they stay') +
+                  ' approved. Reopen the room if ' +
+                  (nApproved === 1 ? 'it needs' : 'they need') +
+                  ' another look.'}
+              {told ? ' Blueprint has been told.' : ''}
             </span>
           </div>
         )}
@@ -312,7 +342,7 @@ export default async function ChecksPage({
                   <summary className="cursor-pointer text-xs text-slate-400 hover:text-gold-light">
                     Edit
                     <span className="ml-2 font-mono text-[10px] text-slate-700">
-                      {r.rule_key} · v{r.version} · {new Date(r.updated_at).toLocaleDateString()}
+                      {r.rule_key} · v{r.version} · {fmtDate(r.updated_at, tz)}
                     </span>
                   </summary>
                   <div className="mt-3 rounded-lg border border-bh-border bg-bh-panel/50 p-4 space-y-4">
@@ -381,7 +411,7 @@ export default async function ChecksPage({
               <div key={v.version} className="card flex items-center justify-between px-4 py-2.5 text-sm">
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-xs bg-slate-800 rounded px-2 py-0.5">v{v.version}</span>
-                  <span className="text-slate-500">{new Date(v.created_at).toLocaleString()}</span>
+                  <span className="text-slate-500">{fmtDateTime(v.created_at, tz)}</span>
                 </div>
                 <span className="text-xs text-slate-500">
                   {Array.isArray(v.snapshot) ? v.snapshot.length + ' rules' : '—'}

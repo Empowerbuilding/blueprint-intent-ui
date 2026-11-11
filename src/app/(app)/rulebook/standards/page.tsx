@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { fmtDate, fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { saveStandard, restoreVersion } from '@/app/standards-actions'
 import Markdown from '@/components/markdown'
@@ -44,6 +45,7 @@ export default async function StandardsPage({
   searchParams: Promise<{ doc?: string; compare?: string; error?: string; saved?: string; nochange?: string }>
 }) {
   const { doc, compare, error, saved, nochange } = await searchParams
+  const tz = await viewerTimeZone()
   const supabase = await createClient()
 
   const { data: standardRows } = await supabase.from('intent_standards').select('*').eq('active', true).order('title')
@@ -106,7 +108,7 @@ export default async function StandardsPage({
                     >
                       {s.title}
                       <span className="block text-[10px] text-slate-600 mt-0.5">
-                        v{s.version} · {new Date(s.updated_at).toLocaleDateString()}
+                        v{s.version} · {fmtDate(s.updated_at, tz)}
                       </span>
                     </Link>
                   ))}
@@ -137,7 +139,7 @@ export default async function StandardsPage({
                 <h2 className="text-lg font-semibold text-white">{current.title}</h2>
                 {current.description && <p className="text-sm text-slate-400 mt-1">{current.description}</p>}
                 <div className="text-[11px] text-slate-600 mt-2">
-                  Version {current.version} · updated {new Date(current.updated_at).toLocaleString()}
+                  Version {current.version} · updated {fmtDateTime(current.updated_at, tz)}
                   {current.source_path ? ' · Blueprint keeps a copy at ' + current.source_path : ''}
                 </div>
               </div>
@@ -193,7 +195,7 @@ export default async function StandardsPage({
                 <h3 className="section-title">History</h3>
                 <div className="card divide-y divide-slate-800/60">
                   {versions.slice(0, 4).map((v) => (
-                    <HistoryRow key={v.id} v={v} current={current} here={here} />
+                    <HistoryRow key={v.id} v={v} current={current} here={here} tz={tz} />
                   ))}
                   {versions.length === 0 && (
                     <div className="px-4 py-3 text-xs text-slate-600">No recorded versions for this document.</div>
@@ -206,7 +208,7 @@ export default async function StandardsPage({
                     </summary>
                     <div className="card divide-y divide-slate-800/60 mt-2">
                       {versions.slice(4).map((v) => (
-                        <HistoryRow key={v.id} v={v} current={current} here={here} />
+                        <HistoryRow key={v.id} v={v} current={current} here={here} tz={tz} />
                       ))}
                     </div>
                   </details>
@@ -253,12 +255,12 @@ export default async function StandardsPage({
   )
 }
 
-function HistoryRow({ v, current, here }: { v: VersionRow; current: Standard; here: string }) {
+function HistoryRow({ v, current, here, tz }: { v: VersionRow; current: Standard; here: string; tz: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-xs">
       <div className="min-w-0">
         <span className="font-mono text-gold-light">v{v.version}</span>
-        <span className="text-slate-500 ml-2">{new Date(v.created_at).toLocaleString()}</span>
+        <span className="text-slate-500 ml-2">{fmtDateTime(v.created_at, tz)}</span>
         <span className="ml-2">
           <Pill tone={v.edited_by ? 'gold' : 'blue'}>{v.edited_by ? 'edited in the app' : 'pushed by Blueprint'}</Pill>
         </span>

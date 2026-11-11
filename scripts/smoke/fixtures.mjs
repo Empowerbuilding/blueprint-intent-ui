@@ -144,6 +144,7 @@ const db = {
     { id: 'sv3', standard_id: 's-run', version: 3, content: runbook, note: 'Removed a stray line', edited_by: 'user-mitch', created_at: t(1250) },
     { id: 'sv4', standard_id: 's-build', version: 1, content: build, note: 'created by blueprint', edited_by: null, created_at: t(1400) },
   ],
+  portal_messages: [], // what the app tells Blueprint
   // lessons: Blueprint proposes, only the two approvers decide
   intent_approvers: [
     { user_id: 'user-mitch', email: 'mitch@barnhaus.test', name: 'Mitch', added_at: t(5000) },

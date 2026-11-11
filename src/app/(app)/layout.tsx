@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '@/app/actions'
 import { MainNav } from '@/components/main-nav'
+import { TimeZone } from '@/components/time-zone'
+import { viewerTimeZone } from '@/lib/time'
 import Link from 'next/link'
 
 // Global app shell — Barnhaus logo + the four areas, persistent across every page.
@@ -13,6 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { data: { user } } = await supabase.auth.getUser()
 
   const email = user?.email || ''
+  const tz = await viewerTimeZone()
   const name = email.split('@')[0].replace(/[._]/g, ' ')
 
   return (
@@ -48,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
+      <TimeZone current={tz} />
       <div className="flex-1">{children}</div>
     </div>
   )

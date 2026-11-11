@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { acceptLesson, dismissLesson, proposeLesson, retireLesson } from '@/app/lessons-actions'
 import {
@@ -20,10 +21,8 @@ import { Pill } from '@/components/pill'
 // Blueprint proposes. Only an approver accepts, dismisses or retires. Blueprint works from the
 // accepted list and nothing else.
 
-const day = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''
-
-function Meta({ l, approvers }: { l: Lesson; approvers: Approver[] }) {
+function Meta({ l, approvers, tz }: { l: Lesson; approvers: Approver[]; tz: string }) {
+  const day = (iso: string | null) => fmtDate(iso, tz)
   return (
     <div className="text-[11px] text-slate-500 break-words">
       Proposed by {proposerLabel(l, approvers)} · {day(l.created_at)}
@@ -35,6 +34,8 @@ function Meta({ l, approvers }: { l: Lesson; approvers: Approver[] }) {
 
 export default async function LessonsPage({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
   const { err } = await searchParams
+  const tz = await viewerTimeZone()
+  const day = (iso: string | null) => fmtDate(iso, tz)
   const supabase = await createClient()
   const [
     {
@@ -87,7 +88,7 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
                   </div>
                   <div className="text-sm text-slate-100 whitespace-pre-wrap break-words mt-0.5">{l.proposed_rule}</div>
                 </div>
-                <Meta l={l} approvers={approvers} />
+                <Meta l={l} approvers={approvers} tz={tz} />
               </div>
 
               {isApprover ? (

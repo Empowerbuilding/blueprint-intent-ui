@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { dayKey, fmtDayHeading, fmtTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { BlueprintHeader } from '@/components/blueprint-header'
 import { loadApprovers, loadLessons, whoLabel } from '@/lib/lessons'
@@ -34,6 +35,7 @@ export default async function BlueprintPage({
   searchParams: Promise<{ show?: string }>
 }) {
   const { show } = await searchParams
+  const tz = await viewerTimeZone()
   const filter = KINDS.find((k) => k.key === show)?.key || null
   const supabase = await createClient()
 
@@ -136,7 +138,7 @@ export default async function BlueprintPage({
   const shown = events.filter((e) => !filter || e.kind === filter).sort((a, b) => (a.at < b.at ? 1 : -1))
   const days = new Map<string, Event[]>()
   for (const e of shown) {
-    const day = e.at.slice(0, 10)
+    const day = dayKey(e.at, tz) // the viewer's calendar day, not the server's
     days.set(day, [...(days.get(day) || []), e])
   }
 
@@ -159,12 +161,7 @@ export default async function BlueprintPage({
         {[...days.entries()].map(([day, list]) => (
           <section key={day} className="space-y-2">
             <h2 className="section-title">
-              {new Date(day + 'T12:00:00Z').toLocaleDateString(undefined, {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
+              {fmtDayHeading(day)}
             </h2>
             <div className="card divide-y divide-slate-800/60">
               {list.map((e, i) => (
@@ -178,7 +175,7 @@ export default async function BlueprintPage({
                     </div>
                     {e.detail && <div className="text-xs text-slate-400 mt-1">{e.detail}</div>}
                     <div className="text-[11px] text-slate-600 mt-1">
-                      {new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+                      {fmtTime(e.at, tz)}
                       {e.who === 'blueprint' ? ' · pushed by Blueprint' : e.who === 'person' ? ' · done in the app' : ''}
                       {e.by ? ' · ' + e.by : ''}
                     </div>

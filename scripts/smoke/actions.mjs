@@ -55,6 +55,13 @@ ok('add rule: redirects to saved', r.status === 303 && r.location.includes('/rul
 ok('add rule: stored params', added && same(added.params, { between: [['vanity'], ['wall', 'toilet']], min_in: 30 }), JSON.stringify(added && added.params))
 ok('add rule: stored scope', added && same(added.applies_to, { room_names: ['Bath 2', 'Bath 3'], outline_types: ['plan'] }), JSON.stringify(added && added.applies_to))
 ok('add rule: active, type kept', added && added.active === true && added.rule_type === 'min_clearance')
+// a rule change re-checks the drawings that are still awaiting review, and tells Blueprint
+const outl = (d, id) => d.intent_outlines.find((x) => x.id === id)
+ok('rule change: both drawings awaiting review were measured again against v3', r.location.includes('&rechecked=2') && outl(db, 'o-plan').checks.math.rulebook_version === 3 && outl(db, 'o-gr').checks.math.rulebook_version === 3 && outl(db, 'o-plan').checks.math.ran_at > outl(before, 'o-plan').checks.math.ran_at, JSON.stringify([r.location, outl(db, 'o-plan').checks.math.rulebook_version]))
+ok('rule change: the decision check results on those drawings are kept', same(outl(db, 'o-plan').checks.vision, outl(before, 'o-plan').checks.vision) && outl(db, 'o-gr').checks.vision.status === 'running')
+ok('rule change: approved, rejected and replaced drawings are not rewritten', ['o-elev', 'o-sec', 'o-old', 'o-ms', 'o-s1'].every((id) => same(outl(db, id), outl(before, id))))
+let wake = db.portal_messages[db.portal_messages.length - 1]
+ok('rule change: Blueprint is told what changed', db.portal_messages.length === 1 && wake.channel_id === 'blueprint-mitch' && wake.sender_name === 'WorkOrderUI' && wake.content.includes('Rulebook changed → v3') && wake.content.includes('vanity_needs_30_clear_of_walls_and_the_toilet') && wake.content.includes('added by mitch@barnhaus.test') && wake.content.includes('Re-checked 2 drawings awaiting review; no result changed.') && wake.content.includes('not a go') && r.location.includes('told=1'), JSON.stringify(wake))
 ok('add rule: rulebook snapshot v3 with 9 active rules', db.intent_rulebook_versions.some((v) => v.version === 3 && v.snapshot.length === 9), JSON.stringify(db.intent_rulebook_versions.map((v) => [v.version, v.snapshot.length])))
 
 // same description again -> key collision -> suffixed key, not an overwrite
@@ -88,6 +95,38 @@ r = await post('/rulebook/checks', h)
 db = await getDb()
 ok('toggle: rule turned on', db.intent_rules.find((x) => x.id === 'rule-off').active === true && r.status === 303, JSON.stringify(r))
 
+// turning a rule off / on changes a waiting drawing's result: counted, written, reported
+h = form(html, (f) => f.includes('value="' + island.id + '"') && f.includes('Turn off'), 'toggle island off')
+r = await post('/rulebook/checks', h)
+db = await getDb()
+wake = db.portal_messages[db.portal_messages.length - 1]
+ok('rule turned off: the waiting kitchen plan no longer fails, and that is reported', r.location.includes('&changed=1') && !outl(db, 'o-plan').checks.math.results.some((x) => x.status === 'fail') && wake.content.includes('island_clearance_42') && wake.content.includes('turned off') && wake.content.includes('1 changed result:') && /Whitaker · B3 Kitchen \(plan "Zone map"\): now (passes|nothing measured)/.test(wake.content), JSON.stringify([r.location, wake.content]))
+html = await page('/rulebook/checks')
+h = form(html, (f) => f.includes('value="' + island.id + '"') && f.includes('Turn on'), 'toggle island on')
+r = await post('/rulebook/checks', h)
+db = await getDb()
+wake = db.portal_messages[db.portal_messages.length - 1]
+ok('rule turned back on: the plan fails again, and that is reported', r.location.includes('&changed=1') && outl(db, 'o-plan').checks.math.results.some((x) => x.rule_key === 'island_clearance_42' && x.status === 'fail') && wake.content.includes('turned on') && wake.content.includes('now fails — island_clearance_42'), JSON.stringify([r.location, wake.content]))
+// a new rule that an APPROVED drawing would fail: the drawing stays approved and untouched, and is reported
+html = await page('/rulebook/checks?new=min_clearance')
+h = form(html, (f) => f.includes('name="primary"') && !f.includes('name="id"'), 'add-rule form (suite)')
+before = await getDb()
+r = await post('/rulebook/checks?new=min_clearance', h, { primary: 'island', reference: 'counter', min_in: '40', rooms_mode: 'named', room_names: 'Master Suite', section_codes: '', type_plan: 'on', description: 'Suite island needs 40 in clear.' })
+db = await getDb()
+wake = db.portal_messages[db.portal_messages.length - 1]
+ok('new rule an approved drawing would fail: it stays approved and unchanged, and is reported', r.location.includes('&approved=1') && same(outl(db, 'o-ms'), outl(before, 'o-ms')) && outl(db, 'o-ms').status === 'approved' && wake.content.includes('Approved drawings that would fail the new rulebook (left approved, not rewritten):') && wake.content.includes('Whitaker · B5 Master Suite (plan "Zone map"): now fails — suite_island_needs_40_in_clear') && !wake.content.includes('Schwan'), JSON.stringify([r.location, wake.content]))
+ok('saved banner after a real save', (await page(r.location)).replace(/<!-- -->/g, '').includes('1 approved drawing would fail the new rulebook; it stays approved'))
+
+// times are shown in the viewer's time zone (cookie "tz"), Central until the browser has reported it
+const tzPage = async (tz) => (await (await fetch(app + '/blueprint', { headers: { cookie: cookie + (tz ? '; tz=' + encodeURIComponent(tz) : '') } })).text()).replace(/<!-- -->/g, '')
+let feed = await tzPage('')
+ok('times: Central by default', /\d{1,2}:\d{2} [AP]M (CST|CDT)/.test(feed) && !/GMT\+9|UTC/.test(feed), (feed.match(/\d{1,2}:\d{2} [AP]M \S+/) || [''])[0])
+feed = await tzPage('Asia/Tokyo')
+ok('times: the viewer\'s zone when the browser has reported it', /\d{1,2}:\d{2} [AP]M GMT\+9/.test(feed) && !/ (CST|CDT)/.test(feed), (feed.match(/\d{1,2}:\d{2} [AP]M \S+/) || [''])[0])
+feed = await tzPage('Not/AZone')
+ok('times: a bad zone value falls back to Central', /\d{1,2}:\d{2} [AP]M (CST|CDT)/.test(feed))
+ok('times: the page reports the zone it used, so the browser can correct it', (await tzPage('America/Denver')).includes('America/Denver'))
+
 // ---------- B. approving drawings ----------
 const W = '/projects/p-whitaker/rooms/r-wb3'
 html = await page(W + '?view=2d')
@@ -100,7 +139,7 @@ r = await post(W, h, { override_reason: 'Range is a 30 in slide-in, drawn at 36'
 db = await getDb()
 let o = db.intent_outlines.find((x) => x.id === 'o-plan')
 ok('approve failed rule with a reason: approved', o.status === 'approved' && o.approved_by === 'user-mitch')
-ok('approve failed rule: reason + failed rule stored, checks kept', o.checks.override && o.checks.override.reason === 'Range is a 30 in slide-in, drawn at 36' && same(o.checks.override.failed_rules, ['island_clearance_42']) && o.checks.override.by === 'mitch@barnhaus.test' && o.checks.math.results.length === 3 && o.checks.vision.status === 'ok', JSON.stringify(o.checks.override))
+ok('approve failed rule: reason + failed rule stored, checks kept', o.checks.override && o.checks.override.reason === 'Range is a 30 in slide-in, drawn at 36' && same(o.checks.override.failed_rules, ['island_clearance_42']) && o.checks.override.by === 'mitch@barnhaus.test' && o.checks.math.results.some((x) => x.rule_key === 'island_clearance_42' && x.status === 'fail') && o.checks.vision.status === 'ok' && o.checks.vision.results.length === 5, JSON.stringify(o.checks.override))
 
 html = await page('/projects/p-whitaker/rooms/r-wb2?view=2d')
 h = form(html, (f) => f.includes('Approve this drawing'), 'plain approve form')

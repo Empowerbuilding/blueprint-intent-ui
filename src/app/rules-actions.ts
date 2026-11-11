@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { fieldsToRule, keyFromDescription, RULE_TYPE_VALUES } from '@/lib/rule-text'
+import { recheckAfterRuleChange, ruleChangeMessage } from '@/lib/recheck'
+import { notifyBlueprint } from '@/lib/notify'
 
 // Rulebook actions — Michael edits clearance rules at /rules; the math gate
 // executes them against outline geometry. Every save snapshots the full active
@@ -31,6 +33,25 @@ async function snapshotRulebook() {
     snapshot: active,
     created_by: user?.id ?? null,
   })
+}
+
+// After any rule change: new rulebook version, drawings still awaiting review measured again against
+// it, Blueprint told. Returns what happened as query fields for the "saved" banner.
+async function afterRuleChange(what: string): Promise<string> {
+  await snapshotRulebook()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  let q = ''
+  try {
+    const s = await recheckAfterRuleChange(supabase)
+    const told = await notifyBlueprint(ruleChangeMessage(what, user?.email ?? null, s))
+    q = '&rechecked=' + s.rechecked + '&changed=' + s.changed.length + '&approved=' + s.approvedNowFailing.length + (told ? '&told=1' : '')
+  } catch {
+    q = '&recheck_failed=1' // the rule itself is saved; the banner says the re-check did not run
+  }
+  revalidatePath('/rulebook/checks')
+  revalidatePath('/')
+  return q
 }
 
 export async function saveRule(formData: FormData) {
@@ -88,9 +109,8 @@ export async function saveRule(formData: FormData) {
     })
   }
 
-  await snapshotRulebook()
-  revalidatePath('/rulebook/checks')
-  redirect('/rulebook/checks?saved=' + encodeURIComponent(ruleKey))
+  const after = await afterRuleChange('Rule `' + ruleKey + '` ' + (id ? 'edited' : 'added'))
+  redirect('/rulebook/checks?saved=' + encodeURIComponent(ruleKey) + after)
 }
 
 // Plain-language editor (Rulebook → Checks). The form posts sentence fields;
@@ -155,9 +175,8 @@ export async function saveRuleForm(formData: FormData) {
     if (!savedKey) back('Could not find a free name for this rule.')
   }
 
-  await snapshotRulebook()
-  revalidatePath('/rulebook/checks')
-  redirect('/rulebook/checks?saved=' + encodeURIComponent(savedKey))
+  const after = await afterRuleChange('Rule `' + savedKey + '` ' + (id ? 'edited' : 'added'))
+  redirect('/rulebook/checks?saved=' + encodeURIComponent(savedKey) + after)
 }
 
 export async function toggleRule(formData: FormData) {
@@ -166,7 +185,7 @@ export async function toggleRule(formData: FormData) {
   if (!id) return
   const { data: existing } = await supabase
     .from('intent_rules')
-    .select('active, version')
+    .select('active, version, rule_key')
     .eq('id', id)
     .single()
   if (!existing) return
@@ -174,7 +193,6 @@ export async function toggleRule(formData: FormData) {
     .from('intent_rules')
     .update({ active: !existing.active, version: (existing.version || 1) + 1, updated_at: new Date().toISOString() })
     .eq('id', id)
-  await snapshotRulebook()
-  revalidatePath('/rulebook/checks')
-  redirect('/rulebook/checks?saved=1')
+  const after = await afterRuleChange('Rule `' + existing.rule_key + '` turned ' + (existing.active ? 'off' : 'on'))
+  redirect('/rulebook/checks?saved=1' + after)
 }

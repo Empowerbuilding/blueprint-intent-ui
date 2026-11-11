@@ -1,3 +1,4 @@
+import { fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
 import { PageHeader } from '@/components/page-header'
@@ -12,6 +13,7 @@ export default async function EmitPage({
   searchParams: Promise<{ error?: string; emitted?: string; handoff?: string }>
 }) {
   const { id } = await params
+  const tz = await viewerTimeZone()
   const { error, emitted, handoff } = await searchParams
   const supabase = await createClient()
 
@@ -134,7 +136,7 @@ export default async function EmitPage({
               <div key={e.id} className="card flex items-center justify-between gap-3 px-4 py-3 text-sm">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="font-mono text-xs bg-slate-800 rounded px-2 py-0.5">v{e.version}</span>
-                  <span className="text-slate-500">{new Date(e.emitted_at).toLocaleString()}</span>
+                  <span className="text-slate-500">{fmtDateTime(e.emitted_at, tz)}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs shrink-0">
                   <span className="text-gold-light">{e.blueprint_status}</span>

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { fmtDate, viewerTimeZone } from '@/lib/time'
 import Link from 'next/link'
 import { createProject } from '@/app/actions'
 import { loadOverview } from '@/lib/overview'
@@ -16,6 +17,7 @@ export default async function ProjectsPage({
   searchParams: Promise<{ deleted?: string; files_left?: string }>
 }) {
   const { deleted, files_left } = await searchParams
+  const tz = await viewerTimeZone()
   const all = await loadOverview()
 
   return (
@@ -91,11 +93,7 @@ export default async function ProjectsPage({
                 <div className="text-sm text-slate-200 mt-2">{progress.next.label}</div>
                 <div className="text-xs text-slate-600 mt-2">
                   Created{' '}
-                  {new Date(project.created_at).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {fmtDate(project.created_at, tz)}
                 </div>
               </div>
             </Link>

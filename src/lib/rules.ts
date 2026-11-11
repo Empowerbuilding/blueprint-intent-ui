@@ -82,14 +82,25 @@ function overlaps(a: GeoElement, b: GeoElement): boolean {
   )
 }
 
+// A rule names rooms the way people say them ("Bath", "Butler Pantry"). On the board a room can be a
+// numbered copy ("Bath 2") or carry a combined name ("Butler Pantry / Dining"); both are that room.
+// It is NOT a word search: "Bath" does not match "Master Bath".
+const normRoom = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+const dropNumber = (s: string) => s.replace(/\s*#?\s*\d+$/, '').trim()
+export function roomNameMatches(ruleName: string, roomName: string): boolean {
+  const want = normRoom(ruleName)
+  if (!want) return false
+  const full = normRoom(roomName)
+  const parts = [full, ...full.split('/').map((p) => p.trim())].filter(Boolean)
+  return parts.some((p) => p === want || dropNumber(p) === want)
+}
+
 function ruleAppliesToRoom(rule: RuleRow, room: { name: string; section_code: string }): boolean {
   const at = rule.applies_to || {}
   const names = strArr(at.room_names)
   const codes = strArr(at.section_codes)
   if (!names.length && !codes.length) return true
-  const nameHit =
-    names.includes('*') ||
-    names.some((n) => n.toLowerCase() === room.name.toLowerCase())
+  const nameHit = names.includes('*') || names.some((n) => roomNameMatches(n, room.name))
   const codeHit = codes.includes(room.section_code)
   return nameHit || codeHit
 }

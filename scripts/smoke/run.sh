@@ -11,6 +11,8 @@ node scripts/smoke/fixtures.mjs "$OUT/db.json" >/dev/null || exit 1
 export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:$MOCK_PORT NEXT_PUBLIC_SUPABASE_ANON_KEY=mock-anon NEXT_TELEMETRY_DISABLED=1
 # machine routes (x-prefill-secret) are exercised too
 export PREFILL_SECRET=smoke-secret SUPABASE_SERVICE_ROLE_KEY=mock-service
+# the messages the app sends to Blueprint land in the mock (table portal_messages)
+export PORTAL_URL=http://127.0.0.1:$MOCK_PORT PORTAL_SUPABASE_SERVICE_KEY=mock-portal
 node node_modules/next/dist/bin/next build > "$OUT/build.log" 2>&1 || { echo "BUILD FAILED"; tail -25 "$OUT/build.log"; exit 1; }
 node scripts/smoke/mock-supabase.mjs "$OUT/db.json" $MOCK_PORT > "$OUT/mock.log" 2>&1 &
 MOCK=$!
