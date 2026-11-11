@@ -9,6 +9,9 @@ The authoring + review surface for Blueprint D2 intent contracts. Humans confirm
 - **Decisions, one line at a time** — a topic can hold many lines; each is changed, removed or put back on its own, and the earlier wording stays visible
 - **Private image stores** — inspo photos and 2D outlines are only reachable through expiring signed links (src/lib/storage.ts)
 - **Lessons ledger** — Blueprint proposes what it learned; only an approver (intent_approvers) accepts; Blueprint works from accepted lessons (GET /api/lessons)
+- **Editable defaults** — what gets built when nobody decides is data (intent_defaults), changed by an approver, history kept (GET /api/defaults)
+- **Capabilities + gap log** — Blueprint reports each machine's bridge build and command list (POST /api/capabilities); gaps are logged and closed by an approver. The app never calls a bridge
+- **Rule changes re-check** drawings awaiting review; times show in the viewer's time zone
 - **Open questions** with blocking flag + documented defaults — resolve or accept before lock
 - **Typed redline notes** (beam / cabinet_run / delete / move / keep / note) — Michael's D1 markup becomes structured intent
 - **Emits** `intent.json` + `BRIEF.md` for Blueprint to compile into a work order (phase 4, pending)
