@@ -39,7 +39,9 @@ export const CHECKER_LABEL: Record<ModelRule['checker_status'], string> = {
 
 // NUMBERS ON A CHECK. A check may carry numbers in params (tolerance_ft: 0.25). Those are what an approver can change on
 // the page; the work-order compiler reads them from GET /api/model-rules. Flags (true / false) and text are not numbers.
-export type RuleNumber = { key: string; value: number; label: string; unit: string }
+// A number that is present with NO value (params.clear_depth_in: null) is waiting for one: the checker needs it, nothing
+// written gives it, and only an approver types it (rule A83). value null = waiting. Until then the check cannot pass.
+export type RuleNumber = { key: string; value: number | null; label: string; unit: string }
 const NUMBER_UNITS: Record<string, string> = { ft: 'ft', in: 'in', sf: 'sq ft', deg: 'degrees', pct: '%' }
 /** tolerance_ft -> { label: 'Tolerance', unit: 'ft' } */
 export function numberLabel(key: string): { label: string; unit: string } {
@@ -51,9 +53,13 @@ export function numberLabel(key: string): { label: string; unit: string } {
 }
 export function ruleNumbers(params: Record<string, unknown> | null | undefined): RuleNumber[] {
   return Object.entries(params || {})
-    .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
-    .map(([key, v]) => ({ key, value: v as number, ...numberLabel(key) }))
+    .filter(([, v]) => v === null || (typeof v === 'number' && Number.isFinite(v)))
+    .map(([key, v]) => ({ key, value: v as number | null, ...numberLabel(key) }))
     .sort((a, b) => a.key.localeCompare(b.key))
+}
+/** the numbers a check carries without a value: it cannot pass, and is not accepted, until an approver types them */
+export function missingNumbers(params: Record<string, unknown> | null | undefined): RuleNumber[] {
+  return ruleNumbers(params).filter((n) => n.value === null)
 }
 
 // the two Supabase clients (user session, service role) have different generics; only .from() is used

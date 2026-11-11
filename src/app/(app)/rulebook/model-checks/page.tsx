@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { decideModelRule, proposeModelRule, setModelRuleNumber } from '@/app/model-rules-actions'
-import { CHECKER_LABEL, loadModelRules, ruleNumbers, type ModelRule } from '@/lib/model-rules'
+import { CHECKER_LABEL, loadModelRules, missingNumbers, ruleNumbers, type ModelRule } from '@/lib/model-rules'
 import { approverNames, loadApprovers, whoLabel } from '@/lib/lessons'
 import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -15,7 +15,9 @@ import { Pill } from '@/components/pill'
 function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz: string; who: (email: string | null) => string }) {
   const kinds = r.kinds || []
   // the numbers the check carries (a tolerance). An approver can change one while the check is proposed or accepted.
+  // A number with no value yet (null) is waiting for an approver to type it: the check cannot pass or be accepted without it.
   const numbers = ruleNumbers(r.params)
+  const waiting = numbers.filter((n) => n.value === null)
   const canEdit = isApprover && r.status !== 'retired'
   return (
     <div id={'r-' + r.rule_key} className="px-4 py-3 scroll-mt-32">
@@ -26,7 +28,10 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
           <div className="text-[11px] text-slate-500 break-words">
             {kinds.length ? 'attached to: ' + kinds.join(', ') : 'attached to a build phase, not to a kind of work'}
             {' · '}
-            <span className={r.checker_status === 'none' ? 'text-amber-400/80' : ''}>{CHECKER_LABEL[r.checker_status]}</span>
+            <span className={r.checker_status === 'none' ? 'text-amber-400/80' : ''}>
+              {CHECKER_LABEL[r.checker_status]}
+              {r.checker && r.checker_status !== 'none' ? ': ' + r.checker : ''}
+            </span>
             {r.source ? ' · from ' + r.source : ''}
           </div>
           {numbers.map((n) =>
@@ -44,12 +49,17 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
                   step="any"
                   min="0"
                   required
-                  defaultValue={n.value}
+                  defaultValue={n.value === null ? '' : n.value}
+                  placeholder={n.value === null ? 'no value yet' : undefined}
                   className="field !w-24 !py-1 text-xs"
                 />
                 {n.unit && <span className="text-[11px] text-slate-500">{n.unit}</span>}
                 <button className="btn-secondary-sm">Save number</button>
               </form>
+            ) : n.value === null ? (
+              <div key={n.key} className="text-[11px] text-amber-400/80 mt-1">
+                {n.label}: no value yet
+              </div>
             ) : (
               <div key={n.key} className="text-[11px] text-slate-400 mt-1">
                 {n.label}: {n.value}
@@ -57,7 +67,14 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               </div>
             ),
           )}
-          {numbers.length > 0 && (
+          {waiting.length > 0 && (
+            <div className="text-[11px] text-amber-400/80 break-words mt-1">
+              Waiting for a number ({waiting.map((n) => n.label.toLowerCase()).join(', ')}): nothing written gives it, so none was filled in.{' '}
+              {canEdit ? 'Type it and save it, then accept the check.' : 'Mitch or Michael type it.'} Until then the check cannot pass and is not
+              accepted.
+            </div>
+          )}
+          {(r.params_at || numbers.some((n) => n.value !== null)) && (
             <div className="text-[11px] text-slate-600 break-words">
               {r.params_at ? 'number set by ' + who(r.params_by) + ' · ' + fmtDate(r.params_at, tz) : 'starting value; nobody has changed the number'}
             </div>
@@ -118,6 +135,7 @@ export default async function ModelChecksPage({ searchParams }: { searchParams: 
   const accepted = rules.filter((r) => r.status === 'accepted')
   const retired = rules.filter((r) => r.status === 'retired')
   const noChecker = rules.filter((r) => r.status !== 'retired' && r.checker_status === 'none').length
+  const waitingForNumber = rules.filter((r) => r.status !== 'retired' && missingNumbers(r.params).length > 0).length
 
   return (
     <main>
@@ -142,6 +160,11 @@ export default async function ModelChecksPage({ searchParams }: { searchParams: 
           <p className="text-xs text-slate-500">
             Where a check carries a number, such as a tolerance, {isApprover ? 'you can change it here' : names + ' can change it here'}. Blueprint is
             told, and a work order compiled with the old number has to be compiled again.
+            {waitingForNumber > 0 &&
+              ' ' +
+                waitingForNumber +
+                (waitingForNumber === 1 ? ' check waits' : ' checks wait') +
+                ' for a number nobody has written down yet: it is typed here before the check is accepted.'}
           </p>
         </div>
 

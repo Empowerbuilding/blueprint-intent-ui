@@ -645,6 +645,7 @@ ok('model checks: accepting twice is refused', r.location.includes('is already a
 const shellRule = ruleOf(await getDb(), 'shell.outline_matches_model')
 html = await pageAs(MC, asBlueprint)
 ok('number on a check, non-approver: sees the number, has no field', html.includes('Tolerance: 0.25 ft') && html.includes('starting value; nobody has changed the number') && !html.includes('name="param"'))
+ok('number with no value, non-approver: told it waits on Mitch or Michael', html.replace(/<!-- -->/g, '').includes('Clear depth: no value yet') && html.replace(/<!-- -->/g, '').includes('Mitch or Michael type it. Until then the check cannot pass'))
 html = (await page(MC)).replace(/<!-- -->/g, '')
 const numForm = form(html, (f) => f.includes('name="param"') && f.includes('value="' + shellRule.id + '"'), 'number form (shell tolerance)')
 before = await getDb()
@@ -697,6 +698,42 @@ r = await post(MC, form(html, (f) => f.includes('name="decision"') && f.includes
 html = (await page(MC)).replace(/<!-- -->/g, '')
 r = await post(MC, { ...numForm, rule_id: tgt.id }, { value: '0.6' })
 ok('number on a check: a retired check has no field and refuses a posted number', r.location.includes('is retired') && ruleOf(await getDb(), 'target.element_where_drawn').params.tolerance_ft === 0.5 && html.includes('Tolerance: 0.5 ft'), JSON.stringify(r))
+
+// a number the check carries WITHOUT a value (rule A83: the checker needs it, the sentence does not state it, nobody guessed it):
+// an approver types its first value; until then the check is not accepted
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+mr = (await res.json()).rules
+ok('api model-rules: a number waiting for a value is there, with no value', (() => { const s = mr.find((x) => x.rule_key === 'sink.cutout_matches_bowl'), o = mr.find((x) => x.rule_key === 'casework.no_opening_intersection'), p = mr.find((x) => x.rule_key === 'casework.position_within_1in_of_2d'); return 'tolerance_in' in s.params && s.params.tolerance_in === null && s.status === 'proposed' && s.decision_note.startsWith('Back to proposed') && 'clear_depth_in' in o.params && o.params.clear_depth_in === null && p.params.tolerance_in === 1 && p.change_note.startsWith('Number added') && p.checker_status === 'tool' })(), JSON.stringify(mr.filter((x) => ['sink.cutout_matches_bowl', 'casework.no_opening_intersection', 'casework.position_within_1in_of_2d'].includes(x.rule_key)).map((x) => [x.rule_key, x.status, x.params])))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const sinkRule = ruleOf(await getDb(), 'sink.cutout_matches_bowl')
+const sinkDecide = form(html, (f) => f.includes('name="decision"') && f.includes('value="' + sinkRule.id + '"'), 'decide form (sink.cutout_matches_bowl)')
+const sinkNum = form(html, (f) => f.includes('name="param"') && f.includes('value="tolerance_in"') && f.includes('value="' + sinkRule.id + '"'), 'number form (sink tolerance, no value yet)')
+before = await getDb()
+r = await post(MC, sinkDecide, { decision: 'accept', note: '' })
+ok('number with no value: the check is not accepted without it, nothing changed', r.location.includes('"sink.cutout_matches_bowl" has no tolerance yet. Type the number and save it, then accept the check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+badNumbers = []
+for (const bad of ['0', '-1', 'abc', '']) {
+  r = await post(MC, sinkNum, { value: bad })
+  if (!r.location.includes('The number must be greater than zero')) badNumbers.push(bad)
+}
+ok('number with no value: zero, a negative, text and blank are refused, nothing changed', badNumbers.length === 0 && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(badNumbers))
+r = await postAs(MC, sinkNum, { value: '0.25' }, asBlueprint)
+ok('number with no value, non-approver posts one: refused, nothing changed', r.location.includes('Only Mitch or Michael can change a number on a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, sinkNum, { value: '0.25' })
+db = await getDb()
+row = ruleOf(db, 'sink.cutout_matches_bowl')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('number with no value, approver types it: saved as its first value, still proposed, version up, who and when kept, Blueprint told', r.location.includes('saved=sink.cutout_matches_bowl: tolerance 0.25 in') && row.params.tolerance_in === 0.25 && row.status === 'proposed' && row.version === sinkRule.version + 1 && row.params_by === 'mitch@barnhaus.test' && !!row.params_at && !row.decided_at && lastMsg.includes('Model check number set: \`sink.cutout_matches_bowl\`') && lastMsg.includes('tolerance 0.25 in, its first value') && lastMsg.includes('not a go'), JSON.stringify([r, row, lastMsg]))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('number with no value: once typed, the page stops saying the check waits (the other one still does)', !html.includes('Waiting for a number (tolerance)') && html.includes('Waiting for a number (clear depth)') && html.includes('1 check waits for a number nobody has written down yet'), '')
+r = await post(MC, sinkDecide, { decision: 'accept', note: 'Inside of the bowl at the rim' })
+row = ruleOf(await getDb(), 'sink.cutout_matches_bowl')
+ok('number with no value: with its number the check is accepted', r.location.includes('saved=sink.cutout_matches_bowl accepted') && row.status === 'accepted' && row.params.tolerance_in === 0.25 && row.decision_note === 'Inside of the bowl at the rim' && row.decided_by_email === 'mitch@barnhaus.test', JSON.stringify([r, row]))
+// put it away again so the contract checks further down see the same accepted checks as before
+r = await post(MC, sinkDecide, { decision: 'retire', note: 'smoke: put away' })
+ok('number with no value: (the check is retired again for the rest of the run)', ruleOf(await getDb(), 'sink.cutout_matches_bowl').status === 'retired', JSON.stringify(r))
+r = await post(MC, { ...sinkNum, param: 'rim_gap_max_in', rule_id: ruleOf(await getDb(), 'casework.no_opening_intersection').id }, { value: '2' })
+ok('number with no value: a number the check does not carry at all still cannot be added', r.location.includes('carries no number called'), JSON.stringify(r))
 
 // kinds of work: what a kind must be pinned to before it is built. Only Mitch or Michael change it; Blueprint reads it.
 const KP = '/rulebook/kinds'

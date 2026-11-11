@@ -166,6 +166,11 @@ const db = {
     // a check whose wording alone was edited keeps its state and carries a note of what changed
     ...(r.rule_key === 'opening.bbox_verified' ? { version: 5, decision_note: 'Back to proposed on 2026-11-11 (rule A81). Its sentence changed to the host-wall meaning after it was accepted: Mitch or Michael accept it again.' } : {}),
     ...(r.rule_key === 'shell.outline_matches_model' ? { version: 3, change_note: 'Wording edit after this check was accepted: the sentence no longer repeats the number. What the check proves did not change.' } : {}),
+    // the P5 and P6 numbers of 20261111t (rule A83): a number the check's own sentence states is put on it with a note of where it came
+    // from; a number the sentence does not state is on the check WITHOUT a value (null) and the note says why the check is back to proposed
+    ...(r.rule_key === 'casework.position_within_1in_of_2d' ? { params: { tolerance_in: 1, initial: true }, version: 3, change_note: 'Number added on 2026-11-11 (rule A83): tolerance 1 in. It is the 1 inch this check\'s own sentence states.', checker: 'automation/checks_casework.py (passes its tests on prepared data; not yet run on a model)', checker_status: 'tool' } : {}),
+    ...(r.rule_key === 'casework.no_opening_intersection' ? { params: { clear_depth_in: null }, version: 3, decision_note: 'Back to proposed on 2026-11-11 (rule A83). Its checker needs the clear depth, which the sentence does not state: Mitch or Michael type it here and accept the check again.' } : {}),
+    ...(r.rule_key === 'sink.cutout_matches_bowl' ? { params: { tolerance_in: null }, version: 3, decision_note: 'Back to proposed on 2026-11-11 (rule A83). Its checker needs a tolerance the sentence does not state: Mitch or Michael type it here and accept the check again.' } : {}),
     ...(r.rule_key === 'counter.no_builtin_splash' ? { status: 'accepted', version: 2, decided_by: 'user-michael', decided_by_email: 'michael@barnhaus.test', decided_at: t(120), checker: 'exports/deubner/holes.py', checker_status: 'script' } : {}),
     ...(r.rule_key === 'final.pdf_exists' ? { status: 'retired', version: 2, decided_by: 'user-mitch', decided_by_email: 'mitch@barnhaus.test', decided_at: t(110), decision_note: 'Covered by the final QA check' } : {}),
   })),

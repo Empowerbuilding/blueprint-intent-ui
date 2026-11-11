@@ -6,6 +6,7 @@ import { roomNameMatches, runMathGate } from '../src/lib/rules.ts'
 import { deterministicDimensionCheck } from '../src/lib/dimension-check.ts'
 import { normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGroup } from '../src/lib/vocab.ts'
 import { buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
+import { missingNumbers, ruleNumbers } from '../src/lib/model-rules.ts'
 import fs from 'node:fs'
 let fails = 0
 const canon = (v) => Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v
@@ -190,5 +191,10 @@ eq('v2: every gap is named', v2.errors, [
 ])
 eq('v2: no vocabulary -> refused outright', buildContractV2({ ...base, kinds: [] }).ok, false)
 eq('v2: a kind that was turned off is not accepted', buildContractV2({ ...base, kinds: KINDS.map((k) => (k.kind === 'site.fence' ? { ...k, active: false } : k)) }).errors, ['House-level — decision "fencing: Only around the pool": "site.fence" is not in the list of kinds of work'])
+
+// ---- numbers on a model check: a number with no value (null) is listed as waiting; flags, text and absent keys are not numbers ----
+eq('check numbers: values and waiting ones are listed, by name; flags and text are not', ruleNumbers({ tolerance_in: 1, initial: true, clear_depth_in: null, note: 'x', bad: NaN }), [{ key: 'clear_depth_in', value: null, label: 'Clear depth', unit: 'in' }, { key: 'tolerance_in', value: 1, label: 'Tolerance', unit: 'in' }])
+eq('check numbers: only the ones with no value are waiting', missingNumbers({ tolerance_in: 1, clear_depth_in: null }).map((n) => n.key), ['clear_depth_in'])
+eq('check numbers: no params = nothing, nothing waiting', [ruleNumbers(null), missingNumbers(undefined), missingNumbers({})], [[], [], []])
 console.log(fails ? 'FAILED ' + fails : 'ALL PASS')
 process.exit(fails ? 1 : 0)
