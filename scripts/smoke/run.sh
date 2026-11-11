@@ -19,6 +19,11 @@ i=0
 until curl -s -o /dev/null "http://127.0.0.1:$APP_PORT/login" || [ $i -ge 60 ]; do i=$((i+1)); sleep 0.5; done
 node scripts/smoke/check.mjs "http://127.0.0.1:$APP_PORT" "http://127.0.0.1:$MOCK_PORT" "$OUT"
 RC=$?
+# SHOTS=1: screenshots of the main pages (needs google-chrome) before the actions change the data
+if [ "${SHOTS:-}" = 1 ]; then
+  node scripts/smoke/shots.mjs "http://127.0.0.1:$APP_PORT" "$OUT/shots" 1440
+  node scripts/smoke/shots.mjs "http://127.0.0.1:$APP_PORT" "$OUT/shots" 390 | grep OVERFLOWS
+fi
 # server actions (these change the mock's data, so they run after the read-only page checks)
 node scripts/smoke/actions.mjs "http://127.0.0.1:$APP_PORT" "http://127.0.0.1:$MOCK_PORT"
 RC2=$?

@@ -64,6 +64,14 @@ http
       return
     }
 
+    // storage: public image -> a stand-in drawing, so screenshots show how a real one sits on the page
+    if (u.pathname.startsWith('/storage/v1/object/public/') && req.method === 'GET') {
+      const wide = !u.pathname.includes('elev')
+      const [w, h] = wide ? [1600, 1100] : [1600, 700]
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#fff"/><rect x="120" y="100" width="${w - 240}" height="${h - 200}" fill="none" stroke="#111" stroke-width="10"/><rect x="${w / 2 - 240}" y="${h / 2 - 90}" width="480" height="180" fill="#e9e2d0" stroke="#111" stroke-width="4"/><text x="${w / 2}" y="${h / 2 + 12}" font-family="sans-serif" font-size="40" text-anchor="middle" fill="#111">stand-in drawing</text></svg>`
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Content-Length': Buffer.byteLength(svg) })
+      return res.end(svg)
+    }
     // storage: remove files (DELETE /storage/v1/object/<bucket> {prefixes})
     if (u.pathname.startsWith('/storage/v1/object/') && req.method === 'DELETE') {
       const bucket = u.pathname.slice('/storage/v1/object/'.length)

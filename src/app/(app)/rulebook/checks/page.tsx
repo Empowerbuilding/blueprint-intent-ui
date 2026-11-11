@@ -309,7 +309,7 @@ export default async function ChecksPage({
                   </div>
                 </div>
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-[11px] text-slate-600 hover:text-gold-light">
+                  <summary className="cursor-pointer text-xs text-slate-400 hover:text-gold-light">
                     Edit
                     <span className="ml-2 font-mono text-[10px] text-slate-700">
                       {r.rule_key} · v{r.version} · {new Date(r.updated_at).toLocaleDateString()}
