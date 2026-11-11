@@ -3,7 +3,9 @@
 // v1 is never changed by anything in this file.
 //
 // v2 is only emitted when NOTHING is missing: every room has a role and a 2D yes/no, and every
-// active decision and redline note has a kind from the vocabulary. Anything missing is returned as
+// active decision and redline note has a kind from the vocabulary — or is marked as context: a line
+// that constrains the work without asking for any. Context is NOT a kind: it is carried in a
+// room-level list with its provenance, never as a work item, never routed. Anything missing is returned as
 // a list, never guessed and never dropped.
 // Relative imports and erasable types only: scripts/test-libs.mjs imports this file directly.
 
@@ -50,7 +52,8 @@ export type WorkItem = {
   depends_on: string[]
   judgment: null
 }
-export type ContextLine = { text: string; source: string; evidence: string | null }
+/** a line that constrains the work without asking for any. Never a work item, never routed; provenance kept like a decision's. */
+export type ContextLine = { text: string; provenance: { decision_id: string | null; redline_id?: string; source: string; evidence: string | null } }
 export type V2Open = { question: string; default: string | null; blocking: boolean; answer: string | null }
 export type V2Room = {
   section_code: string
@@ -117,7 +120,8 @@ export function buildContractV2(input: {
   const errors: string[] = []
   const warnings: string[] = []
   const vocab = new Map(input.kinds.filter((k) => k.active).map((k) => [k.kind, k]))
-  if (!vocab.size) return { ok: false, errors: ['The list of kinds of work could not be read, so nothing can be typed.'], warnings }
+  const kindsOfWork = input.kinds.filter((k) => k.active && k.executable)
+  if (!kindsOfWork.length) return { ok: false, errors: ['The list of kinds of work could not be read, so nothing can be typed.'], warnings }
   // a check is attached to a work item only once an approver has accepted it
   const acceptanceFor = (kind: string) =>
     input.modelRules.filter((r) => r.status === 'accepted' && (r.kinds || []).includes(kind)).map((r) => r.rule_key).sort()
@@ -155,7 +159,7 @@ export function buildContractV2(input: {
     if (!kindOk(d.kind, label)) continue
     const source = SOURCE_MAP[d.source] || d.source
     if (!vocab.get(d.kind)!.executable) {
-      push(context, codeOf(d.room_id), { text: d.topic + ': ' + d.value, source, evidence: d.source_ref })
+      push(context, codeOf(d.room_id), { text: d.topic + ': ' + d.value, provenance: { decision_id: d.id, source, evidence: d.source_ref } })
       continue
     }
     const id = itemId('decision:' + d.id)
@@ -178,7 +182,7 @@ export function buildContractV2(input: {
     const label = where(n.room_id) + ' — redline note "' + short(n.text) + '"'
     if (!kindOk(n.kind, label)) continue
     if (!vocab.get(n.kind)!.executable) {
-      push(context, codeOf(n.room_id), { text: n.note_type + ': ' + n.text, source: 'redline', evidence: n.source_ref })
+      push(context, codeOf(n.room_id), { text: n.note_type + ': ' + n.text, provenance: { decision_id: null, redline_id: n.id, source: 'redline', evidence: n.source_ref } })
       continue
     }
     const id = itemId('redline:' + n.id)
@@ -243,7 +247,8 @@ export function buildContractV2(input: {
     version: input.version,
     emitted_at: input.emittedAt,
     sha256_intent: '',
-    vocabulary: { status: input.kinds.every((k) => k.status === 'locked') ? 'locked' : 'draft', kinds: vocab.size },
+    // the context marker is not a kind of work, so it is not counted as one
+    vocabulary: { status: kindsOfWork.every((k) => k.status === 'locked') ? 'locked' : 'draft', kinds: kindsOfWork.length },
     rooms,
     house: {
       work_items: houseItems.filter((w) => !w.kind.startsWith('site.')),

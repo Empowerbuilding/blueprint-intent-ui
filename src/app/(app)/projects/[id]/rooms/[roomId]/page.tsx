@@ -86,13 +86,15 @@ type RoomLite = { id: string; section_code: string; name: string; review_state: 
 
 // The kind of work a line is — what contract v2 is typed by. Grouped by family; '' = not chosen.
 function KindSelect({ kinds, value, name = 'kind', empty = 'kind of work: not chosen' }: { kinds: KindOption[]; value?: string | null; name?: string; empty?: string }) {
-  const families = [...new Set(kinds.map((k) => k.family))]
+  const work = kinds.filter((k) => k.executable)
+  const context = kinds.filter((k) => !k.executable) // not a kind: the mark for a line that asks for nothing to be built
+  const families = [...new Set(work.map((k) => k.family))]
   return (
     <select name={name} defaultValue={value || ''} className="field" aria-label="Kind of work">
       <option value="">{empty}</option>
       {families.map((f) => (
         <optgroup key={f} label={f}>
-          {kinds
+          {work
             .filter((k) => k.family === f)
             .map((k) => (
               <option key={k.kind} value={k.kind}>
@@ -101,6 +103,15 @@ function KindSelect({ kinds, value, name = 'kind', empty = 'kind of work: not ch
             ))}
         </optgroup>
       ))}
+      {context.length > 0 && (
+        <optgroup label="not work">
+          {context.map((k) => (
+            <option key={k.kind} value={k.kind}>
+              Nothing to build — context only
+            </option>
+          ))}
+        </optgroup>
+      )}
     </select>
   )
 }
@@ -496,6 +507,8 @@ export default async function RoomPage({
   // typing for contract v2: the kinds of work, and what is still untyped in this room
   const kinds = ((await loadKinds(supabase)) || []).filter((k) => k.active)
   const kindLabel = (k: string) => kinds.find((x) => x.kind === k)?.label || k
+  // how a typed line reads: a kind of work, or context (not a kind)
+  const typedAs = (k: string) => (kinds.find((x) => x.kind === k)?.executable === false ? 'context only — nothing is built from this line' : 'kind: ' + kindLabel(k))
   const isHouse = isHouseSection(room.section_code)
   const roleGuess = room.role ? null : suggestRole(room.name)
   const needs2dGuess = suggestNeeds2d(room.name, room.section_code)
@@ -772,7 +785,7 @@ export default async function RoomPage({
                                   </div>
                                   {kinds.length > 0 && (
                                     <div className={'text-[11px] break-words ' + (d.kind ? 'text-slate-500' : 'text-amber-400/80')}>
-                                      {d.kind ? 'kind: ' + kindLabel(d.kind) : 'no kind of work yet'}
+                                      {d.kind ? typedAs(d.kind) : 'no kind of work yet'}
                                     </div>
                                   )}
                                 </div>
@@ -961,7 +974,7 @@ export default async function RoomPage({
                       {kinds.length > 0 && (
                         <details className="mt-1">
                           <summary className={'cursor-pointer text-[11px] hover:text-gold-light ' + (r.kind ? 'text-slate-500' : 'text-amber-400/80')}>
-                            {r.kind ? 'kind: ' + kindLabel(r.kind) : 'no kind of work yet'}
+                            {r.kind ? typedAs(r.kind) : 'no kind of work yet'}
                           </summary>
                           <form action={setRedlineKind} className="mt-2 flex flex-wrap items-center gap-3">
                             <input type="hidden" name="project_id" value={id} />

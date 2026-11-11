@@ -12,7 +12,9 @@ import { Pill } from '@/components/pill'
 export default async function KindsPage() {
   const supabase = await createClient()
   const loaded = await loadKinds(supabase)
-  const kinds = (loaded || []).filter((k) => k.active)
+  // context is not a kind of work: it is the mark for a line that asks for nothing to be built
+  const kinds = (loaded || []).filter((k) => k.active && k.executable)
+  const hasContext = (loaded || []).some((k) => k.active && !k.executable)
   const families = [...new Set(kinds.map((k) => k.family))]
   const locked = kinds.length > 0 && kinds.every((k) => k.status === 'locked')
   const later = kinds.filter((k) => k.stage_scope).length
@@ -56,7 +58,6 @@ export default async function KindsPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {k.stage_scope && <Pill tone="outline">later stage</Pill>}
-                      {!k.executable && <Pill tone="outline">nothing built</Pill>}
                       <span className="font-mono text-[11px] text-gold-light/80">{k.kind}</span>
                     </div>
                   </div>
@@ -64,6 +65,17 @@ export default async function KindsPage() {
             </div>
           </section>
         ))}
+
+        {hasContext && (
+          <section className="space-y-2">
+            <h2 className="section-title">Not a kind of work: context</h2>
+            <p className="text-xs text-slate-500">
+              Some lines ask for nothing to be built — “leave the space under the stairs open”. They are marked as context: carried
+              with the room, with where they came from, so the work around them respects them. They are never built and never sent to
+              a build phase.
+            </p>
+          </section>
+        )}
 
         <section className="space-y-2">
           <h2 className="section-title">
