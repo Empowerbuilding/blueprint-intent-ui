@@ -126,7 +126,7 @@ function revalidateDecisions(projectId: string, roomId: string | null) {
   revalidatePath('/')
 }
 
-type DecisionLine = { id: string; project_id: string; room_id: string | null; topic: string; status: string; superseded_by: string | null }
+type DecisionLine = { id: string; project_id: string; room_id: string | null; topic: string; status: string; superseded_by: string | null; kind?: string | null }
 
 // the line a form points at — only if it really belongs to that project and room
 async function findLine(
@@ -139,7 +139,7 @@ async function findLine(
   if (!projectId || !roomId || !decisionId) return { projectId, roomId, line: null }
   const { data } = await supabase
     .from('intent_decisions')
-    .select('id, project_id, room_id, topic, status, superseded_by')
+    .select('id, project_id, room_id, topic, status, superseded_by, kind')
     .eq('id', decisionId)
     .single()
   const line = data as DecisionLine | null
@@ -156,10 +156,12 @@ export async function addDecision(formData: FormData) {
   const sourceRef = String(formData.get('source_ref') || '') || null
   const meetingDate = String(formData.get('meeting_date') || '') || null
   if (!topic || !value) return
+  // the kind of work is optional here; it can be set on the line afterwards
+  const kind = String(formData.get('kind') || '') || null
 
   await supabase
     .from('intent_decisions')
-    .insert({ project_id: projectId, room_id: roomId, topic, value, source, source_ref: sourceRef, meeting_date: meetingDate })
+    .insert({ project_id: projectId, room_id: roomId, topic, value, source, source_ref: sourceRef, meeting_date: meetingDate, ...(kind ? { kind } : {}) })
 
   revalidateDecisions(projectId, roomId)
 }
@@ -181,7 +183,8 @@ export async function replaceDecision(formData: FormData) {
 
   const { data: inserted, error } = await supabase
     .from('intent_decisions')
-    .insert({ project_id: projectId, room_id: roomId, topic: line.topic, value, source, source_ref: sourceRef, meeting_date: meetingDate })
+    // new wording, same kind of work (its numbers are not carried: they may no longer match the wording)
+    .insert({ project_id: projectId, room_id: roomId, topic: line.topic, value, source, source_ref: sourceRef, meeting_date: meetingDate, ...(line.kind ? { kind: line.kind } : {}) })
     .select('id')
     .single()
   if (error || !inserted) {

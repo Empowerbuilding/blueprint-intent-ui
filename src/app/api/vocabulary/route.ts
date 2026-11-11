@@ -1,0 +1,45 @@
+import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { NextResponse, type NextRequest } from 'next/server'
+import { CONTEXT_KIND, ROLE_ALIASES, ROOM_ROLES, SHELL_KINDS } from '@/lib/vocab'
+
+// GET /api/vocabulary — the controlled words contract v2 is written in, for machine clients (Blueprint).
+// -> { status: "draft" | "locked", kinds: [{ kind, family, label, description, executable, status, stage_scope }],
+//      context_kind, shell_kinds, roles: [...], role_aliases: {...} }
+// "draft" means the list has not been checked against a live bridge yet: nothing is locked.
+// Read only. Kinds are changed by an approver. Auth: x-prefill-secret header, or a signed-in user.
+
+export async function GET(request: NextRequest) {
+  const machine = !!process.env.PREFILL_SECRET && request.headers.get('x-prefill-secret') === process.env.PREFILL_SECRET
+  const userClient = await createClient()
+  if (!machine) {
+    const {
+      data: { user },
+    } = await userClient.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const client = machine && url && key ? createServiceClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }) : userClient
+
+  const { data, error } = await client
+    .from('intent_kinds')
+    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order')
+    .order('sort_order')
+  if (error || !data) return NextResponse.json({ error: 'the list of kinds could not be read' }, { status: 500 })
+  const kinds = (data as { active: boolean; status: string }[]).filter((k) => k.active)
+  return NextResponse.json({
+    status: kinds.length && kinds.every((k) => k.status === 'locked') ? 'locked' : 'draft',
+    kinds: kinds.map((k) => {
+      const { active: _a, sort_order: _s, ...rest } = k as Record<string, unknown>
+      void _a
+      void _s
+      return rest
+    }),
+    context_kind: CONTEXT_KIND,
+    shell_kinds: SHELL_KINDS,
+    roles: ROOM_ROLES,
+    role_aliases: ROLE_ALIASES,
+    source: 'app',
+  })
+}

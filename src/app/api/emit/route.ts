@@ -41,5 +41,7 @@ export async function POST(request: NextRequest) {
     version: result.version,
     handoff: result.handoff,
     brief_md: result.briefMd,
+    // contract v2 rides beside v1; ok:false means v1 was emitted and v2 still has gaps
+    v2: { ok: result.v2.ok, stored: result.v2.stored, work_items: result.v2.work_items, errors: result.v2.errors, warnings: result.v2.warnings },
   })
 }

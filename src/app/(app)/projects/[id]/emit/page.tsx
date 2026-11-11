@@ -1,6 +1,7 @@
 import { fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
+import { buildV2 } from '@/lib/emit-core'
 import { PageHeader } from '@/components/page-header'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -10,11 +11,11 @@ export default async function EmitPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ error?: string; emitted?: string; handoff?: string }>
+  searchParams: Promise<{ error?: string; emitted?: string; handoff?: string; v2?: string }>
 }) {
   const { id } = await params
   const tz = await viewerTimeZone()
-  const { error, emitted, handoff } = await searchParams
+  const { error, emitted, handoff, v2: v2Param } = await searchParams
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -29,6 +30,34 @@ export default async function EmitPage({
     .select('id, section_code, name, review_state')
     .eq('project_id', id)
     .order('sort_order')
+
+  // the typed contract (v2): what would be written if the contract were emitted now, or what is missing
+  const [{ data: v2Rooms }, { data: v2Decisions }, { data: v2Opens }, { data: v2Redlines }, { data: v2Images }] = await Promise.all([
+    supabase.from('intent_rooms').select('*').eq('project_id', id).order('sort_order'),
+    supabase.from('intent_decisions').select('*').eq('project_id', id).eq('status', 'active').order('created_at'),
+    supabase.from('intent_open_questions').select('*').eq('project_id', id).order('created_at'),
+    supabase.from('intent_redline_notes').select('*').eq('project_id', id).order('created_at'),
+    supabase.from('intent_inspo_images').select('*').eq('project_id', id),
+  ])
+  const v2 = await buildV2(supabase, {
+    projectId: id,
+    name: project.name,
+    client: project.client,
+    version: (project.emitted_version || 0) + 1,
+    emittedAt: new Date().toISOString(),
+    rooms: v2Rooms || [],
+    activeDecisions: v2Decisions || [],
+    opens: v2Opens || [],
+    redlines: v2Redlines || [],
+    images: v2Images || [],
+  })
+  const roomIdByCode = new Map((rooms || []).map((r) => [r.section_code, r.id]))
+  // a gap names its room ("Room 103 Kitchen: ..." / "House-level — ..."): link it there
+  const gapHref = (gap: string) => {
+    const m = /^Room (\S+) /.exec(gap)
+    const roomId = m ? roomIdByCode.get(m[1]) : gap.startsWith('House-level') ? roomIdByCode.get('HOUSE') : undefined
+    return roomId ? `/projects/${id}/rooms/${roomId}?view=decide#typing` : null
+  }
 
   const [{ count: blockingOpen }, { count: unassignedImgs }] = await Promise.all([
     supabase
@@ -59,7 +88,7 @@ export default async function EmitPage({
 
   const { data: emissions } = await supabase
     .from('intent_emissions')
-    .select('id, version, emitted_at, blueprint_status')
+    .select('id, version, emitted_at, blueprint_status, v2_work_items, v2_errors')
     .eq('project_id', id)
     .order('version', { ascending: false })
 
@@ -80,6 +109,15 @@ export default async function EmitPage({
           <div className="bg-emerald-950/50 border border-emerald-900 rounded-xl p-4 text-sm text-emerald-300">
             <div className="font-semibold">✓ Intent contract v{emitted} emitted and persisted.</div>
             <div className="text-emerald-400/80 mt-1">Handoff: {handoff}</div>
+            {v2Param?.startsWith('ok-') && (
+              <div className="text-emerald-400/80 mt-1">Typed contract (v2) written too: {v2Param.slice(3)} work items.</div>
+            )}
+            {v2Param?.startsWith('no-') && (
+              <div className="text-amber-300 mt-1">
+                Typed contract (v2) was not written: {v2Param.slice(3)} thing{v2Param.slice(3) === '1' ? '' : 's'} missing, listed below. The
+                contract above is complete without it.
+              </div>
+            )}
           </div>
         )}
 
@@ -129,6 +167,55 @@ export default async function EmitPage({
           </p>
         </section>
 
+        <section id="typed" className="space-y-3 scroll-mt-24">
+          <h2 className="section-title">Typed contract (v2)</h2>
+          <div className={`card p-4 text-sm ${v2.ok ? '' : 'border-amber-900/60'}`}>
+            {v2.ok ? (
+              <div className="text-emerald-300">
+                ✓ Nothing missing. Emitting now also writes the typed contract: {v2.work_items} work item{v2.work_items === 1 ? '' : 's'}.
+              </div>
+            ) : (
+              <>
+                <div className="text-amber-300 font-medium">
+                  {v2.errors.length} thing{v2.errors.length === 1 ? '' : 's'} missing — the typed contract will not be written yet.
+                </div>
+                <ul className="mt-2 space-y-1 text-xs text-slate-400">
+                  {v2.errors.slice(0, 12).map((e, i) => {
+                    const href = gapHref(e)
+                    return (
+                      <li key={i} className="break-words">
+                        •{' '}
+                        {href ? (
+                          <Link href={href} className="hover:text-gold-light underline decoration-slate-700">
+                            {e}
+                          </Link>
+                        ) : (
+                          e
+                        )}
+                      </li>
+                    )
+                  })}
+                  {v2.errors.length > 12 && <li className="text-slate-600">…and {v2.errors.length - 12} more</li>}
+                </ul>
+              </>
+            )}
+            {v2.ok && v2.warnings.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-slate-500">
+                {v2.warnings.slice(0, 6).map((w, i) => (
+                  <li key={i} className="break-words">
+                    Note: {w}
+                  </li>
+                ))}
+                {v2.warnings.length > 6 && <li className="text-slate-600">…and {v2.warnings.length - 6} more notes</li>}
+              </ul>
+            )}
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            This does not block Lock &amp; Emit. The contract is emitted as it always was; the typed contract is written beside it only
+            when every room has a role and a 2D yes/no, and every decision and redline note has a kind of work. Nothing is guessed.
+          </p>
+        </section>
+
         <section className="space-y-3">
           <h2 className="section-title">Emission History</h2>
           <div className="space-y-2">
@@ -149,6 +236,13 @@ export default async function EmitPage({
                   <a href={`/api/contract/${id}?version=${e.version}`} className="text-slate-400 hover:text-white">
                     intent.json
                   </a>
+                  {e.v2_work_items != null ? (
+                    <a href={`/api/contract/${id}?version=${e.version}&schema=2`} className="text-slate-400 hover:text-white">
+                      typed ({e.v2_work_items})
+                    </a>
+                  ) : (
+                    <span className="text-slate-600">no typed contract</span>
+                  )}
                 </div>
               </div>
             ))}

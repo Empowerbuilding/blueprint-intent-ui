@@ -34,6 +34,9 @@ const pages = [
   ['15-blueprint', '/blueprint'],
   ['16-lessons', '/blueprint/lessons'],
   ['17-capabilities', '/blueprint/capabilities'],
+  ['18-emit-typed', W + '/emit'],
+  ['19-model-checks', '/rulebook/model-checks'],
+  ['20-kinds', '/rulebook/kinds'],
 ]
 
 const PORT = 9333

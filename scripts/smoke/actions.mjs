@@ -169,7 +169,7 @@ const K = '/projects/p-deubner/rooms/r-d103'
 const lineOf = (d, id) => d.intent_decisions.find((x) => x.id === id)
 const activeIn = (d, topic) => d.intent_decisions.filter((x) => x.room_id === 'r-d103' && x.topic === topic && x.status === 'active').map((x) => x.id).sort()
 html = await page(K + '?view=decide&edit=d8')
-ok('line editor: only the chosen line has one', (html.match(/name="decision_id"/g) || []).length === 4 && html.includes('value="d8"'), String((html.match(/name="decision_id"/g) || []).length)) // d8 replace + d8 remove + 2 put-backs
+ok('line editor: only the chosen line has one', (html.match(/name="decision_id"/g) || []).length === 5 && html.includes('value="d8"'), String((html.match(/name="decision_id"/g) || []).length)) // d8 kind + d8 replace + d8 remove + 2 put-backs
 const replaceForm = form(html, (f) => f.includes('value="d8"') && f.includes('name="value"'), 'replace-line form')
 const removeFormD8 = form(html, (f) => f.includes('value="d8"') && f.includes('Remove this line'), 'remove-line form')
 before = await getDb()
@@ -502,6 +502,162 @@ row = (await getDb()).intent_gaps.find((x) => x.id === 'g2')
 ok('approver reopens a closed gap', row.status === 'open' && row.closed_at === null && row.closed_by_email === null && row.close_note === null, JSON.stringify(row))
 ok('reports, proofs and gaps are never deleted', !(await (await fetch(mock + '/__calls')).json()).some((c) => c.op.startsWith('delete') && ['intent_bridge_reports', 'intent_bridge_proven', 'intent_gaps'].includes(c.table)))
 
+// ---------- C7. contract v2: typed pushes, typing by hand, dual emit, model checks ----------
+const kindRows = (await getDb()).intent_kinds
+const V2 = await import('../../src/lib/emit-v2.ts')
+const vocabRes = await fetch(app + '/api/vocabulary', { headers: SECRET })
+const vocabBody = await vocabRes.json()
+ok('api vocabulary: draft list of kinds, roles, the no-work kind', vocabRes.status === 200 && vocabBody.status === 'draft' && vocabBody.kinds.length === 36 && vocabBody.kinds.some((k) => k.kind === 'casework.counter') && vocabBody.kinds.find((k) => k.kind === 'mep.electrical').stage_scope === 'd2_to_d3' && vocabBody.context_kind === 'context' && vocabBody.roles.length === 34 && vocabBody.role_aliases['golf-room'] === 'game-room', JSON.stringify(vocabBody).slice(0, 200))
+ok('api vocabulary without the secret or a session: 401', (await fetch(app + '/api/vocabulary')).status === 401)
+
+// a push with a kind or a role that is not in the vocabulary is refused whole
+before = await getDb()
+res = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body: JSON.stringify({ project: { name: 'Scratch v2' }, rooms: [{ section_code: '201', name: 'Kitchen', role: 'spa', decisions: [{ topic: 'island', value: '84 x 42', kind: 'casework.island' }, { topic: 'counter', value: 'Marble', kind: 'casework.counter' }] }] }) })
+let refused = await res.json()
+db = await getDb()
+ok('typed push with an unknown kind and role: 422, both named, NOTHING written', res.status === 422 && same(refused.unknown_kinds, ['casework.island']) && same(refused.unknown_roles, ['201: spa']) && db.intent_projects.length === before.intent_projects.length && db.intent_rooms.length === before.intent_rooms.length && db.intent_decisions.length === before.intent_decisions.length, JSON.stringify(refused))
+
+// the scratch project, pushed typed (one line left without a kind on purpose)
+res = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body: JSON.stringify({
+  project: { name: 'Scratch v2', doc: 'Scratch v2 D2.rvt' },
+  rooms: [
+    { section_code: '201', name: 'Kitchen', source: 'model_scan', area_sf: 300, model_state: { casework: 4, scanned_at: '2026-11-11T06:00:00Z', bridge_build: 'f98f724' }, role: 'kitchen', needs_2d: true,
+      decisions: [
+        { topic: 'island', value: '84 x 42 island', kind: 'casework.place', params: { width_in: 84, depth_in: 42 } },
+        { topic: 'counter', value: 'Marble slab, no waterfall', kind: 'casework.counter' },
+        { topic: 'sink', value: 'Undermount, centred on the window', kind: 'plumbing.sink' },
+        { topic: 'under the stair', value: 'Leave it open', kind: 'context' },
+        { topic: 'hood', value: 'Plaster hood, no wood' },
+      ],
+      redline_notes: [{ note_type: 'beam', text: 'Beam, not a wall', source_ref: 'A101.1', kind: 'surface.beam' }] },
+    { section_code: '202', name: 'Bath 2', source: 'model_scan', role: 'bath', shell_changed: true,
+      decisions: [{ topic: 'wall', value: 'Move the toilet wall 6 in', kind: 'surface.wall' }, { topic: 'mirror lights', value: 'Side lights at the mirror', kind: 'mep.electrical' }] },
+    { section_code: '203', name: 'Golf Room', source: 'model_scan', role: 'golf-room' },
+    { section_code: 'HOUSE', name: 'House-Level (global)', decisions: [{ topic: 'cabinet material', value: 'White oak everywhere', kind: 'finish.material' }, { topic: 'fencing', value: 'Only around the pool', kind: 'site.fence' }] },
+  ],
+}) })
+made = await res.json()
+db = await getDb()
+const SP = made.project_id
+const sRoom = (d, code) => d.intent_rooms.find((x) => x.project_id === SP && x.section_code === code)
+const sDec = (d, topic) => d.intent_decisions.find((x) => x.project_id === SP && x.topic === topic)
+ok('typed push: project, rooms and lines stored with their kinds, numbers and roles', res.status === 200 && made.rooms === 4 && made.decisions.inserted === 9 && made.redline_notes === 1 && db.intent_projects.find((p) => p.id === SP).doc_title === 'Scratch v2 D2.rvt' && sRoom(db, '201').role === 'kitchen' && sRoom(db, '203').role === 'game-room' && sRoom(db, '202').shell_changed === true && sDec(db, 'island').kind === 'casework.place' && same(sDec(db, 'island').params, { width_in: 84, depth_in: 42 }) && sDec(db, 'island').kind_set_by === 'blueprint' && !sDec(db, 'hood').kind && db.intent_redline_notes.find((n) => n.project_id === SP).kind === 'surface.beam', JSON.stringify(made))
+ok('typed push: a machine cannot say a room gets 2D drawings', db.intent_rooms.filter((x) => x.project_id === SP).every((x) => x.needs_2d == null))
+
+// test setup only: the rooms are marked reviewed straight in the mock (the review buttons are covered in section C)
+await fetch(mock + '/rest/v1/intent_rooms?project_id=eq.' + SP, { method: 'PATCH', body: JSON.stringify({ review_state: 'confirmed', sort_order: 0 }) })
+const SE = '/projects/' + SP + '/emit'
+const gaps = (t) => (/(\d+) things? missing/.exec(t) || [])[1]
+html = (await page(SE)).replace(/<!-- -->/g, '')
+ok('emit page: gates pass, and the typed contract lists exactly what is missing', html.includes('Lock &amp; Emit contract v1') && gaps(html) === '4' && html.includes('Room 201 Kitchen: nobody has said whether it gets 2D drawings') && html.includes('Room 203 Golf Room: nobody has said') && html.includes('decision &quot;hood: Plaster hood, no wood&quot;: no kind of work chosen') && !html.includes('no role chosen'), gaps(html))
+
+// emit now: v1 goes out exactly as before; v2 is not written and says why
+h = form(html, (f) => f.includes('Lock &amp; Emit contract'), 'emit form')
+r = await post(SE, h, {})
+db = await getDb()
+let em = db.intent_emissions.find((e) => e.project_id === SP && e.version === 1)
+ok('emit with gaps: v1 emitted and the project locked', r.status === 303 && r.location.includes('emitted=1') && r.location.includes('v2=no-4') && em && em.intent_json.rooms.length === 4 && em.brief_md.includes('# Scratch v2') && db.intent_projects.find((p) => p.id === SP).status === 'locked' && db.intent_projects.find((p) => p.id === SP).emitted_version === 1, JSON.stringify(r))
+ok('emit with gaps: no typed contract, the gaps are on the emission', em.intent_v2_json === null && em.v2_work_items === null && em.v2_errors.length === 4, JSON.stringify(em.v2_errors))
+const v1Decision = em.intent_json.rooms.find((x) => x.section_code === '201').decisions[0]
+ok('contract v1 is unchanged: same fields, nothing typed leaks in', same(Object.keys(em.intent_json).sort(), ['parked_images', 'project', 'rooms', 'unassigned_images']) && same(Object.keys(v1Decision).sort(), ['meeting_date', 'source', 'source_ref', 'superseded_by', 'topic', 'value']) && same(Object.keys(em.intent_json.rooms[0]).sort(), ['area_sf', 'decisions', 'images', 'model_state', 'name', 'open_questions', 'redline_notes', 'review_state', 'section_code']), JSON.stringify(Object.keys(em.intent_json.rooms[0])))
+res = await fetch(app + '/api/contract/' + SP + '?schema=2', { headers: SECRET })
+let c2 = await res.json()
+ok('api contract schema=2 on an emission without v2: 409 with the gaps; v1 still served', res.status === 409 && c2.v2_errors.length === 4 && (await fetch(app + '/api/contract/' + SP, { headers: SECRET })).status === 200, JSON.stringify(c2).slice(0, 200))
+const told1 = db.portal_messages[db.portal_messages.length - 1]
+ok('handoff message says the typed contract was not emitted', told1.content.includes('Intent contract v1 for Scratch v2') && told1.content.includes('was NOT emitted: 4 things missing'), told1.content.slice(-200))
+html = (await page(SE + '?emitted=1&handoff=x&v2=no-4')).replace(/<!-- -->/g, '')
+ok('emit page after: says v2 was not written, history shows no typed contract', html.includes('Typed contract (v2) was not written: 4 things missing') && html.includes('no typed contract'))
+
+// a person types what is missing: the two rooms, then the one line
+const roomPath = (code) => '/projects/' + SP + '/rooms/' + sRoom(db, code).id
+html = (await page(roomPath('201') + '?view=decide')).replace(/<!-- -->/g, '')
+ok('room page: role is saved from the push, 2D is only a suggestion', html.includes('Gets 2D drawings before it is built — suggested, not saved yet') && html.includes('room not set · 1 line without a kind') && html.includes('kind: Casework: place') && html.includes('no kind of work yet'))
+h = form(html, (f) => f.includes('name="needs_2d"'), 'room typing form (201)')
+r = await post(roomPath('201'), h, { role: 'kitchen', needs_2d: 'yes' })
+r2 = await post(roomPath('203'), form(await page(roomPath('203') + '?view=decide'), (f) => f.includes('name="needs_2d"'), 'room typing form (203)'), { role: 'game-room', needs_2d: 'no' })
+h = form(await page(roomPath('202') + '?view=decide'), (f) => f.includes('name="needs_2d"'), 'room typing form (202)')
+r3 = await post(roomPath('202'), h, { role: 'bath', needs_2d: 'yes', shell_changed: 'on' })
+db = await getDb()
+ok('room typing: saved by a person, with who and when', [r, r2, r3].every((x) => x.status === 303 && x.location.endsWith('?view=decide#typing')) && sRoom(db, '201').needs_2d === true && sRoom(db, '203').needs_2d === false && sRoom(db, '202').needs_2d === true && sRoom(db, '202').shell_changed === true && sRoom(db, '201').typed_by === 'mitch@barnhaus.test' && !!sRoom(db, '201').typed_at, JSON.stringify([r, r2, r3]))
+r = await post(roomPath('202'), h, { role: 'spa', needs_2d: 'yes' })
+ok('room typing: a role that is not in the list is refused', r.location.includes('is not in the list of room roles') && sRoom(await getDb(), '202').role === 'bath', JSON.stringify(r))
+
+html = (await page(roomPath('201') + '?view=decide')).replace(/<!-- -->/g, '')
+h = form(html, (f) => f.includes('name="topic"') && f.includes('value="hood"') && f.includes('Save for these lines'), 'topic kind form (hood)')
+r = await post(roomPath('201'), h, { kind: 'casework.island' })
+ok('line typing: a kind that is not in the list is refused', r.location.includes('is not in the list of kinds of work') && !sDec(await getDb(), 'hood').kind, JSON.stringify(r))
+before = await getDb()
+r = await post(roomPath('201'), h, { kind: 'casework.place' })
+db = await getDb()
+ok('line typing by topic: only the lines without a kind are typed; wording and other lines untouched', r.status === 303 && sDec(db, 'hood').kind === 'casework.place' && sDec(db, 'hood').kind_set_by === 'mitch@barnhaus.test' && sDec(db, 'hood').value === 'Plaster hood, no wood' && sDec(db, 'hood').status === 'active' && same(sDec(db, 'island'), sDec(before, 'island')) && db.intent_decisions.length === before.intent_decisions.length, JSON.stringify(r))
+// one line, from its editor: kind + numbers; the line is not replaced
+html = (await page(roomPath('201') + '?view=decide&edit=' + sDec(db, 'sink').id)).replace(/<!-- -->/g, '')
+h = form(html, (f) => f.includes('Save kind — the wording stays as it is'), 'line kind form (sink)')
+r = await post(roomPath('201'), h, { kind: 'plumbing.sink', params: 'not json' })
+ok('line typing: numbers that are not name: value pairs are refused', r.location.includes('name: value pairs') && same(sDec(await getDb(), 'sink').params || {}, {}), JSON.stringify(r))
+r = await post(roomPath('201'), h, { kind: 'plumbing.sink', params: '{"bowl_in": 30}' })
+db = await getDb()
+ok('line typing: kind and numbers saved on the same line', r.status === 303 && same(sDec(db, 'sink').params, { bowl_in: 30 }) && sDec(db, 'sink').status === 'active' && db.intent_decisions.length === before.intent_decisions.length, JSON.stringify(r))
+// new wording keeps the kind
+html = (await page(roomPath('201') + '?view=decide&edit=' + sDec(db, 'hood').id)).replace(/<!-- -->/g, '')
+h = form(html, (f) => f.includes('name="value"') && f.includes('Save — replaces this line only'), 'replace form (hood)')
+r = await post(roomPath('201'), h, { value: 'Plaster hood with a wood band', source: 'manual', source_ref: '', meeting_date: '' })
+db = await getDb()
+const newHood = db.intent_decisions.find((x) => x.project_id === SP && x.topic === 'hood' && x.status === 'active')
+ok('new wording keeps the kind of work', newHood && newHood.value === 'Plaster hood with a wood band' && newHood.kind === 'casework.place', JSON.stringify(newHood))
+
+// model checks: Blueprint proposes, only Mitch or Michael decide
+const MC = '/rulebook/model-checks'
+const ruleOf = (d, key) => d.intent_model_rules.find((x) => x.rule_key === key)
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+let mr = await res.json()
+ok('api model-rules: the backlog, one accepted', res.status === 200 && mr.rules.length === 40 && mr.counts.accepted === 1 && mr.counts.proposed === 38 && mr.counts.retired === 1 && (await (await fetch(app + '/api/model-rules', { headers: SECRET })).json()).rules.map((x) => x.rule_key).join() === 'counter.no_builtin_splash', JSON.stringify(mr.counts))
+res = await fetch(app + '/api/model-rules', { method: 'POST', headers: SECRET, body: JSON.stringify({ rule_key: 'stairs.headroom_80', description: 'Every stair has 80 inches of headroom.', kinds: ['structure.stairs'], status: 'accepted' }) })
+ok('api model-rules: a machine cannot accept its own check', res.status === 400 && !ruleOf(await getDb(), 'stairs.headroom_80'))
+res = await fetch(app + '/api/model-rules', { method: 'POST', headers: SECRET, body: JSON.stringify({ rule_key: 'stairs.headroom_80', description: 'Every stair has 80 inches of headroom.', kinds: ['structure.stair'] }) })
+ok('api model-rules: a check attached to an unknown kind is refused', res.status === 422)
+res = await fetch(app + '/api/model-rules', { method: 'POST', headers: SECRET, body: JSON.stringify({ rule_key: 'stairs.headroom_80', description: 'Every stair has 80 inches of headroom.', kinds: ['structure.stairs'] }) })
+row = ruleOf(await getDb(), 'stairs.headroom_80')
+ok('api model-rules: proposed, by blueprint, not in force', res.status === 201 && row.status === 'proposed' && row.proposed_by === 'blueprint' && !row.decided_at && same(row.kinds, ['structure.stairs']), JSON.stringify(row))
+html = await pageAs(MC, asBlueprint)
+ok('model checks, non-approver: listed, no accept buttons', html.includes('No two casework solids overlap.') && html.includes('Only Mitch or Michael can accept or retire a check') && !html.includes('name="rule_id"'))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const acceptOverlap = form(html, (f) => f.includes('value="' + ruleOf(db, 'casework.no_overlap').id + '"'), 'decide form (casework.no_overlap)')
+before = await getDb()
+r = await postAs(MC, acceptOverlap, { decision: 'accept', note: '' }, asBlueprint)
+ok('model checks, non-approver posts accept: refused, nothing changed', r.location.includes('Only Mitch or Michael can accept or retire a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, acceptOverlap, { decision: 'accept', note: 'Solids, not boxes' })
+db = await getDb()
+row = ruleOf(db, 'casework.no_overlap')
+ok('model checks, approver accepts: in force, who and when kept, Blueprint told', r.location.includes('saved=casework.no_overlap accepted') && row.status === 'accepted' && row.decided_by_email === 'mitch@barnhaus.test' && row.decision_note === 'Solids, not boxes' && row.version === 2 && db.portal_messages[db.portal_messages.length - 1].content.includes('Model check accepted: `casework.no_overlap`'), JSON.stringify(row))
+r = await post(MC, acceptOverlap, { decision: 'accept', note: '' })
+ok('model checks: accepting twice is refused', r.location.includes('is already accepted'), JSON.stringify(r))
+
+// emit again: nothing is missing now, so v1 AND v2 go out on the same emission
+html = (await page(SE)).replace(/<!-- -->/g, '')
+ok('emit page: nothing missing', html.includes('Nothing missing. Emitting now also writes the typed contract: 9 work items') && !html.includes('things missing'), gaps(html))
+h = form(html, (f) => f.includes('Lock &amp; Emit contract'), 'emit form (again)')
+r = await post(SE, h, {})
+db = await getDb()
+em = db.intent_emissions.find((e) => e.project_id === SP && e.version === 2)
+ok('emit, nothing missing: v1 and v2 on the same emission', r.location.includes('emitted=2') && r.location.includes('v2=ok-9') && em && em.intent_json.rooms.length === 4 && em.v2_work_items === 9 && em.v2_errors === null && em.intent_v2_json.schema === 'intent-contract/2.0', JSON.stringify(r))
+res = await fetch(app + '/api/contract/' + SP + '?version=2&schema=2', { headers: SECRET })
+c2 = await res.json()
+const K2 = c2.contract
+const k2room = (code) => K2.rooms.find((x) => x.section_code === code)
+ok('SCRATCH PROJECT EMITS A VALID v2: fetched by the machine route and valid against the vocabulary', res.status === 200 && c2.schema === 'intent-contract/2.0' && c2.version === 2 && same(V2.validateContractV2(K2, kindRows), []), JSON.stringify(V2.validateContractV2(K2, kindRows)))
+ok('v2: project, version and fingerprint', same(K2.project, { name: 'Scratch v2', slug: 'scratch-v2', doc: 'Scratch v2 D2.rvt', client: null }) && K2.version === 2 && K2.sha256_intent === V2.contractSha(K2) && K2.vocabulary.status === 'draft')
+ok('v2: rooms carry role, 2D yes/no and shell-changed; HOUSE is not a room', same(K2.rooms.map((x) => [x.section_code, x.role, x.needs_2d, x.shell_changed]), [['201', 'kitchen', true, false], ['202', 'bath', true, true], ['203', 'game-room', false, false]]), JSON.stringify(K2.rooms.map((x) => [x.section_code, x.role, x.needs_2d, x.shell_changed])))
+ok('v2: kitchen work items are typed, with numbers and where they came from', same(k2room('201').work_items.map((w) => w.kind).sort(), ['casework.counter', 'casework.place', 'casework.place', 'plumbing.sink', 'surface.beam']) && same(k2room('201').work_items.find((w) => w.summary.startsWith('island')).params, { width_in: 84, depth_in: 42 }) && same(k2room('201').work_items.find((w) => w.kind === 'plumbing.sink').params, { bowl_in: 30 }) && k2room('201').work_items.find((w) => w.summary.startsWith('island')).provenance.decision_id === sDec(db, 'island').id, JSON.stringify(k2room('201').work_items.map((w) => [w.kind, w.summary])))
+ok('v2: only accepted checks are attached', same(k2room('201').work_items.find((w) => w.summary.startsWith('island')).acceptance, ['casework.no_overlap']) && same(k2room('201').work_items.find((w) => w.kind === 'casework.counter').acceptance, ['casework.no_overlap', 'counter.no_builtin_splash']) && same(k2room('201').work_items.find((w) => w.kind === 'surface.beam').acceptance, []), JSON.stringify(k2room('201').work_items.map((w) => w.acceptance)))
+ok('v2: the no-work line is carried as context', same(k2room('201').context.map((x) => x.text), ['under the stair: Leave it open']) && !k2room('201').work_items.some((w) => w.summary.includes('under the stair')))
+ok('v2: a later-stage kind is carried, house and site are split', same(k2room('202').work_items.map((w) => w.kind), ['surface.wall', 'mep.electrical']) && same(K2.house.work_items.map((w) => w.kind), ['finish.material']) && same(K2.site.work_items.map((w) => w.kind), ['site.fence']) && K2.house.defaults_applied.includes('default:fridge'), JSON.stringify([K2.house.work_items.length, K2.site.work_items.length]))
+ok('v2: scan time and bridge build ride on the room', k2room('201').model_state.scanned_at === '2026-11-11T06:00:00Z' && k2room('201').model_state.bridge_build === 'f98f724' && k2room('203').model_state.scanned_at === null)
+ok('handoff message names the typed contract', db.portal_messages[db.portal_messages.length - 1].content.includes('Contract v2 (typed work items) is on the same emission: 9 work items') && db.portal_messages[db.portal_messages.length - 1].content.includes('&schema=2'))
+html = (await page(SE + '?emitted=2&handoff=x&v2=ok-9')).replace(/<!-- -->/g, '')
+ok('emit page after: typed contract linked in the history', html.includes('Typed contract (v2) written too: 9 work items') && html.includes('version=2&amp;schema=2') && html.includes('typed (9)'))
+ok('a session, not only the machine, can read the typed contract', (await fetch(app + '/api/contract/' + SP + '?schema=2', { headers: { cookie } })).status === 200 && (await fetch(app + '/api/contract/' + SP + '?schema=2')).status === 401)
+
 // ---------- D. delete ----------
 const D = '/projects/p-deubner'
 html = await page(D)
@@ -520,7 +676,7 @@ const left = Object.entries(db).filter(([, v]) => Array.isArray(v) && v.some((x)
 ok('delete (no cascade): everything for the project is gone', left.length === 0 && r.location.startsWith('/projects?deleted=Deubner'), JSON.stringify({ left, r }))
 ok('delete (no cascade): project first, then children in order, then project', same(calls.filter((c) => c.op.startsWith('delete')).map((c) => c.op + ':' + c.table.replace('intent_', '')), ['delete-rejected:projects', 'delete:outlines', 'delete:emissions', 'delete:inspo_images', 'delete:redline_notes', 'delete:open_questions', 'delete:decisions', 'delete:rooms', 'delete:projects']), JSON.stringify(calls.map((c) => c.op + ':' + (c.table || c.bucket))))
 ok('delete: stored files removed after the rows', same(calls.filter((c) => c.op === 'storage.remove').map((c) => [c.bucket, c.prefixes.length]), [['intent-inspo', 3]]) && calls.findIndex((c) => c.op === 'storage.remove') > calls.findIndex((c) => c.op === 'delete' && c.table === 'intent_projects'), JSON.stringify(calls.filter((c) => c.op === 'storage.remove')))
-ok('delete: other projects untouched', db.intent_rooms.filter((x) => x.project_id === 'p-whitaker').length === whitakerRooms && db.intent_projects.length === 4)
+ok('delete: other projects untouched', db.intent_rooms.filter((x) => x.project_id === 'p-whitaker').length === whitakerRooms && db.intent_projects.length === 5) // 5 fixtures + the scratch project - Deubner
 ok('delete: no leftover-files warning', !r.location.includes('files_left'))
 
 await setMode({ fk: 'cascade', loseBucket: 'intent-outlines' }) // cascading database; storage refuses outline files

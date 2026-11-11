@@ -1,0 +1,714 @@
+{
+ "kinds": [
+  {
+   "kind": "opening.place",
+   "family": "opening",
+   "label": "Opening: place",
+   "description": "A new window, door, slider, overhead door or skylight.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 10
+  },
+  {
+   "kind": "opening.replace",
+   "family": "opening",
+   "label": "Opening: replace",
+   "description": "Swap an existing window or door for another type.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 20
+  },
+  {
+   "kind": "opening.modify",
+   "family": "opening",
+   "label": "Opening: modify",
+   "description": "Move, resize or re-swing an existing window or door.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 30
+  },
+  {
+   "kind": "room.config",
+   "family": "room",
+   "label": "Room: name / number / department",
+   "description": "Room name, number or department.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 40
+  },
+  {
+   "kind": "room.palette",
+   "family": "room",
+   "label": "Room: colour fill",
+   "description": "Room colour scheme.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 50
+  },
+  {
+   "kind": "casework.place",
+   "family": "casework",
+   "label": "Casework: place",
+   "description": "A new cabinet run, island, shelf, bench, locker or built-in.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 60
+  },
+  {
+   "kind": "casework.modify",
+   "family": "casework",
+   "label": "Casework: modify",
+   "description": "Change or move existing casework.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 70
+  },
+  {
+   "kind": "casework.rehost",
+   "family": "casework",
+   "label": "Casework: re-host",
+   "description": "Assign existing casework to a new host.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 80
+  },
+  {
+   "kind": "casework.counter",
+   "family": "casework",
+   "label": "Counter",
+   "description": "A countertop slab (and its cutouts).",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 90
+  },
+  {
+   "kind": "appliance.place",
+   "family": "appliance",
+   "label": "Appliance",
+   "description": "Fridge, range, microwave, dishwasher, washer, dryer.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 100
+  },
+  {
+   "kind": "plumbing.place",
+   "family": "plumbing",
+   "label": "Plumbing fixture",
+   "description": "Vanity, toilet, tub, shower (tile walls, glass, door).",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 110
+  },
+  {
+   "kind": "plumbing.sink",
+   "family": "plumbing",
+   "label": "Sink",
+   "description": "A sink and its counter cutout.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 120
+  },
+  {
+   "kind": "plumbing.niche",
+   "family": "plumbing",
+   "label": "Niche",
+   "description": "A niche cut into a wall.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 130
+  },
+  {
+   "kind": "surface.floor",
+   "family": "surface",
+   "label": "Floor",
+   "description": "Finish floor, raised or lowered floor.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 140
+  },
+  {
+   "kind": "surface.ceiling",
+   "family": "surface",
+   "label": "Ceiling",
+   "description": "Ceiling height, vault, flat ceiling.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 150
+  },
+  {
+   "kind": "surface.wall",
+   "family": "surface",
+   "label": "Wall",
+   "description": "A wall added, removed or moved.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 160
+  },
+  {
+   "kind": "surface.beam",
+   "family": "surface",
+   "label": "Beam",
+   "description": "A beam.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 170
+  },
+  {
+   "kind": "surface.soffit",
+   "family": "surface",
+   "label": "Soffit",
+   "description": "A soffit or dropped section.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 180
+  },
+  {
+   "kind": "finish.material",
+   "family": "finish",
+   "label": "Finish / material",
+   "description": "Material, colour, stain, paint, tile, hardware.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 190
+  },
+  {
+   "kind": "roof.modify",
+   "family": "roof",
+   "label": "Roof",
+   "description": "Roof layers, fascia, overhang, chimney.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 200
+  },
+  {
+   "kind": "structure.stairs",
+   "family": "structure",
+   "label": "Stairs",
+   "description": "A stair added, moved or changed.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 210
+  },
+  {
+   "kind": "structure.modify",
+   "family": "structure",
+   "label": "Structure: change",
+   "description": "Remove or change a column or other structure.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 220
+  },
+  {
+   "kind": "structure.resize",
+   "family": "structure",
+   "label": "Whole-house resize",
+   "description": "The house gets longer, shorter, wider or narrower.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 230
+  },
+  {
+   "kind": "structure.foundation",
+   "family": "structure",
+   "label": "Foundation",
+   "description": "Foundation and columns sheet work.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": "d2_to_d3",
+   "active": true,
+   "sort_order": 240
+  },
+  {
+   "kind": "site.modify",
+   "family": "site",
+   "label": "Site",
+   "description": "Driveway, pad, turnaround, topography.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 250
+  },
+  {
+   "kind": "site.fence",
+   "family": "site",
+   "label": "Fence",
+   "description": "Fencing.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 260
+  },
+  {
+   "kind": "site.pool",
+   "family": "site",
+   "label": "Pool",
+   "description": "Pool, spa, pool deck.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 270
+  },
+  {
+   "kind": "sheet.create",
+   "family": "sheet",
+   "label": "Sheet: create",
+   "description": "A sheet, sheet set, schedule or title block.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 280
+  },
+  {
+   "kind": "sheet.view",
+   "family": "sheet",
+   "label": "Sheet: view",
+   "description": "A plan, elevation, section, 3D or zoom-in view on a sheet.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 290
+  },
+  {
+   "kind": "sheet.annotate",
+   "family": "sheet",
+   "label": "Note on a sheet",
+   "description": "A note, tag, dimension, title-block or general-note text.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 300
+  },
+  {
+   "kind": "mep.electrical",
+   "family": "mep",
+   "label": "Electrical",
+   "description": "Lights, fans, outlets, switches, panel, low voltage.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": "d2_to_d3",
+   "active": true,
+   "sort_order": 310
+  },
+  {
+   "kind": "mep.plumbing",
+   "family": "mep",
+   "label": "Plumbing system",
+   "description": "Drains, hose bibs, gas, water heaters, filtration.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": "d2_to_d3",
+   "active": true,
+   "sort_order": 320
+  },
+  {
+   "kind": "qa.run",
+   "family": "qa",
+   "label": "QA",
+   "description": "Model and sheet checks.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 330
+  },
+  {
+   "kind": "export.pdf",
+   "family": "export",
+   "label": "PDF",
+   "description": "PDF of the set.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 340
+  },
+  {
+   "kind": "export.render",
+   "family": "export",
+   "label": "Render / picture",
+   "description": "Rendered views and concept pictures.",
+   "executable": true,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 350
+  },
+  {
+   "kind": "context",
+   "family": "context",
+   "label": "No work: context only",
+   "description": "Nothing is built from this line. It is carried in the contract as context.",
+   "executable": false,
+   "status": "draft",
+   "stage_scope": null,
+   "active": true,
+   "sort_order": 9000
+  }
+ ],
+ "model_rules": [
+  {
+   "rule_key": "intake.doc_title_matches",
+   "description": "The open Revit file is the one the work order names.",
+   "source": "runbook section 3 gate 12",
+   "kinds": []
+  },
+  {
+   "rule_key": "intake.rooms_match_contract",
+   "description": "Every room number in the contract exists in the model.",
+   "source": "compiler stage P1",
+   "kinds": []
+  },
+  {
+   "rule_key": "intake.fingerprint_current",
+   "description": "The contract and the approved drawings have not changed since the work order was compiled.",
+   "source": "work_order_compile --check",
+   "kinds": []
+  },
+  {
+   "rule_key": "doc.is_d2_save_as",
+   "description": "The open file is the Draft 2 save-as, not the Draft 1 file.",
+   "source": "runbook stage 2",
+   "kinds": []
+  },
+  {
+   "rule_key": "room.no_zero_area",
+   "description": "No room has zero area.",
+   "source": "runbook stage 2b",
+   "kinds": []
+  },
+  {
+   "rule_key": "room.no_duplicate_numbers",
+   "description": "No two rooms share a number.",
+   "source": "runbook stage 2b",
+   "kinds": []
+  },
+  {
+   "rule_key": "room.numbers_match_board",
+   "description": "Room numbers in the model equal the room board.",
+   "source": "runbook stage 4",
+   "kinds": []
+  },
+  {
+   "rule_key": "room.palette_rgb",
+   "description": "Room colour fills use the standard palette.",
+   "source": "runbook stage 4",
+   "kinds": [
+    "room.palette"
+   ]
+  },
+  {
+   "rule_key": "sheet.no_later_stage_sheets",
+   "description": "No foundation, electrical, plumbing or structural sheet in a Draft 2 set.",
+   "source": "runbook stage 2; D2 sets",
+   "kinds": []
+  },
+  {
+   "rule_key": "shell.rooms_still_enclosed",
+   "description": "After a wall, stair or size change every room is still enclosed.",
+   "source": "pack phase P2S",
+   "kinds": [
+    "structure.resize",
+    "structure.modify",
+    "structure.stairs",
+    "surface.wall"
+   ]
+  },
+  {
+   "rule_key": "shell.outline_matches_model",
+   "description": "A shell-changed room's approved drawing matches the model after the change, within tolerance.",
+   "source": "spec amendment A12",
+   "kinds": [
+    "structure.resize",
+    "structure.modify",
+    "structure.stairs",
+    "surface.wall"
+   ]
+  },
+  {
+   "rule_key": "model.warnings_not_up",
+   "description": "The model's warning count has not risen.",
+   "source": "runbook stage 8",
+   "kinds": []
+  },
+  {
+   "rule_key": "opening.bbox_verified",
+   "description": "Every placed or swapped door and window exists where it was placed.",
+   "source": "runbook stage 3",
+   "kinds": [
+    "opening.place",
+    "opening.replace",
+    "opening.modify"
+   ]
+  },
+  {
+   "rule_key": "opening.marks_clean",
+   "description": "Every opening carries a type mark and the marks check is clean.",
+   "source": "runbook stage 3",
+   "kinds": [
+    "opening.place",
+    "opening.replace",
+    "opening.modify"
+   ]
+  },
+  {
+   "rule_key": "casework.no_overlap",
+   "description": "No two casework solids overlap.",
+   "source": "spec 4.3",
+   "kinds": [
+    "casework.place",
+    "casework.modify",
+    "casework.counter",
+    "appliance.place"
+   ]
+  },
+  {
+   "rule_key": "casework.position_within_1in_of_2d",
+   "description": "Built casework sits within 1 inch of the approved 2D drawing.",
+   "source": "spec 4.3",
+   "kinds": [
+    "casework.place",
+    "casework.counter",
+    "appliance.place",
+    "plumbing.place",
+    "plumbing.sink"
+   ]
+  },
+  {
+   "rule_key": "casework.no_opening_intersection",
+   "description": "No casework crosses a door, window or appliance.",
+   "source": "runbook stage 5",
+   "kinds": [
+    "casework.place",
+    "casework.modify",
+    "casework.counter",
+    "appliance.place"
+   ]
+  },
+  {
+   "rule_key": "casework.faces_have_material",
+   "description": "Every face of every built family has a material.",
+   "source": "runbook stage 5",
+   "kinds": [
+    "casework.place",
+    "casework.counter"
+   ]
+  },
+  {
+   "rule_key": "sink.cutout_matches_bowl",
+   "description": "Each counter cutout equals its sink bowl, the sink is centred, the rim is under the slab.",
+   "source": "runbook stage 6",
+   "kinds": [
+    "plumbing.sink",
+    "casework.counter"
+   ]
+  },
+  {
+   "rule_key": "counter.no_builtin_splash",
+   "description": "No countertop has a built-in backsplash.",
+   "source": "runbook stage 6",
+   "kinds": [
+    "casework.counter"
+   ]
+  },
+  {
+   "rule_key": "plumbing.toilet_clearance_15_21",
+   "description": "Toilets have 15 inches to each side and 21 inches in front.",
+   "source": "spec 4.3",
+   "kinds": [
+    "plumbing.place"
+   ]
+  },
+  {
+   "rule_key": "bath.tile_cut_at_openings",
+   "description": "Shower tile walls are cut around every opening in the host wall.",
+   "source": "runbook stage 7",
+   "kinds": [
+    "plumbing.place"
+   ]
+  },
+  {
+   "rule_key": "bath.niche_void_cut",
+   "description": "Niches are real cuts in the wall.",
+   "source": "runbook stage 7",
+   "kinds": [
+    "plumbing.niche"
+   ]
+  },
+  {
+   "rule_key": "bath.one_room_per_bath",
+   "description": "Each bath is one room.",
+   "source": "runbook section 3 gate 10",
+   "kinds": []
+  },
+  {
+   "rule_key": "floor.threshold_both_sides",
+   "description": "A finish floor is present on both sides of every door.",
+   "source": "runbook stage 8 threshold gate",
+   "kinds": [
+    "surface.floor"
+   ]
+  },
+  {
+   "rule_key": "floor.no_uncovered_slab",
+   "description": "No slab is left without a finish floor.",
+   "source": "runbook stage 8",
+   "kinds": [
+    "surface.floor"
+   ]
+  },
+  {
+   "rule_key": "ceiling.edge_z_measured",
+   "description": "Ceiling heights are measured and match the notes.",
+   "source": "runbook stage 8",
+   "kinds": [
+    "surface.ceiling"
+   ]
+  },
+  {
+   "rule_key": "material.one_per_role",
+   "description": "One material per role across the house.",
+   "source": "spec 4.3",
+   "kinds": [
+    "finish.material"
+   ]
+  },
+  {
+   "rule_key": "material.no_project_named",
+   "description": "No material is named after the project.",
+   "source": "runbook section 8",
+   "kinds": [
+    "finish.material"
+   ]
+  },
+  {
+   "rule_key": "material.appearance_paths_resolve",
+   "description": "Every material's texture files sit in the shared library folders.",
+   "source": "runbook section 8",
+   "kinds": [
+    "finish.material"
+   ]
+  },
+  {
+   "rule_key": "roof.z_vs_walls",
+   "description": "The roof sits correctly on the walls.",
+   "source": "spec 4.3",
+   "kinds": [
+    "roof.modify"
+   ]
+  },
+  {
+   "rule_key": "roof.overhang_dims_clear_of_grids",
+   "description": "Overhang dimensions do not collide with the grid lines.",
+   "source": "runbook stage 10",
+   "kinds": [
+    "roof.modify"
+   ]
+  },
+  {
+   "rule_key": "site.driveway_is_toposolid_split",
+   "description": "The driveway is a split of the site surface, not an overlay.",
+   "source": "playbook, Site Plan",
+   "kinds": [
+    "site.modify"
+   ]
+  },
+  {
+   "rule_key": "site.conceptual_note_present",
+   "description": "The conceptual-site-plan note is on the site sheet unless a survey was given.",
+   "source": "D2 sets (Schwan, Deubner)",
+   "kinds": []
+  },
+  {
+   "rule_key": "sheet.set_matches_stage",
+   "description": "The sheet set matches the list for this draft stage.",
+   "source": "runbook stage 2",
+   "kinds": []
+  },
+  {
+   "rule_key": "sheet.bounds_edge_clean",
+   "description": "Everything on every sheet sits inside the page outline.",
+   "source": "spec 4.3",
+   "kinds": [
+    "sheet.create",
+    "sheet.view",
+    "sheet.annotate"
+   ]
+  },
+  {
+   "rule_key": "sheet.tags_text_only",
+   "description": "Tags are text only.",
+   "source": "runbook section 3 gate 11",
+   "kinds": []
+  },
+  {
+   "rule_key": "sheet.schedules_on_dimension_plan",
+   "description": "Door and window schedules are on the dimension plan.",
+   "source": "D2 sets, 3 of 3",
+   "kinds": []
+  },
+  {
+   "rule_key": "final.qa_clean",
+   "description": "The final model and sheet checks are clean.",
+   "source": "spec 4.3",
+   "kinds": []
+  },
+  {
+   "rule_key": "final.pdf_exists",
+   "description": "The PDF of the full set exists.",
+   "source": "runbook stage 12",
+   "kinds": []
+  }
+ ]
+}

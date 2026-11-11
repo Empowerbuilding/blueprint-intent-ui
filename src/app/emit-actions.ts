@@ -51,5 +51,6 @@ export async function emitContract(formData: FormData) {
   }
 
   revalidatePath(`/projects/${projectId}`)
-  redirect(`/projects/${projectId}/emit?emitted=${result.version}&handoff=${encodeURIComponent(result.handoff)}`)
+  const v2 = result.v2.ok && result.v2.stored ? 'ok-' + result.v2.work_items : 'no-' + result.v2.errors.length
+  redirect(`/projects/${projectId}/emit?emitted=${result.version}&handoff=${encodeURIComponent(result.handoff)}&v2=${v2}`)
 }

@@ -13,6 +13,9 @@ import {
   setReviewState,
 } from '@/app/actions'
 import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
+import { setDecisionKind, setRedlineKind, setRoomTyping, setTopicKind } from '@/app/typing-actions'
+import { loadKinds, type KindOption } from '@/lib/model-rules'
+import { ROOM_ROLES, isHouseSection, roleLabel, suggestKind, suggestNeeds2d, suggestRedlineKind, suggestRole } from '@/lib/vocab'
 import { defaultsForRoom, loadDefaults } from '@/lib/defaults'
 import { INSPO_BUCKET, OUTLINES_BUCKET, signedUrls } from '@/lib/storage'
 import { summariseChecks, ago, type CheckSummary, type MathResult, type VisionResult } from '@/lib/outline-summary'
@@ -55,6 +58,8 @@ type Decision = {
   source_ref: string | null
   meeting_date: string | null
   superseded_by: string | null
+  kind: string | null
+  params: Record<string, unknown> | null
 }
 type OpenQuestion = {
   id: string
@@ -63,7 +68,7 @@ type OpenQuestion = {
   default_if_unanswered: string | null
   blocking: boolean
 }
-type Redline = { id: string; note_type: string; text: string; source_ref: string | null }
+type Redline = { id: string; note_type: string; text: string; source_ref: string | null; kind: string | null }
 type Inspo = { id: string; storage_path: string; notes: string | null }
 type Outline = {
   id: string
@@ -79,16 +84,39 @@ type Outline = {
 }
 type RoomLite = { id: string; section_code: string; name: string; review_state: string }
 
+// The kind of work a line is — what contract v2 is typed by. Grouped by family; '' = not chosen.
+function KindSelect({ kinds, value, name = 'kind', empty = 'kind of work: not chosen' }: { kinds: KindOption[]; value?: string | null; name?: string; empty?: string }) {
+  const families = [...new Set(kinds.map((k) => k.family))]
+  return (
+    <select name={name} defaultValue={value || ''} className="field" aria-label="Kind of work">
+      <option value="">{empty}</option>
+      {families.map((f) => (
+        <optgroup key={f} label={f}>
+          {kinds
+            .filter((k) => k.family === f)
+            .map((k) => (
+              <option key={k.kind} value={k.kind}>
+                {k.label} ({k.kind})
+              </option>
+            ))}
+        </optgroup>
+      ))}
+    </select>
+  )
+}
+
 function DecisionForm({
   projectId,
   roomId,
   topic,
   cta,
+  kinds,
 }: {
   projectId: string
   roomId: string
   topic?: string
   cta: string
+  kinds: KindOption[]
 }) {
   return (
     <form action={addDecision} className="grid gap-3 sm:grid-cols-2 text-sm mt-3">
@@ -116,6 +144,7 @@ function DecisionForm({
       </select>
       <input name="source_ref" placeholder="Where it came from (timestamp / page) — optional" className="field" />
       <input name="meeting_date" type="date" className="field" aria-label="Meeting date" />
+      {kinds.length > 0 && <KindSelect kinds={kinds} />}
       <button className="btn-primary-sm justify-self-start self-center">{cta}</button>
     </form>
   )
@@ -123,9 +152,34 @@ function DecisionForm({
 
 // Change or remove ONE line. Opened from the line's "Change" link (?edit=<line id>), so a topic
 // holding a couple of hundred lines does not carry a couple of hundred forms.
-function LineEditor({ d, projectId, roomId, cancelHref }: { d: Decision; projectId: string; roomId: string; cancelHref: string }) {
+function LineEditor({ d, projectId, roomId, cancelHref, kinds }: { d: Decision; projectId: string; roomId: string; cancelHref: string; kinds: KindOption[] }) {
+  const suggested = d.kind ? null : suggestKind(d.topic, d.value)
+  const hasParams = !!d.params && Object.keys(d.params).length > 0
   return (
     <div className="mt-2 rounded-lg border border-bh-border bg-bh-black/40 p-3 space-y-3">
+      {kinds.length > 0 && (
+        <form action={setDecisionKind} className="grid gap-3 sm:grid-cols-2 text-sm border-b border-bh-border pb-3">
+          <input type="hidden" name="project_id" value={projectId} />
+          <input type="hidden" name="room_id" value={roomId} />
+          <input type="hidden" name="decision_id" value={d.id} />
+          <label className="text-[11px] text-slate-500">
+            Kind of work for this line{suggested ? ' — suggested, not saved until you save' : ''}
+            <span className="block mt-1">
+              <KindSelect kinds={kinds} value={d.kind || suggested} />
+            </span>
+          </label>
+          <label className="text-[11px] text-slate-500">
+            Numbers, as name: value pairs — optional
+            <input
+              name="params"
+              defaultValue={hasParams ? JSON.stringify(d.params) : ''}
+              placeholder='{"width_in": 84, "depth_in": 42}'
+              className="field mt-1 font-mono text-xs"
+            />
+          </label>
+          <button className="btn-secondary-sm justify-self-start">Save kind — the wording stays as it is</button>
+        </form>
+      )}
       <form action={replaceDecision} className="grid gap-3 sm:grid-cols-2 text-sm">
         <input type="hidden" name="project_id" value={projectId} />
         <input type="hidden" name="room_id" value={roomId} />
@@ -147,6 +201,7 @@ function LineEditor({ d, projectId, roomId, cancelHref }: { d: Decision; project
         <input name="meeting_date" type="date" className="field" aria-label="Meeting date" />
         <div className="flex flex-wrap items-center gap-3 self-center">
           <button className="btn-primary-sm">Save — replaces this line only</button>
+          {d.kind && <span className="text-[11px] text-slate-600">The kind of work is kept; its numbers are cleared.</span>}
           <Link href={cancelHref} className="text-[11px] text-slate-500 hover:text-gold-light">
             Cancel
           </Link>
@@ -405,7 +460,7 @@ export default async function RoomPage({
 
   const { data: room } = await supabase
     .from('intent_rooms')
-    .select('id, project_id, section_code, name, review_state, area_sf, model_state, source')
+    .select('id, project_id, section_code, name, review_state, area_sf, model_state, source, role, needs_2d, shell_changed')
     .eq('id', roomId)
     .single()
   if (!room || room.project_id !== id) notFound()
@@ -415,7 +470,7 @@ export default async function RoomPage({
       supabase.from('intent_projects').select('name, emitted_version').eq('id', id).single(),
       supabase
         .from('intent_decisions')
-        .select('id, topic, value, status, source, source_ref, meeting_date, superseded_by')
+        .select('id, topic, value, status, source, source_ref, meeting_date, superseded_by, kind, params')
         .eq('room_id', roomId)
         .order('topic')
         .order('created_at', { ascending: false }),
@@ -424,7 +479,7 @@ export default async function RoomPage({
         .select('id, question, answer, default_if_unanswered, blocking')
         .eq('room_id', roomId)
         .order('created_at'),
-      supabase.from('intent_redline_notes').select('id, note_type, text, source_ref').eq('room_id', roomId).order('created_at'),
+      supabase.from('intent_redline_notes').select('id, note_type, text, source_ref, kind').eq('room_id', roomId).order('created_at'),
       supabase.from('intent_inspo_images').select('id, storage_path, notes').eq('room_id', roomId).order('created_at'),
       supabase.from('intent_outlines').select('*').eq('room_id', roomId).order('pushed_at', { ascending: false }),
       supabase.from('intent_rooms').select('id, section_code, name, review_state').eq('project_id', id).order('sort_order'),
@@ -438,6 +493,15 @@ export default async function RoomPage({
   const images = (imagesRes.data || []) as Inspo[]
   const outlines = (outlinesRes.data || []) as Outline[]
   const rooms = (roomsRes.data || []) as RoomLite[]
+  // typing for contract v2: the kinds of work, and what is still untyped in this room
+  const kinds = ((await loadKinds(supabase)) || []).filter((k) => k.active)
+  const kindLabel = (k: string) => kinds.find((x) => x.kind === k)?.label || k
+  const isHouse = isHouseSection(room.section_code)
+  const roleGuess = room.role ? null : suggestRole(room.name)
+  const needs2dGuess = suggestNeeds2d(room.name, room.section_code)
+  const untypedLines = decisions.filter((d) => d.status === 'active' && !d.kind).length
+  const untypedNotes = redlines.filter((n) => !n.kind).length
+  const roomTyped = isHouse || (!!room.role && (room.needs_2d === true || room.needs_2d === false))
   // signed links for this render only; nothing here is a public URL
   const [outlineUrls, inspoUrls] = await Promise.all([
     signedUrls(supabase, OUTLINES_BUCKET, outlines.filter((o) => o.status === 'pushed' || o.status === 'approved').map((o) => o.storage_path)),
@@ -609,6 +673,64 @@ export default async function RoomPage({
 
           {view === 'decide' && (
             <>
+              {/* TYPING — what contract v2 is built from. Suggestions are shown, never saved by themselves. */}
+              {kinds.length > 0 && (
+                <section id="typing" className="scroll-mt-32 space-y-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h2 className="section-title">For the typed contract</h2>
+                    <span className="text-[11px] text-slate-500">
+                      {roomTyped && untypedLines + untypedNotes === 0
+                        ? 'Nothing missing in this room'
+                        : [
+                            roomTyped ? '' : isHouse ? '' : 'room not set',
+                            untypedLines ? untypedLines + ' line' + (untypedLines === 1 ? '' : 's') + ' without a kind' : '',
+                            untypedNotes ? untypedNotes + ' redline note' + (untypedNotes === 1 ? '' : 's') + ' without a kind' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </span>
+                  </div>
+                  {isHouse ? (
+                    <p className="text-xs text-slate-600">House-level lines only need a kind of work each. This section is not a room, so it has no role.</p>
+                  ) : (
+                    <form action={setRoomTyping} className="card p-4 grid gap-4 sm:grid-cols-3 text-sm">
+                      <input type="hidden" name="project_id" value={id} />
+                      <input type="hidden" name="room_id" value={roomId} />
+                      <label className="text-[11px] text-slate-500">
+                        What this room is{roleGuess ? ' — suggested from its name, not saved yet' : ''}
+                        <select name="role" defaultValue={room.role || roleGuess || ''} className="field mt-1">
+                          <option value="">not chosen</option>
+                          {ROOM_ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {roleLabel(r)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-[11px] text-slate-500">
+                        Gets 2D drawings before it is built{room.needs_2d == null ? ' — suggested, not saved yet' : ''}
+                        <select name="needs_2d" defaultValue={room.needs_2d == null ? (needs2dGuess ? 'yes' : 'no') : room.needs_2d ? 'yes' : 'no'} className="field mt-1">
+                          <option value="yes">Yes — draw it first</option>
+                          <option value="no">No — build from the decisions and defaults</option>
+                        </select>
+                      </label>
+                      <label className="flex items-start gap-2 text-[11px] text-slate-500 self-end">
+                        <input type="checkbox" name="shell_changed" defaultChecked={!!room.shell_changed} className="mt-0.5" />
+                        <span>A decision moves this room&apos;s walls or changes its size (its drawings are made on the new shape)</span>
+                      </label>
+                      <div className="sm:col-span-3 flex flex-wrap items-center gap-3">
+                        <button className="btn-secondary-sm">{roomTyped ? 'Save' : 'Save for this room'}</button>
+                        <span className="text-[11px] text-slate-600">
+                          {roomTyped
+                            ? 'Saved: ' + roleLabel(room.role || '') + ' · ' + (room.needs_2d ? '2D drawings first' : 'no 2D drawings') + (room.shell_changed ? ' · shape changes' : '')
+                            : 'Nothing is saved until you press Save.'}
+                        </span>
+                      </div>
+                    </form>
+                  )}
+                </section>
+              )}
+
               {/* DECISIONS + DEFAULTS */}
               <section id="decisions" className="scroll-mt-32 space-y-4">
                 <div>
@@ -648,6 +770,11 @@ export default async function RoomPage({
                                     {d.source_ref ? ' · ' + d.source_ref : ''}
                                     {d.meeting_date ? ' · ' + d.meeting_date : ''}
                                   </div>
+                                  {kinds.length > 0 && (
+                                    <div className={'text-[11px] break-words ' + (d.kind ? 'text-slate-500' : 'text-amber-400/80')}>
+                                      {d.kind ? 'kind: ' + kindLabel(d.kind) : 'no kind of work yet'}
+                                    </div>
+                                  )}
                                 </div>
                                 {editId !== d.id && (
                                   <Link
@@ -667,7 +794,7 @@ export default async function RoomPage({
                                 </div>
                               ))}
                               {editId === d.id && (
-                                <LineEditor d={d} projectId={id} roomId={roomId} cancelHref={here + '?view=decide#d-' + d.id} />
+                                <LineEditor d={d} projectId={id} roomId={roomId} cancelHref={here + '?view=decide#d-' + d.id} kinds={kinds} />
                               )}
                             </li>
                           ))}
@@ -698,11 +825,28 @@ export default async function RoomPage({
                             </span>
                           </div>
                         ))}
+                        {kinds.length > 0 && active.some((d) => !d.kind) && (
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-[11px] text-amber-400/80 hover:text-gold-light">
+                              Set the kind of work for {active.filter((d) => !d.kind).length === 1 ? 'the 1 line' : 'the ' + active.filter((d) => !d.kind).length + ' lines'} without one
+                            </summary>
+                            <form action={setTopicKind} className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                              <input type="hidden" name="project_id" value={id} />
+                              <input type="hidden" name="room_id" value={roomId} />
+                              <input type="hidden" name="topic" value={topic} />
+                              <span className="min-w-0 sm:w-72">
+                                <KindSelect kinds={kinds} value={suggestKind(topic, active.find((d) => !d.kind)?.value || '')} />
+                              </span>
+                              <button className="btn-secondary-sm">Save for these lines</button>
+                              <span className="text-[11px] text-slate-600">Suggested from the wording. Lines that already have a kind are left alone.</span>
+                            </form>
+                          </details>
+                        )}
                         <details className="mt-2">
                           <summary className="cursor-pointer text-[11px] text-slate-600 hover:text-gold-light">
                             Add a line to this topic
                           </summary>
-                          <DecisionForm projectId={id} roomId={roomId} topic={topic} cta="Add line — nothing is replaced" />
+                          <DecisionForm projectId={id} roomId={roomId} topic={topic} cta="Add line — nothing is replaced" kinds={kinds} />
                         </details>
                       </div>
                     )
@@ -719,7 +863,7 @@ export default async function RoomPage({
                       </div>
                       <details className="mt-1">
                         <summary className="cursor-pointer text-[11px] text-slate-600 hover:text-gold-light">Override</summary>
-                        <DecisionForm projectId={id} roomId={roomId} topic={d.topic} cta="Save decision — overrides the default" />
+                        <DecisionForm projectId={id} roomId={roomId} topic={d.topic} cta="Save decision — overrides the default" kinds={kinds} />
                       </details>
                     </div>
                   ))}
@@ -732,7 +876,7 @@ export default async function RoomPage({
                 <details>
                   <summary className="btn-secondary-sm cursor-pointer">+ Decision on a new topic</summary>
                   <div className="card p-4 mt-2">
-                    <DecisionForm projectId={id} roomId={roomId} cta="Add decision" />
+                    <DecisionForm projectId={id} roomId={roomId} cta="Add decision" kinds={kinds} />
                   </div>
                 </details>
               </section>
@@ -808,10 +952,28 @@ export default async function RoomPage({
                 <h2 className="section-title">Redline notes from the Draft 1 markup</h2>
                 <div className="space-y-2">
                   {redlines.map((r) => (
-                    <div key={r.id} className="card flex items-center gap-3 px-4 py-2 text-sm">
-                      <Pill tone="gold">{r.note_type.replace('_', ' ')}</Pill>
-                      <span className="text-slate-200">{r.text}</span>
-                      {r.source_ref && <span className="text-xs text-slate-600 ml-auto shrink-0">{r.source_ref}</span>}
+                    <div key={r.id} className="card px-4 py-2 text-sm">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <Pill tone="gold">{r.note_type.replace('_', ' ')}</Pill>
+                        <span className="text-slate-200 min-w-0 break-words">{r.text}</span>
+                        {r.source_ref && <span className="text-xs text-slate-600 ml-auto shrink-0">{r.source_ref}</span>}
+                      </div>
+                      {kinds.length > 0 && (
+                        <details className="mt-1">
+                          <summary className={'cursor-pointer text-[11px] hover:text-gold-light ' + (r.kind ? 'text-slate-500' : 'text-amber-400/80')}>
+                            {r.kind ? 'kind: ' + kindLabel(r.kind) : 'no kind of work yet'}
+                          </summary>
+                          <form action={setRedlineKind} className="mt-2 flex flex-wrap items-center gap-3">
+                            <input type="hidden" name="project_id" value={id} />
+                            <input type="hidden" name="room_id" value={roomId} />
+                            <input type="hidden" name="note_id" value={r.id} />
+                            <span className="min-w-0 sm:w-72">
+                              <KindSelect kinds={kinds} value={r.kind || suggestRedlineKind(r.note_type)} />
+                            </span>
+                            <button className="btn-secondary-sm">Save kind</button>
+                          </form>
+                        </details>
+                      )}
                     </div>
                   ))}
                   {!redlines.length && (

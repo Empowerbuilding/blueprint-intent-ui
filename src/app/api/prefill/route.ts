@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
+import { normaliseRole } from '@/lib/vocab'
 
 // POST /api/prefill — design-brain pushes transcript-derived intent into the UI.
 // Auth: x-prefill-secret header (PREFILL_SECRET env).
@@ -21,6 +22,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 //
 // Upsert semantics: project by name, rooms by (project, section_code).
 // Decisions: skipped when an identical active (topic, value) already exists.
+//
+// Typed pushes (contract v2) — all optional:
+//   project.doc            the Revit file title Blueprint works in
+//   room.role              one of the room roles (GET /api/vocabulary)
+//   room.shell_changed     true when a decision changes the room's walls / size
+//   decision.kind, .params the kind of work (GET /api/vocabulary) and its numbers
+//   redline_note.kind
+// A kind or role that is not in the vocabulary refuses the WHOLE push (422, nothing written).
+// Whether a room gets 2D drawings is NOT accepted here: a person says so in the app.
 
 type PrefillDecision = {
   topic: string
@@ -28,6 +38,8 @@ type PrefillDecision = {
   source?: string
   source_ref?: string | null
   meeting_date?: string | null
+  kind?: string | null
+  params?: Record<string, unknown> | null
 }
 type PrefillRoom = {
   section_code: string
@@ -35,9 +47,11 @@ type PrefillRoom = {
   source?: 'template' | 'model_scan'
   area_sf?: number | null
   model_state?: Record<string, unknown>
+  role?: string | null
+  shell_changed?: boolean
   decisions?: PrefillDecision[]
   open_questions?: { question: string; default_if_unanswered?: string | null; blocking?: boolean }[]
-  redline_notes?: { note_type: string; text: string; source_ref?: string | null }[]
+  redline_notes?: { note_type: string; text: string; source_ref?: string | null; kind?: string | null }[]
 }
 
 export async function POST(request: NextRequest) {
@@ -46,7 +60,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  let body: { project: { name: string; client?: string }; rooms?: PrefillRoom[] }
+  let body: { project: { name: string; client?: string; doc?: string }; rooms?: PrefillRoom[] }
   try {
     body = await request.json()
   } catch {
@@ -64,6 +78,32 @@ export async function POST(request: NextRequest) {
       })
     : await createClient()
 
+  // typed fields are checked against the vocabulary BEFORE anything is written
+  const wantKinds = new Set<string>()
+  const badRoles: string[] = []
+  for (const room of body.rooms || []) {
+    if (room.role && !normaliseRole(room.role)) badRoles.push(room.section_code + ': ' + room.role)
+    for (const d of room.decisions || []) if (d.kind) wantKinds.add(d.kind)
+    for (const n of room.redline_notes || []) if (n.kind) wantKinds.add(n.kind)
+  }
+  if (wantKinds.size || badRoles.length) {
+    let unknownKinds: string[] = []
+    if (wantKinds.size) {
+      const { data: kindRows, error: kindErr } = await supabase.from('intent_kinds').select('kind, active')
+      if (kindErr || !kindRows) {
+        return NextResponse.json({ error: 'the list of kinds could not be read, so a typed push cannot be checked. Nothing was written.' }, { status: 500 })
+      }
+      const known = new Set((kindRows as { kind: string; active: boolean }[]).filter((k) => k.active).map((k) => k.kind))
+      unknownKinds = [...wantKinds].filter((k) => !known.has(k)).sort()
+    }
+    if (unknownKinds.length || badRoles.length) {
+      return NextResponse.json(
+        { error: 'not in the vocabulary — nothing was written', unknown_kinds: unknownKinds, unknown_roles: badRoles },
+        { status: 422 },
+      )
+    }
+  }
+
   // project upsert by name
   let { data: project } = await supabase
     .from('intent_projects')
@@ -78,6 +118,9 @@ export async function POST(request: NextRequest) {
       .single()
     if (error || !created) return NextResponse.json({ error: error?.message }, { status: 500 })
     project = created
+  }
+  if (typeof body.project.doc === 'string' && body.project.doc.trim()) {
+    await supabase.from('intent_projects').update({ doc_title: body.project.doc.trim() }).eq('id', project.id)
   }
 
   let roomsUpserted = 0
@@ -98,6 +141,8 @@ export async function POST(request: NextRequest) {
           ...(room.source ? { source: room.source } : {}),
           ...(room.area_sf != null ? { area_sf: room.area_sf } : {}),
           ...(room.model_state ? { model_state: room.model_state } : {}),
+          ...(room.role ? { role: normaliseRole(room.role), typed_by: 'blueprint', typed_at: new Date().toISOString() } : {}),
+          ...(room.shell_changed === true ? { shell_changed: true } : {}),
         },
         { onConflict: 'project_id,section_code' }
       )
@@ -129,6 +174,8 @@ export async function POST(request: NextRequest) {
         source: d.source || 'transcript',
         source_ref: d.source_ref || null,
         meeting_date: d.meeting_date || null,
+        ...(d.kind ? { kind: d.kind, kind_set_by: 'blueprint', kind_set_at: new Date().toISOString() } : {}),
+        ...(d.params && typeof d.params === 'object' ? { params: d.params } : {}),
       })
       if (!error) decisionsInserted++
     }
@@ -161,6 +208,7 @@ export async function POST(request: NextRequest) {
         note_type: r.note_type || 'note',
         text: r.text,
         source_ref: r.source_ref || null,
+        ...(r.kind ? { kind: r.kind } : {}),
       })
       if (!error) redlinesInserted++
     }

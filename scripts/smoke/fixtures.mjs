@@ -34,6 +34,8 @@ const outline = (id, project_id, room_id, outline_type, label, status, minsAgo, 
 })
 
 const seed = JSON.parse(fs.readFileSync(HERE + 'rules.json', 'utf8'))
+// contract v2: the kinds of work and the model-check backlog, exactly as the migration seeds them
+const v2seed = JSON.parse(fs.readFileSync(HERE + 'v2-seed.json', 'utf8'))
 const rules = seed.rules.map((r, i) => ({ id: 'rule-' + i, active: true, version: r.version || 1, created_at: t(3000), updated_at: t(2800), ...r }))
 rules.push({ id: 'rule-off', rule_key: 'tub_required', description: 'Master bath has a tub.', rule_type: 'required_kind', params: { kind: 'tub', min_count: 1 }, applies_to: { room_names: ['Master Bath'], outline_types: ['plan'] }, active: false, version: 3, created_at: t(3000), updated_at: t(900) })
 rules.push({ id: 'rule-raw', rule_key: 'appliance_spacing_flat', description: 'Appliances keep 3 in apart.', rule_type: 'min_clearance', params: { between: ['fridge', 'range', 'dishwasher'], min_in: 3 }, applies_to: { room_names: '*', outline_types: ['plan'] }, active: true, version: 1, created_at: t(3000), updated_at: t(2900) })
@@ -146,6 +148,14 @@ const db = {
     { id: 'sv4', standard_id: 's-build', version: 1, content: build, note: 'created by blueprint', edited_by: null, created_at: t(1400) },
   ],
   portal_messages: [], // what the app tells Blueprint
+  // contract v2: vocabulary (draft) + model checks, all proposed except one Michael accepted and one Mitch dismissed
+  intent_kinds: v2seed.kinds.map((k) => ({ ...k, created_at: t(200) })),
+  intent_model_rules: v2seed.model_rules.map((r, i) => ({
+    id: 'mr-' + i, ...r, status: 'proposed', params: {}, checker: null, checker_status: 'none', version: 1, proposed_by: 'blueprint',
+    decided_by: null, decided_by_email: null, decided_at: null, decision_note: null, created_at: t(200), updated_at: t(200),
+    ...(r.rule_key === 'counter.no_builtin_splash' ? { status: 'accepted', version: 2, decided_by: 'user-michael', decided_by_email: 'michael@barnhaus.test', decided_at: t(120), checker: 'exports/deubner/holes.py', checker_status: 'script' } : {}),
+    ...(r.rule_key === 'final.pdf_exists' ? { status: 'retired', version: 2, decided_by: 'user-mitch', decided_by_email: 'mitch@barnhaus.test', decided_at: t(110), decision_note: 'Covered by the final QA check' } : {}),
+  })),
   // capabilities: Mitch's machine on a newer bridge build than Michael's (two commands Michael does not have yet)
   intent_bridge_reports: [
     { id: 'br3', machine: 'mitch', bridge_build: 'f98f724', revit_version: '2025', reported_by: 'blueprint', first_reported_at: t(300), reported_at: t(40),

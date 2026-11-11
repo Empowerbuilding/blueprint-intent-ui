@@ -5,6 +5,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 // GET /api/contract/[id]?version=N — returns the emitted intent contract
 // (intent.json + BRIEF.md). Auth: x-prefill-secret header (for Blueprint /
 // design-brain machine access) OR a logged-in Supabase session.
+// &schema=2 returns contract v2 (typed work items) from the same emission instead:
+//   200 { version, schema, contract, emitted_at }   or   409 { error, v2_errors } when that emission has no v2.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,6 +32,26 @@ export async function GET(
   }
 
   const version = request.nextUrl.searchParams.get('version')
+
+  if (request.nextUrl.searchParams.get('schema') === '2') {
+    let q2 = supabase
+      .from('intent_emissions')
+      .select('version, intent_v2_json, v2_errors, emitted_at')
+      .eq('project_id', id)
+      .order('version', { ascending: false })
+      .limit(1)
+    if (version) q2 = q2.eq('version', Number(version))
+    const { data: row, error: err2 } = await q2.single()
+    if (err2 || !row) return NextResponse.json({ error: 'no emission found for project' }, { status: 404 })
+    if (!row.intent_v2_json) {
+      return NextResponse.json(
+        { error: 'this emission has no contract v2 — v1 is available without &schema=2', version: row.version, v2_errors: row.v2_errors || [] },
+        { status: 409 },
+      )
+    }
+    return NextResponse.json({ version: row.version, schema: 'intent-contract/2.0', contract: row.intent_v2_json, emitted_at: row.emitted_at })
+  }
+
   let q = supabase
     .from('intent_emissions')
     .select('version, intent_json, brief_md, emitted_at, blueprint_status')

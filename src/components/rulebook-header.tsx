@@ -1,10 +1,12 @@
 import Link from 'next/link'
 
-// Rulebook = everything Blueprint builds by, in one place, three tabs.
+// Rulebook = everything Blueprint builds by, in one place.
 const TABS = [
   { key: 'checks', href: '/rulebook/checks', label: 'Checks', note: 'measured automatically on every drawing' },
   { key: 'defaults', href: '/rulebook/defaults', label: 'Defaults', note: 'what gets built when nobody decides' },
   { key: 'standards', href: '/rulebook/standards', label: 'Standards', note: 'the written rules and process' },
+  { key: 'model-checks', href: '/rulebook/model-checks', label: 'Model checks', note: 'run on the built model' },
+  { key: 'kinds', href: '/rulebook/kinds', label: 'Kinds of work', note: 'the words the typed contract uses' },
 ] as const
 
 export function RulebookHeader({ active }: { active: (typeof TABS)[number]['key'] }) {

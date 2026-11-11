@@ -10,7 +10,7 @@ const unknown = new Set()
 const calls = [] // every write, in order — the action tests assert on this
 let mode = { fk: 'cascade', loseBucket: '', denySign: false }
 const CHILD_TABLES = ['intent_outlines', 'intent_emissions', 'intent_inspo_images', 'intent_redline_notes', 'intent_open_questions', 'intent_decisions', 'intent_rooms']
-const UNIQUE = { intent_rules: 'rule_key' }
+const UNIQUE = { intent_rules: 'rule_key', intent_model_rules: 'rule_key' }
 
 const readBody = (req) =>
   new Promise((resolve) => {
@@ -131,6 +131,28 @@ http
           ...(table === 'intent_decisions' ? { status: 'active', superseded_by: null } : {}), // column defaults in the real table
           ...r,
         }))
+        // upsert (POST ?on_conflict=a,b with Prefer: resolution=merge-duplicates): a matching row is updated, not added
+        const conflict = u.searchParams.get('on_conflict')
+        if (conflict && prefer.includes('resolution=merge-duplicates')) {
+          const cols = conflict.split(',')
+          const merged = []
+          for (const r of list) {
+            const hit = db[table].find((x) => cols.every((c) => String(x[c]) === String(r[c])))
+            if (hit) {
+              const rest = { ...r }
+              delete rest.id // the existing row keeps its id and creation time
+              delete rest.created_at
+              Object.assign(hit, rest)
+              merged.push(hit)
+            } else {
+              db[table].push(r)
+              merged.push(r)
+            }
+          }
+          calls.push({ op: 'upsert', table, rows: merged })
+          if (!prefer.includes('return=representation')) return send(res, 201, null)
+          return send(res, 201, wantsObject ? merged[0] : merged)
+        }
         const uniq = UNIQUE[table]
         if (uniq && list.some((r) => db[table].some((x) => x[uniq] === r[uniq]))) {
           calls.push({ op: 'insert-rejected', table, reason: 'unique ' + uniq })

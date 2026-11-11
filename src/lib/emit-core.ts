@@ -1,10 +1,53 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { buildBriefMd, type Contract, type ContractDecision, type ContractRoom } from '@/lib/emit'
+import { buildContractV2, type ContractV2, type KindRow, type ModelRuleRow } from '@/lib/emit-v2'
+import { loadDefaults } from '@/lib/defaults'
+
+// Contract v2 rides beside v1. `ok: false` is not a failed emit: v1 is emitted either way, and the
+// list says what is still missing before the typed contract can be written.
+export type V2Summary = { ok: boolean; errors: string[]; warnings: string[]; work_items: number; stored: boolean; contract: ContractV2 | null }
 
 export type EmitResult =
   | { ok: false; errors: string[] }
-  | { ok: true; version: number; handoff: string; briefMd: string; contract: Contract }
+  | { ok: true; version: number; handoff: string; briefMd: string; contract: Contract; v2: V2Summary }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>
+
+/** Builds contract v2 from the rows v1 was just built from. Never throws: a problem here must not touch v1. */
+export async function buildV2(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  args: { projectId: string; name: string; client: string | null; version: number; emittedAt: string; rooms: Row[]; activeDecisions: Row[]; opens: Row[]; redlines: Row[]; images: Row[] },
+): Promise<V2Summary> {
+  const none = (errors: string[]): V2Summary => ({ ok: false, errors, warnings: [], work_items: 0, stored: false, contract: null })
+  try {
+    const [{ data: kinds, error: kindsErr }, { data: rules }, { data: docRow }, defaults] = await Promise.all([
+      supabase.from('intent_kinds').select('kind, family, label, executable, status, stage_scope, active'),
+      supabase.from('intent_model_rules').select('rule_key, status, kinds'),
+      supabase.from('intent_projects').select('doc_title').eq('id', args.projectId).maybeSingle(),
+      loadDefaults(supabase),
+    ])
+    if (kindsErr || !kinds) return none(['The list of kinds of work could not be read' + (kindsErr ? ' (' + kindsErr.message + ')' : '') + '.'])
+    const built = buildContractV2({
+      project: { name: args.name, client: args.client, doc_title: (docRow as { doc_title?: string | null } | null)?.doc_title || null },
+      version: args.version,
+      emittedAt: args.emittedAt,
+      rooms: args.rooms.map((r) => ({ id: r.id, section_code: r.section_code, name: r.name, role: r.role ?? null, needs_2d: r.needs_2d ?? null, shell_changed: r.shell_changed ?? null, model_state: r.model_state || {} })),
+      decisions: args.activeDecisions.map((d) => ({ id: d.id, room_id: d.room_id ?? null, topic: d.topic, value: d.value, source: d.source, source_ref: d.source_ref ?? null, kind: d.kind ?? null, params: d.params ?? null })),
+      opens: args.opens.map((o) => ({ room_id: o.room_id ?? null, question: o.question, answer: o.answer ?? null, default_if_unanswered: o.default_if_unanswered ?? null, blocking: !!o.blocking })),
+      redlines: args.redlines.map((n) => ({ id: n.id, room_id: n.room_id ?? null, note_type: n.note_type, text: n.text, source_ref: n.source_ref ?? null, kind: n.kind ?? null })),
+      images: args.images.filter((i) => i.room_id).map((i) => ({ room_id: i.room_id, storage_path: i.storage_path, notes: i.notes ?? null, tags: i.tags || [] })),
+      kinds: kinds as KindRow[],
+      modelRules: (rules || []) as ModelRuleRow[],
+      defaultTopics: defaults.map((d) => d.topic),
+    })
+    if (!built.ok) return { ok: false, errors: built.errors, warnings: built.warnings, work_items: 0, stored: false, contract: null }
+    return { ok: true, errors: [], warnings: built.warnings, work_items: built.work_items, stored: false, contract: built.contract }
+  } catch (e) {
+    return none(['Contract v2 could not be built: ' + (e instanceof Error ? e.message : String(e))])
+  }
+}
 
 // Machine client (service role) for secret-gated automation paths.
 export async function serviceClient() {
@@ -131,8 +174,22 @@ export async function buildAndEmit(
   }
   const briefMd = buildBriefMd(contract)
 
+  // contract v2: same rows, typed. Built after v1 and never allowed to change or block it.
+  const v2 = await buildV2(supabase, {
+    projectId,
+    name: project.name,
+    client: project.client,
+    version,
+    emittedAt: contract.project.emitted_at,
+    rooms: rooms || [],
+    activeDecisions,
+    opens: opens || [],
+    redlines: redlines || [],
+    images: images || [],
+  })
+
   if (opts.dryRun) {
-    return { ok: true, version, handoff: '(dry run — nothing persisted, no portal post)', briefMd, contract }
+    return { ok: true, version, handoff: '(dry run — nothing persisted, no portal post)', briefMd, contract, v2 }
   }
 
   // ---- PERSIST ----
@@ -145,6 +202,25 @@ export async function buildAndEmit(
   })
   if (emitError) return { ok: false, errors: [emitError.message] }
   await supabase.from('intent_projects').update({ emitted_version: version, status: 'locked' }).eq('id', projectId)
+
+  // v2 is written onto the same emission in a second step, so v1 is on record whatever happens here
+  try {
+    const { data: stored, error: v2Error } = await supabase
+      .from('intent_emissions')
+      .update({ intent_v2_json: v2.contract, v2_errors: v2.ok ? null : v2.errors, v2_work_items: v2.ok ? v2.work_items : null })
+      .eq('project_id', projectId)
+      .eq('version', version)
+      .select('version')
+    v2.stored = !v2Error && !!stored && stored.length > 0
+    if (!v2.stored && v2.ok) v2.errors = ['Contract v2 was built but could not be stored' + (v2Error ? ': ' + v2Error.message : '.')]
+  } catch (e) {
+    v2.stored = false
+    if (v2.ok) v2.errors = ['Contract v2 was built but could not be stored: ' + (e instanceof Error ? e.message : String(e))]
+  }
+  const v2Line =
+    v2.ok && v2.stored
+      ? ` Contract v2 (typed work items) is on the same emission: ${v2.work_items} work item${v2.work_items === 1 ? '' : 's'} — GET /api/contract/${projectId}?version=${version}&schema=2.`
+      : ` Contract v2 (typed work items) was NOT emitted: ${v2.errors.length} thing${v2.errors.length === 1 ? '' : 's'} missing (rooms without a role or a 2D yes/no, lines without a kind). v1 is complete.`
 
   // ---- PORTAL HANDOFF ----
   let handoffNote = '(portal handoff skipped — not configured)'
@@ -165,7 +241,7 @@ export async function buildAndEmit(
           org_id: '1c466ccb-ef35-4ba4-bf00-5fcabf20edec',
           sender_type: 'user',
           sender_name: 'WorkOrderUI',
-          content: `📋 **Intent contract v${version} for ${project.name} locked & emitted.** Every room reviewed, blocking questions resolved, images assigned. Fetch the contract: GET /api/contract/${projectId}?version=${version} (header x-prefill-secret) — intent.json + BRIEF.md inside. Compile the work order from it per the runbook. Do NOT set approved:true until Mitch says go in-thread.`,
+          content: `📋 **Intent contract v${version} for ${project.name} locked & emitted.** Every room reviewed, blocking questions resolved, images assigned. Fetch the contract: GET /api/contract/${projectId}?version=${version} (header x-prefill-secret) — intent.json + BRIEF.md inside. Compile the work order from it per the runbook. Do NOT set approved:true until Mitch says go in-thread.${v2Line}`,
           processed: false,
         }),
       })
@@ -175,5 +251,5 @@ export async function buildAndEmit(
     }
   }
 
-  return { ok: true, version, handoff: handoffNote, briefMd, contract }
+  return { ok: true, version, handoff: handoffNote, briefMd, contract, v2 }
 }
