@@ -68,6 +68,10 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               {r.decision_note ? ' — “' + r.decision_note + '”' : ''}
             </div>
           )}
+          {/* a check put back to proposed because its meaning changed: nobody has decided on it, the note says why it is here */}
+          {!r.decided_at && r.decision_note && <div className="text-[11px] text-amber-400/80 break-words mt-1">{r.decision_note}</div>}
+          {/* a wording edit that kept the acceptance: what changed */}
+          {r.change_note && <div className="text-[11px] text-slate-500 break-words mt-1">Last edit: {r.change_note}</div>}
         </div>
         {isApprover && (
           <form action={decideModelRule} className="flex flex-wrap items-center gap-2 shrink-0">

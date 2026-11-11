@@ -19,6 +19,8 @@ export type ModelRule = {
   decided_by_email: string | null
   decided_at: string | null
   decision_note: string | null
+  /** what was last edited on the check outside a decision (a wording edit that keeps the acceptance). null = nothing */
+  change_note: string | null
   /** who last changed a number on the check (params), and when. null = the starting value stands */
   params_by: string | null
   params_at: string | null
@@ -26,7 +28,7 @@ export type ModelRule = {
   updated_at: string
 }
 export const MODEL_RULE_COLUMNS =
-  'id, rule_key, description, status, kinds, params, checker, checker_status, source, version, proposed_by, decided_by_email, decided_at, decision_note, params_by, params_at, created_at, updated_at'
+  'id, rule_key, description, status, kinds, params, checker, checker_status, source, version, proposed_by, decided_by_email, decided_at, decision_note, change_note, params_by, params_at, created_at, updated_at'
 
 export const CHECKER_LABEL: Record<ModelRule['checker_status'], string> = {
   none: 'no checker written yet',

@@ -6,7 +6,10 @@ import { MODEL_RULE_COLUMNS, type ModelRule } from '@/lib/model-rules'
 // /api/model-rules — the registry of checks run on the BUILT model (the 3D rule registry), for machine clients.
 //
 // GET  ?status=accepted (default) | proposed | retired | all
-//      -> { rules: [{ rule_key, description, status, kinds, params, checker, checker_status, source, version, params_by, params_at }], counts }
+//      -> { rules: [{ rule_key, description, status, kinds, params, checker, checker_status, source, version, decided_by, decided_at,
+//                     decision_note, change_note, params_by, params_at }], counts }
+//      decision_note = the note that goes with the last decision (also set when a check is put back to proposed because its
+//      meaning changed). change_note = what a wording edit changed on a check that kept its acceptance.
 //      params carries the numbers a check uses (tolerance_ft). An approver can change them in the app; the version goes up.
 //      Only ACCEPTED checks are attached to work items in contract v2.
 // POST { rule_key, description, kinds?, params?, checker?, checker_status?, source? }
@@ -36,6 +39,8 @@ const shape = (r: ModelRule) => ({
   version: r.version,
   decided_by: r.decided_by_email,
   decided_at: r.decided_at,
+  decision_note: r.decision_note,
+  change_note: r.change_note,
   // who last changed a number in params, and when (null = the starting value stands)
   params_by: r.params_by,
   params_at: r.params_at,
