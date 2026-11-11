@@ -7,7 +7,9 @@ import { RulebookHeader } from '@/components/rulebook-header'
 import { Pill } from '@/components/pill'
 
 // RULEBOOK · KINDS OF WORK — the controlled words the typed contract (v2) is written in.
-// Read-only here for now. The list is a DRAFT until it has been checked against a live Revit bridge.
+// Read-only here. Two tiers: a kind is LOCKED when every bridge command it names is on the live bridge and its
+// parameters were read from the bridge source; whether a command has actually been run is PROVEN, per command,
+// on the Capabilities page. A kind that is not locked is a draft, and says why.
 
 export default async function KindsPage() {
   const supabase = await createClient()
@@ -16,7 +18,9 @@ export default async function KindsPage() {
   const kinds = (loaded || []).filter((k) => k.active && k.executable)
   const hasContext = (loaded || []).some((k) => k.active && !k.executable)
   const families = [...new Set(kinds.map((k) => k.family))]
-  const locked = kinds.length > 0 && kinds.every((k) => k.status === 'locked')
+  const lockedKinds = kinds.filter((k) => k.status === 'locked')
+  const locked = kinds.length > 0 && lockedKinds.length === kinds.length
+  const build = lockedKinds.find((k) => k.locked_build)?.locked_build || null
   const later = kinds.filter((k) => k.stage_scope).length
 
   return (
@@ -33,7 +37,13 @@ export default async function KindsPage() {
           </p>
           <p className="text-xs text-slate-500">
             {locked ? (
-              <>The list is locked.</>
+              <>Every kind is locked.</>
+            ) : lockedKinds.length ? (
+              <>
+                {lockedKinds.length} of {kinds.length} kinds are locked{build ? ' (bridge build ' + build + ')' : ''}: every command they name is
+                on the bridge and its settings were read from the bridge&apos;s own code. Locked does not mean a command has been run; that is
+                recorded on the Capabilities page. The other {kinds.length - lockedKinds.length} are drafts, each with the reason.
+              </>
             ) : (
               <>
                 <Pill tone="gold">draft</Pill> The list has not been checked against a live Revit bridge yet, so nothing is locked: a kind here
@@ -55,8 +65,17 @@ export default async function KindsPage() {
                     <div className="min-w-0">
                       <div className="text-sm text-slate-100">{k.label}</div>
                       <div className="text-xs text-slate-500 break-words">{k.description}</div>
+                      {k.status_note && (
+                        <div className={'text-[11px] break-words ' + (k.status === 'locked' ? 'text-amber-400/80' : 'text-slate-500')}>{k.status_note}</div>
+                      )}
+                      {(k.bridge_commands || []).length > 0 && (
+                        <div className="text-[11px] text-slate-600 break-words">
+                          bridge: {(k.bridge_commands || []).map((c) => c.replace('revit.', '')).join(', ')}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      <Pill tone={k.status === 'locked' ? 'green' : 'gold'}>{k.status === 'locked' ? 'locked' : 'draft'}</Pill>
                       {k.stage_scope && <Pill tone="outline">later stage</Pill>}
                       <span className="font-mono text-[11px] text-gold-light/80">{k.kind}</span>
                     </div>

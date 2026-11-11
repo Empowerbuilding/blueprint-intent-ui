@@ -43,12 +43,25 @@ export async function loadModelRules(client: AnyClient): Promise<ModelRule[] | n
   return data as ModelRule[]
 }
 
-export type KindOption = { kind: string; family: string; label: string; description: string; executable: boolean; status: string; stage_scope: string | null; active: boolean; sort_order: number }
+export type KindOption = {
+  kind: string
+  family: string
+  label: string
+  description: string
+  executable: boolean
+  status: string // draft | locked. Locked = its commands are on the live bridge and their parameters were read from source. Not "proven".
+  stage_scope: string | null
+  active: boolean
+  sort_order: number
+  bridge_commands: string[] | null
+  locked_build: string | null
+  status_note: string | null
+}
 /** the kinds of work, in display order. null = the table could not be read */
 export async function loadKinds(client: AnyClient): Promise<KindOption[] | null> {
   const { data, error } = await client
     .from('intent_kinds')
-    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order')
+    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note')
     .order('sort_order')
   if (error || !data) return null
   return data as KindOption[]

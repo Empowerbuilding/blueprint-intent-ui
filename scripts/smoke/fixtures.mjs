@@ -36,6 +36,9 @@ const outline = (id, project_id, room_id, outline_type, label, status, minsAgo, 
 const seed = JSON.parse(fs.readFileSync(HERE + 'rules.json', 'utf8'))
 // contract v2: the kinds of work and the model-check backlog, exactly as the migration seeds them
 const v2seed = JSON.parse(fs.readFileSync(HERE + 'v2-seed.json', 'utf8'))
+// which kinds are locked, with the bridge commands each names: exactly what migration 20261111h writes
+const kindsLocked = JSON.parse(fs.readFileSync(HERE + 'kinds-locked.json', 'utf8'))
+const lockRow = (kind) => kindsLocked.kinds.find((k) => k.kind === kind)
 const rules = seed.rules.map((r, i) => ({ id: 'rule-' + i, active: true, version: r.version || 1, created_at: t(3000), updated_at: t(2800), ...r }))
 rules.push({ id: 'rule-off', rule_key: 'tub_required', description: 'Master bath has a tub.', rule_type: 'required_kind', params: { kind: 'tub', min_count: 1 }, applies_to: { room_names: ['Master Bath'], outline_types: ['plan'] }, active: false, version: 3, created_at: t(3000), updated_at: t(900) })
 rules.push({ id: 'rule-raw', rule_key: 'appliance_spacing_flat', description: 'Appliances keep 3 in apart.', rule_type: 'min_clearance', params: { between: ['fridge', 'range', 'dishwasher'], min_in: 3 }, applies_to: { room_names: '*', outline_types: ['plan'] }, active: true, version: 1, created_at: t(3000), updated_at: t(2900) })
@@ -149,7 +152,10 @@ const db = {
   ],
   portal_messages: [], // what the app tells Blueprint
   // contract v2: vocabulary (draft) + model checks, all proposed except one Michael accepted and one Mitch dismissed
-  intent_kinds: v2seed.kinds.map((k) => ({ ...k, created_at: t(200) })),
+  intent_kinds: v2seed.kinds.map((k) => {
+    const l = lockRow(k.kind)
+    return { ...k, created_at: t(200), bridge_commands: l ? l.commands : [], status: l ? l.status : k.status, locked_build: l && l.status === 'locked' ? kindsLocked.bridge_build : null, locked_at: l && l.status === 'locked' ? t(30) : null, status_note: l ? l.note : null }
+  }),
   intent_model_rules: v2seed.model_rules.map((r, i) => ({
     id: 'mr-' + i, ...r, status: 'proposed', params: {}, checker: null, checker_status: 'none', version: 1, proposed_by: 'blueprint',
     decided_by: null, decided_by_email: null, decided_at: null, decision_note: null, created_at: t(200), updated_at: t(200),

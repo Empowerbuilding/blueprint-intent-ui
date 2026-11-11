@@ -1,0 +1,342 @@
+{
+ "bridge_build": "f98f724",
+ "kinds": [
+  {
+   "kind": "opening.place",
+   "status": "locked",
+   "commands": [
+    "revit.place_window",
+    "revit.place_door",
+    "revit.place_family_instance",
+    "revit.place_family_on_face"
+   ],
+   "note": null
+  },
+  {
+   "kind": "opening.replace",
+   "status": "locked",
+   "commands": [
+    "revit.replace_family",
+    "revit.swap_family_type",
+    "revit.flip_door"
+   ],
+   "note": null
+  },
+  {
+   "kind": "opening.modify",
+   "status": "locked",
+   "commands": [
+    "revit.move_element",
+    "revit.rotate_element",
+    "revit.edit_sketch_boundary",
+    "revit.set_parameter_value",
+    "revit.cut_geometry"
+   ],
+   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+  },
+  {
+   "kind": "room.config",
+   "status": "locked",
+   "commands": [
+    "revit.create_room",
+    "revit.set_parameter_value"
+   ],
+   "note": null
+  },
+  {
+   "kind": "room.palette",
+   "status": "locked",
+   "commands": [
+    "revit.create_room_color_scheme",
+    "revit.update_room_color_scheme",
+    "revit.apply_color_scheme_to_view"
+   ],
+   "note": null
+  },
+  {
+   "kind": "casework.place",
+   "status": "locked",
+   "commands": [
+    "revit.place_family_instance",
+    "revit.place_family_on_host",
+    "revit.create_family_box"
+   ],
+   "note": null
+  },
+  {
+   "kind": "casework.modify",
+   "status": "locked",
+   "commands": [
+    "revit.move_element",
+    "revit.swap_family_type",
+    "revit.set_parameter_value",
+    "revit.edit_sketch_boundary"
+   ],
+   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+  },
+  {
+   "kind": "casework.rehost",
+   "status": "locked",
+   "commands": [
+    "revit.rehost_element"
+   ],
+   "note": null
+  },
+  {
+   "kind": "casework.counter",
+   "status": "draft",
+   "commands": [
+    "revit.create_family_box",
+    "revit.place_family_instance"
+   ],
+   "note": "Draft: built with the parametric box command; the path is not confirmed."
+  },
+  {
+   "kind": "appliance.place",
+   "status": "locked",
+   "commands": [
+    "revit.place_family_instance"
+   ],
+   "note": null
+  },
+  {
+   "kind": "plumbing.place",
+   "status": "locked",
+   "commands": [
+    "revit.place_family_instance",
+    "revit.place_family_on_host"
+   ],
+   "note": null
+  },
+  {
+   "kind": "plumbing.sink",
+   "status": "locked",
+   "commands": [
+    "revit.place_family_instance"
+   ],
+   "note": null
+  },
+  {
+   "kind": "plumbing.niche",
+   "status": "locked",
+   "commands": [
+    "revit.cut_geometry",
+    "revit.edit_sketch_boundary"
+   ],
+   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+  },
+  {
+   "kind": "surface.floor",
+   "status": "locked",
+   "commands": [
+    "revit.create_floor",
+    "revit.set_compound_structure_layers",
+    "revit.edit_sketch_boundary"
+   ],
+   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+  },
+  {
+   "kind": "surface.ceiling",
+   "status": "draft",
+   "commands": [],
+   "note": "Draft: the bridge has no command that creates a ceiling."
+  },
+  {
+   "kind": "surface.wall",
+   "status": "draft",
+   "commands": [
+    "revit.create_wall",
+    "revit.create_walls",
+    "revit.set_wall_height"
+   ],
+   "note": "Draft: the bridge has no command that snaps a wall to an axis."
+  },
+  {
+   "kind": "surface.beam",
+   "status": "locked",
+   "commands": [
+    "revit.create_beam",
+    "revit.create_solid_extrusion"
+   ],
+   "note": null
+  },
+  {
+   "kind": "surface.soffit",
+   "status": "locked",
+   "commands": [
+    "revit.create_soffit",
+    "revit.create_solid_extrusion"
+   ],
+   "note": null
+  },
+  {
+   "kind": "finish.material",
+   "status": "locked",
+   "commands": [
+    "revit.set_element_material",
+    "revit.create_material",
+    "revit.set_type_parameter"
+   ],
+   "note": null
+  },
+  {
+   "kind": "roof.modify",
+   "status": "locked",
+   "commands": [
+    "revit.create_roof",
+    "revit.create_roof_fascia",
+    "revit.inspect_roof_sketch",
+    "revit.edit_sketch_boundary",
+    "revit.attach_walls_to_roof"
+   ],
+   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+  },
+  {
+   "kind": "structure.stairs",
+   "status": "draft",
+   "commands": [
+    "revit.create_stairs"
+   ],
+   "note": "Draft: the bridge can create a stair, but has no command that changes a stair run or its path."
+  },
+  {
+   "kind": "structure.modify",
+   "status": "locked",
+   "commands": [
+    "revit.delete_element"
+   ],
+   "note": null
+  },
+  {
+   "kind": "structure.resize",
+   "status": "draft",
+   "commands": [],
+   "note": "Draft by design: there is no command for this. A person decides how, each time."
+  },
+  {
+   "kind": "structure.foundation",
+   "status": "locked",
+   "commands": [
+    "revit.create_foundation"
+   ],
+   "note": null
+  },
+  {
+   "kind": "site.modify",
+   "status": "locked",
+   "commands": [
+    "revit.edit_sketch_boundary",
+    "revit.create_floor"
+   ],
+   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+  },
+  {
+   "kind": "site.fence",
+   "status": "draft",
+   "commands": [
+    "revit.edit_sketch_boundary",
+    "revit.cut_geometry"
+   ],
+   "note": "Draft: no bridge command by name. It would go through editing a sketch outline and cutting geometry."
+  },
+  {
+   "kind": "site.pool",
+   "status": "draft",
+   "commands": [
+    "revit.edit_sketch_boundary",
+    "revit.cut_geometry"
+   ],
+   "note": "Draft: no bridge command by name. It would go through editing a sketch outline and cutting geometry."
+  },
+  {
+   "kind": "sheet.create",
+   "status": "draft",
+   "commands": [
+    "revit.create_sheet",
+    "revit.duplicate_sheet",
+    "revit.populate_titleblock",
+    "revit.renumber_sheets"
+   ],
+   "note": "Draft: the bridge has no command that creates a sheet set."
+  },
+  {
+   "kind": "sheet.view",
+   "status": "locked",
+   "commands": [
+    "revit.create_floor_plan_view",
+    "revit.create_ceiling_plan_view",
+    "revit.create_elevation_view",
+    "revit.create_section_view",
+    "revit.create_3d_view",
+    "revit.duplicate_view",
+    "revit.apply_view_template",
+    "revit.set_view_scale",
+    "revit.set_view_range",
+    "revit.set_view_crop"
+   ],
+   "note": null
+  },
+  {
+   "kind": "sheet.annotate",
+   "status": "locked",
+   "commands": [
+    "revit.place_viewport_on_sheet",
+    "revit.tag_all_in_view",
+    "revit.tag_element",
+    "revit.create_dimension",
+    "revit.create_height_dimension",
+    "revit.create_text_note",
+    "revit.create_tag",
+    "revit.set_tag_head_position"
+   ],
+   "note": null
+  },
+  {
+   "kind": "mep.electrical",
+   "status": "draft",
+   "commands": [
+    "revit.create_conduit"
+   ],
+   "note": "Draft: the bridge has no command that places an outlet or a light; only conduit."
+  },
+  {
+   "kind": "mep.plumbing",
+   "status": "draft",
+   "commands": [
+    "revit.create_pipe",
+    "revit.place_family_instance"
+   ],
+   "note": "Draft: pipe routing and fixture placement exist by name; the path is not confirmed."
+  },
+  {
+   "kind": "qa.run",
+   "status": "locked",
+   "commands": [
+    "revit.check_model_integrity",
+    "revit.get_warnings",
+    "revit.validate_elements",
+    "revit.find_duplicate_elements",
+    "revit.check_clashes"
+   ],
+   "note": null
+  },
+  {
+   "kind": "export.pdf",
+   "status": "locked",
+   "commands": [
+    "revit.export_pdf_by_sheet_set"
+   ],
+   "note": null
+  },
+  {
+   "kind": "export.render",
+   "status": "locked",
+   "commands": [
+    "revit.render_3d_view",
+    "revit.export_image",
+    "revit.export_view_image_base64"
+   ],
+   "note": null
+  }
+ ]
+}
