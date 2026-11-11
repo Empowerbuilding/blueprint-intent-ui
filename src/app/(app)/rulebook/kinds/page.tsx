@@ -10,6 +10,8 @@ import { Pill } from '@/components/pill'
 // Read-only here. Two tiers: a kind is LOCKED when every bridge command it names is on the live bridge and its
 // parameters were read from the bridge source; whether a command has actually been run is PROVEN, per command,
 // on the Capabilities page. A kind that is not locked is a draft, and says why.
+// Each kind is built one of three ways: by named bridge commands, by a recipe (direct Revit calls that already ran on a
+// real project; the projects and scripts are listed with it), or by nothing yet.
 
 export default async function KindsPage() {
   const supabase = await createClient()
@@ -22,6 +24,8 @@ export default async function KindsPage() {
   const locked = kinds.length > 0 && lockedKinds.length === kinds.length
   const build = lockedKinds.find((k) => k.locked_build)?.locked_build || null
   const later = kinds.filter((k) => k.stage_scope).length
+  const byRecipe = kinds.filter((k) => k.backing === 'recipe').length
+  const noPath = kinds.filter((k) => k.backing === 'unmapped').length
 
   return (
     <main>
@@ -52,6 +56,22 @@ export default async function KindsPage() {
             )}{' '}
             {later} kind{later === 1 ? ' belongs' : 's belong'} to a later draft stage: a line of that kind is carried forward, not built in Draft 2.
           </p>
+          {(byRecipe > 0 || noPath > 0) && (
+            <p className="text-xs text-slate-500">
+              {byRecipe > 0 && (
+                <>
+                  {byRecipe} kind{byRecipe === 1 ? ' is' : 's are'} built by a <Pill tone="outline">recipe</Pill> instead of a named command: a
+                  set of direct Revit calls that already ran on a real project. The projects and scripts are listed with the kind. A recipe
+                  has fewer safety checks than a named command.{' '}
+                </>
+              )}
+              {noPath > 0 && (
+                <>
+                  {noPath} kind{noPath === 1 ? ' has' : 's have'} no way to be built yet.
+                </>
+              )}
+            </p>
+          )}
         </div>
 
         {families.map((f) => (
@@ -68,6 +88,18 @@ export default async function KindsPage() {
                       {k.status_note && (
                         <div className={'text-[11px] break-words ' + (k.status === 'locked' ? 'text-amber-400/80' : 'text-slate-500')}>{k.status_note}</div>
                       )}
+                      {k.recipe && (
+                        <div className="text-[11px] text-slate-400 break-words">
+                          {k.backing === 'recipe' ? 'Recipe: ' : 'Recipe found, not adopted: '}
+                          {k.recipe.summary}
+                          {(k.recipe.receipts || []).map((rc, i) => (
+                            <div key={i} className="text-slate-500">
+                              ran on {rc.project}, {rc.date}: {rc.check} <span className="font-mono text-slate-600">({rc.script})</span>
+                            </div>
+                          ))}
+                          {!k.recipe.proven && k.recipe.proven_note && <div className="text-amber-400/80">Not proven: {k.recipe.proven_note}.</div>}
+                        </div>
+                      )}
                       {(k.bridge_commands || []).length > 0 && (
                         <div className="text-[11px] text-slate-600 break-words">
                           bridge: {(k.bridge_commands || []).map((c) => c.replace('revit.', '')).join(', ')}
@@ -76,6 +108,9 @@ export default async function KindsPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Pill tone={k.status === 'locked' ? 'green' : 'gold'}>{k.status === 'locked' ? 'locked' : 'draft'}</Pill>
+                      {k.backing === 'recipe' && <Pill tone="outline">recipe</Pill>}
+                      {k.backing === 'recipe' && k.recipe?.proven && <Pill tone="green">proven</Pill>}
+                      {k.backing === 'unmapped' && <Pill tone="outline">no way yet</Pill>}
                       {k.stage_scope && <Pill tone="outline">later stage</Pill>}
                       <span className="font-mono text-[11px] text-gold-light/80">{k.kind}</span>
                     </div>

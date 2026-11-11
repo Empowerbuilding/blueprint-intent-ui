@@ -154,7 +154,7 @@ const db = {
   // contract v2: vocabulary (draft) + model checks, all proposed except one Michael accepted and one Mitch dismissed
   intent_kinds: v2seed.kinds.map((k) => {
     const l = lockRow(k.kind)
-    return { ...k, created_at: t(200), bridge_commands: l ? l.commands : [], status: l ? l.status : k.status, locked_build: l && l.status === 'locked' ? kindsLocked.bridge_build : null, locked_at: l && l.status === 'locked' ? t(30) : null, status_note: l ? l.note : null }
+    return { ...k, created_at: t(200), bridge_commands: l ? l.commands : [], status: l ? l.status : k.status, locked_build: l && l.status === 'locked' ? kindsLocked.bridge_build : null, locked_at: l && l.status === 'locked' ? t(30) : null, status_note: l ? l.note : null, backing: l ? l.backing || 'command' : 'command', recipe: l ? l.recipe || null : null }
   }),
   intent_model_rules: v2seed.model_rules.map((r, i) => ({
     id: 'mr-' + i, ...r, status: 'proposed', params: {}, checker: null, checker_status: 'none', version: 1, proposed_by: 'blueprint',

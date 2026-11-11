@@ -56,12 +56,23 @@ export type KindOption = {
   bridge_commands: string[] | null
   locked_build: string | null
   status_note: string | null
+  /** how the kind is built: command = named bridge commands; recipe = direct Revit calls that ran on a real project; unmapped = neither */
+  backing: 'command' | 'recipe' | 'unmapped' | null
+  recipe: KindRecipe | null
+}
+export type KindRecipe = {
+  summary: string
+  calls: string[]
+  receipts: { project: string; script: string; date: string; check: string }[]
+  /** true = it ran and passed a build-phase check on a real project */
+  proven: boolean
+  proven_note: string | null
 }
 /** the kinds of work, in display order. null = the table could not be read */
 export async function loadKinds(client: AnyClient): Promise<KindOption[] | null> {
   const { data, error } = await client
     .from('intent_kinds')
-    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note')
+    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe')
     .order('sort_order')
   if (error || !data) return null
   return data as KindOption[]

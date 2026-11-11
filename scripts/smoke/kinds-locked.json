@@ -10,7 +10,9 @@
     "revit.place_family_instance",
     "revit.place_family_on_face"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "opening.replace",
@@ -20,7 +22,9 @@
     "revit.swap_family_type",
     "revit.flip_door"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "opening.modify",
@@ -32,7 +36,9 @@
     "revit.set_parameter_value",
     "revit.cut_geometry"
    ],
-   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+   "note": "One command it names, editing a sketch outline, is believed broken on this build.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "room.config",
@@ -41,7 +47,9 @@
     "revit.create_room",
     "revit.set_parameter_value"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "room.palette",
@@ -51,7 +59,9 @@
     "revit.update_room_color_scheme",
     "revit.apply_color_scheme_to_view"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "casework.place",
@@ -61,7 +71,9 @@
     "revit.place_family_on_host",
     "revit.create_family_box"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "casework.modify",
@@ -72,7 +84,9 @@
     "revit.set_parameter_value",
     "revit.edit_sketch_boundary"
    ],
-   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+   "note": "One command it names, editing a sketch outline, is believed broken on this build.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "casework.rehost",
@@ -80,16 +94,37 @@
    "commands": [
     "revit.rehost_element"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "casework.counter",
-   "status": "draft",
+   "status": "locked",
    "commands": [
-    "revit.create_family_box",
-    "revit.place_family_instance"
+    "revit.invoke_method",
+    "revit.place_family_instance",
+    "revit.create_family_box"
    ],
-   "note": "Draft: built with the parametric box command; the path is not confirmed."
+   "note": "The named box command (create_family_box) has never been run. The recipe is what has been used.",
+   "backing": "recipe",
+   "recipe": {
+    "summary": "A slab-only counter family is built in the family editor (box pieces, sink cutouts, material set on every face), then loaded and placed.",
+    "calls": [
+     "family editor through invoke_method: new family document, extrusion geometry, material parameter, SaveAs",
+     "place_family_instance"
+    ],
+    "receipts": [
+     {
+      "project": "Whitaker",
+      "script": "exports/whitaker/s6_counters.py (library exports/whitaker/fb2.py)",
+      "date": "2026-11-08",
+      "check": "build phase P6A done: 16 slab families; phase P6B: 11 sinks pass the cutout check, model check 0 red"
+     }
+    ],
+    "proven": true,
+    "proven_note": null
+   }
   },
   {
    "kind": "appliance.place",
@@ -97,7 +132,9 @@
    "commands": [
     "revit.place_family_instance"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "plumbing.place",
@@ -106,7 +143,9 @@
     "revit.place_family_instance",
     "revit.place_family_on_host"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "plumbing.sink",
@@ -114,7 +153,9 @@
    "commands": [
     "revit.place_family_instance"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "plumbing.niche",
@@ -123,7 +164,9 @@
     "revit.cut_geometry",
     "revit.edit_sketch_boundary"
    ],
-   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+   "note": "One command it names, editing a sketch outline, is believed broken on this build.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "surface.floor",
@@ -133,13 +176,42 @@
     "revit.set_compound_structure_layers",
     "revit.edit_sketch_boundary"
    ],
-   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+   "note": "One command it names, editing a sketch outline, is believed broken on this build.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "surface.ceiling",
-   "status": "draft",
-   "commands": [],
-   "note": "Draft: the bridge has no command that creates a ceiling."
+   "status": "locked",
+   "commands": [
+    "revit.invoke_method",
+    "revit.set_parameter_value"
+   ],
+   "note": "The bridge has no named ceiling command. The recipe calls Revit directly, so it has fewer safety checks than a named command.",
+   "backing": "recipe",
+   "recipe": {
+    "summary": "One ceiling per room, drawn from the room's outline with Revit's own ceiling call, then set to its height.",
+    "calls": [
+     "Autodesk.Revit.DB.Ceiling.Create(doc, loops, ceilingTypeId, levelId)",
+     "set_parameter_value: Height Offset From Level"
+    ],
+    "receipts": [
+     {
+      "project": "Whitaker",
+      "script": "exports/whitaker/s8a_ceilings.py",
+      "date": "2026-11-09",
+      "check": "build phase P8A done: 28 ceilings, height measured on every one"
+     },
+     {
+      "project": "Deubner",
+      "script": "exports/deubner/c1c.py",
+      "date": "2026-11-06",
+      "check": "24 ceilings in the run record, none failed; size and height read back for each"
+     }
+    ],
+    "proven": true,
+    "proven_note": null
+   }
   },
   {
    "kind": "surface.wall",
@@ -149,7 +221,9 @@
     "revit.create_walls",
     "revit.set_wall_height"
    ],
-   "note": "Draft: the bridge has no command that snaps a wall to an axis."
+   "note": "Draft: the bridge has no command that snaps a wall to an axis.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "surface.beam",
@@ -158,7 +232,9 @@
     "revit.create_beam",
     "revit.create_solid_extrusion"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "surface.soffit",
@@ -167,7 +243,9 @@
     "revit.create_soffit",
     "revit.create_solid_extrusion"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "finish.material",
@@ -177,7 +255,9 @@
     "revit.create_material",
     "revit.set_type_parameter"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "roof.modify",
@@ -189,7 +269,9 @@
     "revit.edit_sketch_boundary",
     "revit.attach_walls_to_roof"
    ],
-   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+   "note": "One command it names, editing a sketch outline, is believed broken on this build.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "structure.stairs",
@@ -197,7 +279,28 @@
    "commands": [
     "revit.create_stairs"
    ],
-   "note": "Draft: the bridge can create a stair, but has no command that changes a stair run or its path."
+   "note": "Draft: the bridge can create a stair but has no command that changes a stair run or its path. A recipe changed a stair run on Patel; it is recorded, not adopted.",
+   "backing": "command",
+   "recipe": {
+    "summary": "Not adopted. Change an existing stair inside one stair edit: remove the landings, set each run's start and end height, move the runs, rebuild the landings, commit.",
+    "calls": [
+     "StairsEditScope Start / Commit",
+     "reflect_set BaseElevation / TopElevation on each run",
+     "ElementTransformUtils.MoveElement",
+     "StairsLanding.CreateAutomaticLanding",
+     "all in one batch_execute"
+    ],
+    "receipts": [
+     {
+      "project": "Patel",
+      "script": "exports/patel/ls_11.py",
+      "date": "2026-11-11",
+      "check": "west stair rebuilt to 27 risers (11 / 8 / 8), saved. Not a build-phase check"
+     }
+    ],
+    "proven": false,
+    "proven_note": "ran once on an existing stair; never passed a build-phase check"
+   }
   },
   {
    "kind": "structure.modify",
@@ -205,13 +308,49 @@
    "commands": [
     "revit.delete_element"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "structure.resize",
-   "status": "draft",
-   "commands": [],
-   "note": "Draft by design: there is no command for this. A person decides how, each time."
+   "status": "locked",
+   "commands": [
+    "revit.invoke_method",
+    "revit.move_element"
+   ],
+   "note": "A person still decides what moves. Roof, ceiling, floor and foundation edges that do not follow the wall are moved line by line. One run broke stone cuts at doors and had to be repaired.",
+   "backing": "recipe",
+   "recipe": {
+    "summary": "Move a whole wall (joined walls follow), or move one end: switch the end join off, set the wall's line, switch the join back on. Then move the edges that did not follow.",
+    "calls": [
+     "move_element",
+     "WallUtils.DisallowWallJoinAtEnd -> LocationCurve.set_Curve -> WallUtils.AllowWallJoinAtEnd",
+     "CurveElement.SetGeometryCurve for roof / ceiling / floor sketch lines (exports/patel/sk_lib.py)"
+    ],
+    "receipts": [
+     {
+      "project": "Patel",
+      "script": "exports/patel/p1b.py, exports/patel/p1c.py",
+      "date": "2026-11-09",
+      "check": "everything north of grid 1 moved 2 ft, saved; wall end, roof eave, ceiling edge and foundation edge corrected after. Not a build-phase check"
+     },
+     {
+      "project": "Patel",
+      "script": "projects/patel/MICHAEL_FEEDBACK_1110B.md (S9 note; script not pinned)",
+      "date": "2026-11-10",
+      "check": "hall wall moved exactly 2.0 ft, centreline measured, joined walls followed, saved. Not a build-phase check"
+     },
+     {
+      "project": "Whitaker",
+      "script": "exports/whitaker/split_fix3.py",
+      "date": "2026-11-09",
+      "check": "6 walls shortened and rejoined, length measured; the unjoin left 4 doors covered by stone, repaired by stone_fix.py"
+     }
+    ],
+    "proven": false,
+    "proven_note": "ran and was measured by its own script; never passed a build-phase check; one run caused a defect that was repaired"
+   }
   },
   {
    "kind": "structure.foundation",
@@ -219,7 +358,9 @@
    "commands": [
     "revit.create_foundation"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "site.modify",
@@ -228,16 +369,42 @@
     "revit.edit_sketch_boundary",
     "revit.create_floor"
    ],
-   "note": "One command it names, editing a sketch outline, is believed broken on this build."
+   "note": "One command it names, editing a sketch outline, is believed broken on this build.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "site.fence",
-   "status": "draft",
+   "status": "locked",
    "commands": [
-    "revit.edit_sketch_boundary",
-    "revit.cut_geometry"
+    "revit.invoke_method",
+    "revit.duplicate_family_type"
    ],
-   "note": "Draft: no bridge command by name. It would go through editing a sketch outline and cutting geometry."
+   "note": "Two recipes have run. Neither went through a build-phase check; each was measured by its own script.",
+   "backing": "recipe",
+   "recipe": {
+    "summary": "Two ways. On a flat pad: a fence wall type (a copy of a curtain wall type) drawn along the line, posts from the type. On open ground: a railing drawn along the line and hosted on the terrain so it follows the ground.",
+    "calls": [
+     "Autodesk.Revit.DB.Wall.Create(doc, line, wallTypeId, levelId, height, offset, flip, structural)",
+     "Autodesk.Revit.DB.Architecture.Railing.Create(doc, curveLoop, railingTypeId, levelId), then HostId set to the toposolid"
+    ],
+    "receipts": [
+     {
+      "project": "Patel",
+      "script": "exports/patel/tc_16.py",
+      "date": "2026-11-10",
+      "check": "3 fence runs, 15 ft; position and height measured by the script, then saved. Not a build-phase check"
+     },
+     {
+      "project": "693 Rancho",
+      "script": "exports/rr_fence.py",
+      "date": "2026-11-05",
+      "check": "property-line fence created and following the terrain (size read back). Not a build-phase check"
+     }
+    ],
+    "proven": false,
+    "proven_note": "ran and was measured by its own script; never passed a build-phase check"
+   }
   },
   {
    "kind": "site.pool",
@@ -246,7 +413,9 @@
     "revit.edit_sketch_boundary",
     "revit.cut_geometry"
    ],
-   "note": "Draft: no bridge command by name. It would go through editing a sketch outline and cutting geometry."
+   "note": "Draft: no command and no recipe has built a pool. The two commands listed are an untested guess.",
+   "backing": "unmapped",
+   "recipe": null
   },
   {
    "kind": "sheet.create",
@@ -257,7 +426,9 @@
     "revit.populate_titleblock",
     "revit.renumber_sheets"
    ],
-   "note": "Draft: the bridge has no command that creates a sheet set."
+   "note": "Draft: the bridge has no command that creates a sheet set.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "sheet.view",
@@ -274,7 +445,9 @@
     "revit.set_view_range",
     "revit.set_view_crop"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "sheet.annotate",
@@ -289,7 +462,9 @@
     "revit.create_tag",
     "revit.set_tag_head_position"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "mep.electrical",
@@ -297,7 +472,9 @@
    "commands": [
     "revit.create_conduit"
    ],
-   "note": "Draft: the bridge has no command that places an outlet or a light; only conduit."
+   "note": "Draft: the bridge has no command that places an outlet or a light; only conduit.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "mep.plumbing",
@@ -306,7 +483,9 @@
     "revit.create_pipe",
     "revit.place_family_instance"
    ],
-   "note": "Draft: pipe routing and fixture placement exist by name; the path is not confirmed."
+   "note": "Draft: pipe routing and fixture placement exist by name; the path is not confirmed.",
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "qa.run",
@@ -318,7 +497,9 @@
     "revit.find_duplicate_elements",
     "revit.check_clashes"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "export.pdf",
@@ -326,7 +507,9 @@
    "commands": [
     "revit.export_pdf_by_sheet_set"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   },
   {
    "kind": "export.render",
@@ -336,7 +519,9 @@
     "revit.export_image",
     "revit.export_view_image_base64"
    ],
-   "note": null
+   "note": null,
+   "backing": "command",
+   "recipe": null
   }
  ]
 }
