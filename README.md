@@ -13,7 +13,7 @@ The authoring + review surface for Blueprint D2 intent contracts. Humans confirm
 - **Capabilities + gap log** — Blueprint reports each machine's bridge build and command list (POST /api/capabilities); gaps are logged and closed by an approver. The app never calls a bridge
 - **Rule changes re-check** drawings awaiting review; times show in the viewer's time zone
 - **Typed contract (v2)** — written beside the contract at every Lock & Emit, only when nothing is missing: every room has a role and a 2D yes/no, every decision and redline note has a kind of work (`intent_kinds`, a draft list until checked against a live bridge). Gaps are listed on the emit page, never guessed. Contract v1 is unchanged (src/lib/emit-v2.ts, GET /api/contract/[id]?schema=2, GET /api/vocabulary)
-- **Model checks** — the checks run on the built model (Rulebook → Model checks). Blueprint proposes; only an approver accepts; only accepted checks are attached to work items (GET /api/model-rules)
+- **Model checks** — the checks run on the built model (Rulebook → Model checks). Blueprint proposes; only an approver accepts; only accepted checks are attached to work items (GET /api/model-rules) A check that carries a number (a tolerance in `params`) has an edit field for approvers while it is proposed or accepted; saving keeps the status, raises the version and tells Blueprint.
 - **Open questions** with blocking flag + documented defaults — resolve or accept before lock
 - **Typed redline notes** (beam / cabinet_run / delete / move / keep / note) — Michael's D1 markup becomes structured intent
 - **Emits** `intent.json` + `BRIEF.md` for Blueprint to compile into a work order (phase 4, pending)

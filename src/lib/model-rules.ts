@@ -19,17 +19,39 @@ export type ModelRule = {
   decided_by_email: string | null
   decided_at: string | null
   decision_note: string | null
+  /** who last changed a number on the check (params), and when. null = the starting value stands */
+  params_by: string | null
+  params_at: string | null
   created_at: string
   updated_at: string
 }
 export const MODEL_RULE_COLUMNS =
-  'id, rule_key, description, status, kinds, params, checker, checker_status, source, version, proposed_by, decided_by_email, decided_at, decision_note, created_at, updated_at'
+  'id, rule_key, description, status, kinds, params, checker, checker_status, source, version, proposed_by, decided_by_email, decided_at, decision_note, params_by, params_at, created_at, updated_at'
 
 export const CHECKER_LABEL: Record<ModelRule['checker_status'], string> = {
   none: 'no checker written yet',
   script: 'checked by a one-project script',
   tool: 'checked by a tool',
   app: 'checked in this app',
+}
+
+// NUMBERS ON A CHECK. A check may carry numbers in params (tolerance_ft: 0.25). Those are what an approver can change on
+// the page; the work-order compiler reads them from GET /api/model-rules. Flags (true / false) and text are not numbers.
+export type RuleNumber = { key: string; value: number; label: string; unit: string }
+const NUMBER_UNITS: Record<string, string> = { ft: 'ft', in: 'in', sf: 'sq ft', deg: 'degrees', pct: '%' }
+/** tolerance_ft -> { label: 'Tolerance', unit: 'ft' } */
+export function numberLabel(key: string): { label: string; unit: string } {
+  const parts = key.split('_').filter(Boolean)
+  const last = parts[parts.length - 1] || ''
+  const unit = parts.length > 1 && NUMBER_UNITS[last] ? NUMBER_UNITS[last] : ''
+  const words = (unit ? parts.slice(0, -1) : parts).join(' ')
+  return { label: words.charAt(0).toUpperCase() + words.slice(1), unit }
+}
+export function ruleNumbers(params: Record<string, unknown> | null | undefined): RuleNumber[] {
+  return Object.entries(params || {})
+    .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
+    .map(([key, v]) => ({ key, value: v as number, ...numberLabel(key) }))
+    .sort((a, b) => a.key.localeCompare(b.key))
 }
 
 // the two Supabase clients (user session, service role) have different generics; only .from() is used

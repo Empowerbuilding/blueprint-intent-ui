@@ -575,7 +575,7 @@
   },
   {
    "rule_key": "shell.outline_matches_model",
-   "description": "After the phase that moves walls, each room whose shape a decision changes matches its approved drawing within 0.25 ft (3 in). The 0.25 ft is a starting value for Michael to sanity-check: it is a whole-room shape tolerance, not the 1 in casework standard.",
+   "description": "After the phase that moves walls, each room whose shape a decision changes matches its approved drawing within the tolerance set on this check. It is a whole-room shape tolerance, not the 1 in casework standard.",
    "source": "spec amendment A12; 0.25 ft is the initial value (ruling 2026-11-11)",
    "kinds": [
     "structure.resize",
@@ -816,6 +816,12 @@
    "rule_key": "final.pdf_exists",
    "description": "The PDF of the full set exists.",
    "source": "runbook stage 12",
+   "kinds": []
+  },
+  {
+   "rule_key": "target.element_where_drawn",
+   "description": "Before a build phase changes an element that already exists, the element is within the tolerance set on this check of where the approved drawing shows it. If it has moved further than that since the drawing was approved, the phase stops instead of changing it.",
+   "source": "was a constant in the work-order compiler; made a check by ruling 2026-11-11 (flag 45, spec amendment A46)",
    "kinds": []
   }
  ]

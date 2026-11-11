@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { decideModelRule, proposeModelRule } from '@/app/model-rules-actions'
-import { CHECKER_LABEL, loadModelRules, type ModelRule } from '@/lib/model-rules'
+import { decideModelRule, proposeModelRule, setModelRuleNumber } from '@/app/model-rules-actions'
+import { CHECKER_LABEL, loadModelRules, ruleNumbers, type ModelRule } from '@/lib/model-rules'
 import { approverNames, loadApprovers, whoLabel } from '@/lib/lessons'
 import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -14,6 +14,9 @@ import { Pill } from '@/components/pill'
 
 function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz: string; who: (email: string | null) => string }) {
   const kinds = r.kinds || []
+  // the numbers the check carries (a tolerance). An approver can change one while the check is proposed or accepted.
+  const numbers = ruleNumbers(r.params)
+  const canEdit = isApprover && r.status !== 'retired'
   return (
     <div id={'r-' + r.rule_key} className="px-4 py-3 scroll-mt-32">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
@@ -26,6 +29,39 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
             <span className={r.checker_status === 'none' ? 'text-amber-400/80' : ''}>{CHECKER_LABEL[r.checker_status]}</span>
             {r.source ? ' · from ' + r.source : ''}
           </div>
+          {numbers.map((n) =>
+            canEdit ? (
+              <form key={n.key} action={setModelRuleNumber} className="flex flex-wrap items-center gap-2 mt-1">
+                <input type="hidden" name="rule_id" value={r.id} />
+                <input type="hidden" name="param" value={n.key} />
+                <label htmlFor={'n-' + r.id + '-' + n.key} className="text-[11px] text-slate-400">
+                  {n.label}
+                </label>
+                <input
+                  id={'n-' + r.id + '-' + n.key}
+                  name="value"
+                  type="number"
+                  step="any"
+                  min="0"
+                  required
+                  defaultValue={n.value}
+                  className="field !w-24 !py-1 text-xs"
+                />
+                {n.unit && <span className="text-[11px] text-slate-500">{n.unit}</span>}
+                <button className="btn-secondary-sm">Save number</button>
+              </form>
+            ) : (
+              <div key={n.key} className="text-[11px] text-slate-400 mt-1">
+                {n.label}: {n.value}
+                {n.unit ? ' ' + n.unit : ''}
+              </div>
+            ),
+          )}
+          {numbers.length > 0 && (
+            <div className="text-[11px] text-slate-600 break-words">
+              {r.params_at ? 'number set by ' + who(r.params_by) + ' · ' + fmtDate(r.params_at, tz) : 'starting value; nobody has changed the number'}
+            </div>
+          )}
           {r.decided_at && (
             <div className="text-[11px] text-slate-600 break-words">
               {r.status} by {who(r.decided_by_email)} · {fmtDate(r.decided_at, tz)}
@@ -98,6 +134,10 @@ export default async function ModelChecksPage({ searchParams }: { searchParams: 
             {isApprover ? 'You can accept, dismiss or retire a check.' : 'Only ' + names + ' can accept or retire a check.'} Only accepted checks
             are attached to work items in the typed contract. {noChecker} of the checks listed have no checker written yet: until one is
             written, the check is a name and proves nothing.
+          </p>
+          <p className="text-xs text-slate-500">
+            Where a check carries a number, such as a tolerance, {isApprover ? 'you can change it here' : names + ' can change it here'}. Blueprint is
+            told, and a work order compiled with the old number has to be compiled again.
           </p>
         </div>
 

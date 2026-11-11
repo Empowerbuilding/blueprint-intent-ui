@@ -611,7 +611,7 @@ const MC = '/rulebook/model-checks'
 const ruleOf = (d, key) => d.intent_model_rules.find((x) => x.rule_key === key)
 res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
 let mr = await res.json()
-ok('api model-rules: the backlog, one accepted', res.status === 200 && mr.rules.length === 40 && mr.counts.accepted === 1 && mr.counts.proposed === 38 && mr.counts.retired === 1 && (await (await fetch(app + '/api/model-rules', { headers: SECRET })).json()).rules.map((x) => x.rule_key).join() === 'counter.no_builtin_splash', JSON.stringify(mr.counts))
+ok('api model-rules: the backlog, one accepted', res.status === 200 && mr.rules.length === 41 && mr.counts.accepted === 1 && mr.counts.proposed === 39 && mr.counts.retired === 1 && (await (await fetch(app + '/api/model-rules', { headers: SECRET })).json()).rules.map((x) => x.rule_key).join() === 'counter.no_builtin_splash', JSON.stringify(mr.counts))
 res = await fetch(app + '/api/model-rules', { method: 'POST', headers: SECRET, body: JSON.stringify({ rule_key: 'stairs.headroom_80', description: 'Every stair has 80 inches of headroom.', kinds: ['structure.stairs'], status: 'accepted' }) })
 ok('api model-rules: a machine cannot accept its own check', res.status === 400 && !ruleOf(await getDb(), 'stairs.headroom_80'))
 res = await fetch(app + '/api/model-rules', { method: 'POST', headers: SECRET, body: JSON.stringify({ rule_key: 'stairs.headroom_80', description: 'Every stair has 80 inches of headroom.', kinds: ['structure.stair'] }) })
@@ -632,6 +632,47 @@ row = ruleOf(db, 'casework.no_overlap')
 ok('model checks, approver accepts: in force, who and when kept, Blueprint told', r.location.includes('saved=casework.no_overlap accepted') && row.status === 'accepted' && row.decided_by_email === 'mitch@barnhaus.test' && row.decision_note === 'Solids, not boxes' && row.version === 2 && db.portal_messages[db.portal_messages.length - 1].content.includes('Model check accepted: `casework.no_overlap`'), JSON.stringify(row))
 r = await post(MC, acceptOverlap, { decision: 'accept', note: '' })
 ok('model checks: accepting twice is refused', r.location.includes('is already accepted'), JSON.stringify(r))
+
+// a number on a check (a tolerance): only Mitch or Michael change it, the check keeps its status, Blueprint is told
+const shellRule = ruleOf(await getDb(), 'shell.outline_matches_model')
+html = await pageAs(MC, asBlueprint)
+ok('number on a check, non-approver: sees the number, has no field', html.includes('Tolerance: 0.25 ft') && html.includes('starting value; nobody has changed the number') && !html.includes('name="param"'))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const numForm = form(html, (f) => f.includes('name="param"') && f.includes('value="' + shellRule.id + '"'), 'number form (shell tolerance)')
+before = await getDb()
+r = await postAs(MC, numForm, { value: '0.5' }, asBlueprint)
+ok('number on a check, non-approver posts a number: refused, nothing changed', r.location.includes('Only Mitch or Michael can change a number on a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+let badNumbers = []
+for (const bad of ['0', '-1', 'abc', '']) {
+  r = await post(MC, numForm, { value: bad })
+  if (!r.location.includes('The number must be greater than zero')) badNumbers.push(bad)
+}
+ok('number on a check: zero, a negative, text and blank are refused, nothing changed', badNumbers.length === 0 && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(badNumbers))
+r = await post(MC, numForm, { value: '0.25' })
+ok('number on a check: the same number changes nothing', r.location.includes('already says 0.25 ft') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, { ...numForm, param: 'made_up_ft' }, { value: '2' })
+ok('number on a check: a number the check does not carry cannot be added', r.location.includes('carries no number called') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, numForm, { value: '0.4' })
+db = await getDb()
+row = ruleOf(db, 'shell.outline_matches_model')
+let lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('number on a check, approver changes it: saved, version up, status kept, who and when kept, Blueprint told', r.location.includes('saved=shell.outline_matches_model: tolerance 0.4 ft') && row.params.tolerance_ft === 0.4 && row.params.initial === false && row.version === shellRule.version + 1 && row.status === shellRule.status && row.params_by === 'mitch@barnhaus.test' && !!row.params_at && lastMsg.includes('Model check number changed: \`shell.outline_matches_model\`') && lastMsg.includes('0.25 ft → 0.4 ft') && lastMsg.includes('not a go'), JSON.stringify([r, row, lastMsg]))
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+mr = (await res.json()).rules.find((x) => x.rule_key === 'shell.outline_matches_model')
+ok('api model-rules: the new number is what Blueprint reads', mr.params.tolerance_ft === 0.4 && mr.version === shellRule.version + 1 && mr.params_by === 'mitch@barnhaus.test' && !!mr.params_at, JSON.stringify(mr))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('number on a check: the page shows who set it', html.includes('number set by Mitch'), '')
+// an accepted check keeps its number field and stays accepted when the number changes
+const tgt = ruleOf(db, 'target.element_where_drawn')
+r = await post(MC, form(html, (f) => f.includes('name="decision"') && f.includes('value="' + tgt.id + '"'), 'decide form (target.element_where_drawn)'), { decision: 'accept', note: '' })
+html = (await page(MC)).replace(/<!-- -->/g, '')
+r = await post(MC, form(html, (f) => f.includes('name="param"') && f.includes('value="' + tgt.id + '"'), 'number form (element tolerance)'), { value: '0.5' })
+row = ruleOf(await getDb(), 'target.element_where_drawn')
+ok('number on a check: an accepted check stays accepted when its number changes', row.status === 'accepted' && row.params.tolerance_ft === 0.5 && row.version === 3, JSON.stringify(row))
+r = await post(MC, form(html, (f) => f.includes('name="decision"') && f.includes('value="' + tgt.id + '"'), 'decide form (target, retire)'), { decision: 'retire', note: '' })
+html = (await page(MC)).replace(/<!-- -->/g, '')
+r = await post(MC, { ...numForm, rule_id: tgt.id }, { value: '0.6' })
+ok('number on a check: a retired check has no field and refuses a posted number', r.location.includes('is retired') && ruleOf(await getDb(), 'target.element_where_drawn').params.tolerance_ft === 0.5 && html.includes('Tolerance: 0.5 ft'), JSON.stringify(r))
 
 // kinds of work: what a kind must be pinned to before it is built. Only Mitch or Michael change it; Blueprint reads it.
 const KP = '/rulebook/kinds'
