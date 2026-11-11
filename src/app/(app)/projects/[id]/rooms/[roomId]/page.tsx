@@ -547,26 +547,27 @@ export default async function RoomPage({
                     if (!active.length) return null
                     return (
                       <div key={topic} className="px-4 py-3">
-                        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-                          <div className="min-w-0">
-                            <span className="font-mono text-xs text-gold-light/80 mr-2">{topic}</span>
-                            {active.map((d) => (
-                              <span key={d.id} className="text-sm text-slate-100">
-                                {d.value}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 text-[11px] text-slate-500">
-                            {active.map((d) => (
-                              <span key={d.id}>
+                        {/* a topic can hold several active lines (board pushes add one per transcript line):
+                            one row per line, and the source — often a long transcript quote — wraps under it */}
+                        <div className="flex items-start justify-between gap-x-4">
+                          <span className="font-mono text-xs text-gold-light/80 min-w-0 break-words">{topic}</span>
+                          <span className="flex items-center gap-2 shrink-0 text-[11px] text-slate-500">
+                            {active.length > 1 ? active.length + ' lines' : null}
+                            <Pill tone="green">decided</Pill>
+                          </span>
+                        </div>
+                        <ul className="mt-1 space-y-2">
+                          {active.map((d) => (
+                            <li key={d.id} className="min-w-0">
+                              <div className="text-sm text-slate-100 break-words">{d.value}</div>
+                              <div className="text-[11px] text-slate-500 break-words">
                                 {SOURCE_LABEL[d.source] || d.source}
                                 {d.source_ref ? ' · ' + d.source_ref : ''}
                                 {d.meeting_date ? ' · ' + d.meeting_date : ''}
-                              </span>
-                            ))}
-                            <Pill tone="green">decided</Pill>
-                          </div>
-                        </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
                         {superseded.map((d) => (
                           <div key={d.id} className="text-xs text-slate-600 mt-1">
                             <span className="line-through">{d.value}</span>
@@ -577,7 +578,16 @@ export default async function RoomPage({
                         ))}
                         <details className="mt-1">
                           <summary className="cursor-pointer text-[11px] text-slate-600 hover:text-gold-light">Change</summary>
-                          <DecisionForm projectId={id} roomId={roomId} topic={topic} cta="Save — replaces the line above" />
+                          <DecisionForm
+                            projectId={id}
+                            roomId={roomId}
+                            topic={topic}
+                            cta={
+                              active.length > 1
+                                ? 'Save — replaces all ' + active.length + ' lines above'
+                                : 'Save — replaces the line above'
+                            }
+                          />
                         </details>
                       </div>
                     )

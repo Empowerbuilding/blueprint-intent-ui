@@ -84,6 +84,7 @@ await send('Network.enable', {}, sessionId)
 await send('Network.setCookie', { name: 'sb-127-auth-token', value: cookieValue, url: app }, sessionId)
 await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 }, sessionId)
 
+let overflowing = 0
 for (const [name, path] of pages) {
   const loaded = once('Page.loadEventFired', sessionId)
   await send('Page.navigate', { url: app + path }, sessionId)
@@ -94,8 +95,12 @@ for (const [name, path] of pages) {
   const { data } = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width, height, scale: 1 } }, sessionId)
   const file = out + '/' + name + (width < 600 ? '-mobile' : '') + '.png'
   fs.writeFileSync(file, Buffer.from(data, 'base64'))
-  console.log(name.padEnd(26), width + 'x' + height, Math.ceil(cssContentSize.width) > width ? 'OVERFLOWS sideways: content ' + Math.ceil(cssContentSize.width) + 'px' : '')
+  const over = Math.ceil(cssContentSize.width) > width
+  if (over) overflowing++
+  console.log(name.padEnd(26), width + 'x' + height, over ? 'OVERFLOWS sideways: content ' + Math.ceil(cssContentSize.width) + 'px' : '')
 }
 ws.close()
 chrome.kill()
-process.exit(0)
+// a page wider than the screen is a failure at any width, not a note
+if (overflowing) console.log('SHOTS FAIL: ' + overflowing + ' page(s) scroll sideways at ' + width + 'px')
+process.exit(overflowing ? 1 : 0)

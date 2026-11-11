@@ -70,6 +70,10 @@ const db = {
     dec('d4', P.whi, 'r-wb3', 'island', '96 x 48 island', 'active', 3000),
     dec('d5', P.whi, 'r-wb3', 'hood', 'Plaster hood, no wood', 'active', 30), // added AFTER the lock
     dec('d6', P.sch, 'r-s1', 'island', '84 x 42 island', 'active', 8000),
+    // real board pushes: several ACTIVE lines under one topic, sources are long transcript quotes (overflowed the row live, 11-11)
+    dec('d7', P.deu, 'r-d103', 'general', 'Appliance garage left of the fridge', 'active', 1500, { source_ref: "[23:51] Client: I think we do an appliance garage over there by the fridge, that way the coffee stuff is not sitting out on the counter all the time, and it lines up with the uppers" }),
+    dec('d8', P.deu, 'r-d103', 'general', 'Trash pullout at the sink, right side', 'active', 1400, { source_ref: '38:01 — yeah, trash pullout next to the sink, right-hand side, double bin, and keep it out of the dishwasher swing' }),
+    dec('d9', P.deu, 'r-d103', 'general', 'No microwave drawer in the island', 'active', 1300),
   ],
   intent_open_questions: [
     { id: 'q1', project_id: P.deu, room_id: 'r-d103', question: 'Floating shelves or uppers on the window wall?', answer: null, default_if_unanswered: 'Uppers to 10 ft', blocking: true, created_at: t(2500) },

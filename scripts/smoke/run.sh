@@ -21,8 +21,10 @@ node scripts/smoke/check.mjs "http://127.0.0.1:$APP_PORT" "http://127.0.0.1:$MOC
 RC=$?
 # SHOTS=1: screenshots of the main pages (needs google-chrome) before the actions change the data
 if [ "${SHOTS:-}" = 1 ]; then
-  node scripts/smoke/shots.mjs "http://127.0.0.1:$APP_PORT" "$OUT/shots" 1440
-  node scripts/smoke/shots.mjs "http://127.0.0.1:$APP_PORT" "$OUT/shots" 390 | grep OVERFLOWS
+  # a page that scrolls sideways at either width fails the run
+  node scripts/smoke/shots.mjs "http://127.0.0.1:$APP_PORT" "$OUT/shots" 1440 || RC=1
+  node scripts/smoke/shots.mjs "http://127.0.0.1:$APP_PORT" "$OUT/shots" 390 > "$OUT/shots-phone.log" || RC=1
+  grep -E "OVERFLOWS|SHOTS FAIL" "$OUT/shots-phone.log"
 fi
 # server actions (these change the mock's data, so they run after the read-only page checks)
 node scripts/smoke/actions.mjs "http://127.0.0.1:$APP_PORT" "http://127.0.0.1:$MOCK_PORT"
