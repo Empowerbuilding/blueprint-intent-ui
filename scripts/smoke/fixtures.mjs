@@ -168,7 +168,7 @@ const db = {
   // capabilities: Mitch's machine on a newer bridge build than Michael's (two commands Michael does not have yet)
   intent_bridge_reports: [
     { id: 'br3', machine: 'mitch', bridge_build: 'f98f724', revit_version: '2025', reported_by: 'blueprint', first_reported_at: t(300), reported_at: t(40),
-      commands: ['revit.create_wall', 'revit.create_family_box', 'revit.delete_element', 'revit.get_elements_info', 'revit.rehost_element', 'revit.save_document', 'revit.set_parameter_value'].map((name) => ({ name, description: name === 'revit.save_document' ? 'Save the active document.' : null })) },
+      commands: ['revit.boolean_union', 'revit.create_wall', 'revit.create_family_box', 'revit.create_text_type', 'revit.delete_element', 'revit.get_elements_info', 'revit.rehost_element', 'revit.save_document', 'revit.set_parameter_value'].map((name) => ({ name, description: name === 'revit.save_document' ? 'Save the active document.' : null })) },
     { id: 'br2', machine: 'mitch', bridge_build: '8eb2a8b', revit_version: '2025', reported_by: 'blueprint', first_reported_at: t(3000), reported_at: t(400),
       commands: ['revit.create_wall', 'revit.delete_element', 'revit.get_elements_info', 'revit.save_document', 'revit.set_parameter_value'].map((name) => ({ name, description: null })) },
     { id: 'br1', machine: 'michael', bridge_build: '8eb2a8b', revit_version: '2025', reported_by: 'blueprint', first_reported_at: t(3000), reported_at: t(60),
@@ -177,6 +177,12 @@ const db = {
   intent_bridge_proven: [
     { command: 'revit.save_document', machine: 'mitch', bridge_build: '8eb2a8b', note: 'Deubner D2, saved and reopened', proven_at: t(2900) },
     { command: 'revit.delete_element', machine: 'michael', bridge_build: '8eb2a8b', note: 'Patel, existence checked after', proven_at: t(1500) },
+  ],
+  // commands on the list that do not act; the third is on no machine's list, so the page does not show it
+  intent_bridge_command_marks: [
+    { command: 'revit.boolean_union', mark: 'stub', bridge_build: 'f98f724', note: 'The handler returns success with a note and changes nothing.', marked_at: t(100) },
+    { command: 'revit.create_text_type', mark: 'disabled', bridge_build: 'f98f724', note: 'Dispatch line switched off in the source.', marked_at: t(100) },
+    { command: 'revit.get_render_settings', mark: 'disabled', bridge_build: 'f98f724', note: 'Dispatch line switched off in the source.', marked_at: t(100) },
   ],
   intent_gaps: [
     { id: 'g1', status: 'open', title: 'Deleting several elements in one call reports success without deleting', detail: 'The plural delete command returned success and nothing was removed.', workaround: 'Delete one at a time and check each is gone.', project_name: 'Patel', source_ref: 'build 8eb2a8b', proposed_by: 'blueprint', created_at: t(1400), closed_by: null, closed_by_email: null, closed_at: null, close_note: null },

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { COMMAND_RE, MACHINE_RE, commandNames, latestPerMachine, loadCapabilities, type BridgeCommand, type BridgeReport } from '@/lib/capabilities'
+import { COMMAND_RE, MACHINE_RE, MARK_LABEL, commandNames, latestPerMachine, loadCapabilities, type BridgeCommand, type BridgeReport } from '@/lib/capabilities'
 
 // /api/capabilities — what the Revit bridge on each machine can do. The app never calls a bridge:
 // Blueprint reads the bridge's own /health and /tools and reports them here.
@@ -13,7 +13,9 @@ import { COMMAND_RE, MACHINE_RE, commandNames, latestPerMachine, loadCapabilitie
 //      confirmed" time moves. Anything different -> a new report row (history is kept).
 //      proven: commands Blueprint has run live on this machine and checked the result of.
 // GET  -> { machines: [{ machine, bridge_build, revit_version, reported_at, commands: [...] }],
-//           proven: [...], gaps_open: [...] }
+//           proven: [...], gaps_open: [...],
+//           marked: [{ command, mark: 'stub' | 'disabled', label, bridge_build, note }] }
+//      marked = commands on the list that do not act. No work order may call one.
 // Auth: x-prefill-secret header (PREFILL_SECRET env). GET also works for a signed-in user.
 
 function service() {
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
     } = await userClient.auth.getUser()
     if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  const { reports, proven, gaps } = await loadCapabilities((machine && service()) || userClient)
+  const { reports, proven, gaps, marks } = await loadCapabilities((machine && service()) || userClient)
   return NextResponse.json({
     machines: latestPerMachine(reports).map((m) => ({
       machine: m.latest.machine,
@@ -49,6 +51,7 @@ export async function GET(request: NextRequest) {
     gaps_open: gaps
       .filter((g) => g.status === 'open')
       .map((g) => ({ id: g.id, title: g.title, detail: g.detail, workaround: g.workaround, project: g.project_name, proposed_at: g.created_at })),
+    marked: marks.map((m) => ({ command: m.command, mark: m.mark, label: MARK_LABEL[m.mark], bridge_build: m.bridge_build, note: m.note })),
   })
 }
 

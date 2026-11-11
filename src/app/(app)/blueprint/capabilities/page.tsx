@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { addGap, closeGap, reopenGap } from '@/app/capabilities-actions'
-import { commandNames, commandTable, daysSince, latestPerMachine, loadCapabilities, machineLabel } from '@/lib/capabilities'
+import { MARK_LABEL, commandNames, commandTable, daysSince, latestPerMachine, loadCapabilities, machineLabel } from '@/lib/capabilities'
 import { approverNames, loadApprovers, loadLessons, whoLabel } from '@/lib/lessons'
 import { ago } from '@/lib/outline-summary'
 import { fmtDate, fmtDateTime, viewerTimeZone } from '@/lib/time'
@@ -25,14 +25,17 @@ export default async function CapabilitiesPage({ searchParams }: { searchParams:
     },
     approvers,
     lessons,
-    { reports, proven, gaps },
+    { reports, proven, gaps, marks },
   ] = await Promise.all([supabase.auth.getUser(), loadApprovers(supabase), loadLessons(supabase), loadCapabilities(supabase)])
   const isApprover = !!user && approvers.some((a) => a.user_id === user.id)
   const names = approverNames(approvers)
 
   const machines = latestPerMachine(reports)
-  const groups = commandTable(machines, proven)
+  const groups = commandTable(machines, proven, marks)
   const builds = [...new Set(machines.map((m) => m.latest.bridge_build))]
+  // commands on some machine's list that do not act (read from the bridge source, not by calling them)
+  const inert = [...groups.values()].flat().filter((c) => c.mark)
+  const inertBuilds = [...new Set(inert.map((c) => c.mark!.bridge_build))]
   const uneven = [...groups.values()].flat().filter((c) => c.missingOn.length > 0)
   const open = gaps.filter((g) => g.status === 'open')
   const closed = gaps.filter((g) => g.status === 'closed')
@@ -108,6 +111,26 @@ export default async function CapabilitiesPage({ searchParams }: { searchParams:
                 checked. No mark = the bridge lists it, but Blueprint has not proven it yet.
               </p>
             </div>
+            {inert.length > 0 && (
+              <div className="rounded-xl border border-red-900/50 bg-red-950/20 px-4 py-3 text-xs text-red-200/90 leading-relaxed space-y-1">
+                <div>
+                  {inert.length} {inert.length === 1 ? 'command on the list does' : 'commands on the list do'} not act. No work order may call{' '}
+                  {inert.length === 1 ? 'it' : 'them'}.
+                </div>
+                {(['stub', 'disabled'] as const).map((kind) => {
+                  const list = inert.filter((c) => c.mark!.mark === kind)
+                  return list.length ? (
+                    <div key={kind}>
+                      <span className="text-red-300">{MARK_LABEL[kind]}</span>: <span className="font-mono">{list.map((c) => c.short).join(', ')}</span>
+                    </div>
+                  ) : null
+                })}
+                <div className="text-red-200/60">
+                  Read from the bridge source at build {inertBuilds.join(', ')}, not by calling them.
+                  {inertBuilds.some((b) => !builds.includes(b)) ? ' Not read again on the build now running.' : ''}
+                </div>
+              </div>
+            )}
             <div className="card divide-y divide-slate-800/60">
               {[...groups.entries()].map(([group, rows]) => (
                 <details key={group} className="px-4 py-2.5">
@@ -116,6 +139,7 @@ export default async function CapabilitiesPage({ searchParams }: { searchParams:
                     <span className="ml-2 text-[11px] text-slate-600">
                       {rows.some((r) => r.proven) ? (rows.every((r) => r.proven) ? 'all proven' : 'some proven') : 'none proven yet'}
                       {rows.some((r) => r.missingOn.length) ? ' · differs between machines' : ''}
+                      {rows.some((r) => r.mark) ? ' · ' + rows.filter((r) => r.mark).length + ' ' + (rows.filter((r) => r.mark).length === 1 ? 'does' : 'do') + ' not act' : ''}
                     </span>
                   </summary>
                   <ul className="mt-2 space-y-1.5">
@@ -125,6 +149,11 @@ export default async function CapabilitiesPage({ searchParams }: { searchParams:
                         {c.proven ? (
                           <span className="ml-2 text-emerald-400" title={(c.proven.note || '') + ' · ' + fmtDate(c.proven.proven_at, tz)}>
                             proven
+                          </span>
+                        ) : null}
+                        {c.mark ? (
+                          <span className="ml-2 text-red-400" title={'Read from the bridge source at build ' + c.mark.bridge_build + (c.mark.note ? ' · ' + c.mark.note : '')}>
+                            {MARK_LABEL[c.mark.mark]}
                           </span>
                         ) : null}
                         {c.missingOn.length > 0 && <span className="ml-2 text-amber-400">not on {c.missingOn.map(machineLabel).join(', ')}</span>}

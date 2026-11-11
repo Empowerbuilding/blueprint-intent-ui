@@ -12,6 +12,12 @@ export type BridgeReport = {
   reported_at: string
 }
 export type Proven = { command: string; machine: string | null; bridge_build: string | null; note: string | null; proven_at: string }
+/** a command the bridge lists that does not act (read from the bridge source at bridge_build) */
+export type CommandMark = { command: string; mark: 'stub' | 'disabled'; bridge_build: string; note: string | null; marked_at: string }
+export const MARK_LABEL: Record<CommandMark['mark'], string> = {
+  stub: 'stub: returns success, no effect',
+  disabled: 'listed, dispatch disabled',
+}
 export type Gap = {
   id: string
   status: 'open' | 'closed'
@@ -57,17 +63,18 @@ export function latestPerMachine(reports: BridgeReport[]): MachineState[] {
     .map(([, list]) => ({ latest: list[0], previousBuild: list.find((x) => x.bridge_build !== list[0].bridge_build)?.bridge_build || null }))
 }
 
-export type CommandRow = { name: string; short: string; description: string | null; on: string[]; missingOn: string[]; proven: Proven | null }
+export type CommandRow = { name: string; short: string; description: string | null; on: string[]; missingOn: string[]; proven: Proven | null; mark: CommandMark | null }
 
 /** every command any machine has, with which machines have it and whether it has been proven live */
-export function commandTable(machines: MachineState[], proven: Proven[]): Map<string, CommandRow[]> {
+export function commandTable(machines: MachineState[], proven: Proven[], marks: CommandMark[] = []): Map<string, CommandRow[]> {
   const all = machines.map((m) => m.latest.machine)
   const provenBy = new Map(proven.map((p) => [p.command, p]))
+  const markBy = new Map(marks.map((m) => [m.command, m]))
   const rows = new Map<string, CommandRow>()
   for (const m of machines) {
     for (const c of Array.isArray(m.latest.commands) ? m.latest.commands : []) {
       if (!c || typeof c.name !== 'string') continue
-      const row = rows.get(c.name) || { name: c.name, short: splitCommand(c.name).short, description: c.description || null, on: [], missingOn: [], proven: provenBy.get(c.name) || null }
+      const row = rows.get(c.name) || { name: c.name, short: splitCommand(c.name).short, description: c.description || null, on: [], missingOn: [], proven: provenBy.get(c.name) || null, mark: markBy.get(c.name) || null }
       row.on.push(m.latest.machine)
       if (!row.description && c.description) row.description = c.description
       rows.set(c.name, row)
@@ -86,8 +93,8 @@ export function commandTable(machines: MachineState[], proven: Proven[]): Map<st
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = { from: (t: string) => any }
 
-export async function loadCapabilities(client: AnyClient): Promise<{ reports: BridgeReport[]; proven: Proven[]; gaps: Gap[] }> {
-  const [{ data: reports }, { data: proven }, { data: gaps }] = await Promise.all([
+export async function loadCapabilities(client: AnyClient): Promise<{ reports: BridgeReport[]; proven: Proven[]; gaps: Gap[]; marks: CommandMark[] }> {
+  const [{ data: reports }, { data: proven }, { data: gaps }, { data: marks }] = await Promise.all([
     client
       .from('intent_bridge_reports')
       .select('id, machine, bridge_build, revit_version, commands, first_reported_at, reported_at')
@@ -95,6 +102,12 @@ export async function loadCapabilities(client: AnyClient): Promise<{ reports: Br
       .limit(60),
     client.from('intent_bridge_proven').select('command, machine, bridge_build, note, proven_at').order('command'),
     client.from('intent_gaps').select(GAP_COLUMNS).order('created_at', { ascending: false }),
+    client.from('intent_bridge_command_marks').select('command, mark, bridge_build, note, marked_at').order('command'),
   ])
-  return { reports: (reports || []) as BridgeReport[], proven: (proven || []) as Proven[], gaps: (gaps || []) as Gap[] }
+  return {
+    reports: (reports || []) as BridgeReport[],
+    proven: (proven || []) as Proven[],
+    gaps: (gaps || []) as Gap[],
+    marks: ((marks || []) as CommandMark[]).filter((m) => m.mark === 'stub' || m.mark === 'disabled'),
+  }
 }
