@@ -662,6 +662,13 @@ mr = (await res.json()).rules.find((x) => x.rule_key === 'shell.outline_matches_
 ok('api model-rules: the new number is what Blueprint reads', mr.params.tolerance_ft === 0.4 && mr.version === shellRule.version + 1 && mr.params_by === 'mitch@barnhaus.test' && !!mr.params_at, JSON.stringify(mr))
 html = (await page(MC)).replace(/<!-- -->/g, '')
 ok('number on a check: the page shows who set it', html.includes('number set by Mitch'), '')
+// a tolerance in inches (the placed-opening check) has the same field, with its own unit
+const openRule = ruleOf(await getDb(), 'opening.bbox_verified')
+r = await post(MC, form(html, (f) => f.includes('name="param"') && f.includes('value="tolerance_in"') && f.includes('value="' + openRule.id + '"'), 'number form (opening tolerance)'), { value: '0.5' })
+row = ruleOf(await getDb(), 'opening.bbox_verified')
+ok('number on a check: an inch tolerance is saved with its unit', r.location.includes('saved=opening.bbox_verified: tolerance 0.5 in') && row.params.tolerance_in === 0.5 && row.params.initial === false && row.version === openRule.version + 1, JSON.stringify([r, row.params]))
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+ok('api model-rules: the inch tolerance is what the checker reads', (await res.json()).rules.find((x) => x.rule_key === 'opening.bbox_verified').params.tolerance_in === 0.5)
 // an accepted check keeps its number field and stays accepted when the number changes
 const tgt = ruleOf(db, 'target.element_where_drawn')
 r = await post(MC, form(html, (f) => f.includes('name="decision"') && f.includes('value="' + tgt.id + '"'), 'decide form (target.element_where_drawn)'), { decision: 'accept', note: '' })

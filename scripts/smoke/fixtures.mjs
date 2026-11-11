@@ -161,6 +161,7 @@ const db = {
     decided_by: null, decided_by_email: null, decided_at: null, decision_note: null, params_by: null, params_at: null, created_at: t(200), updated_at: t(200),
     // the two checks that carry a number an approver can change (a tolerance)
     ...(r.rule_key === 'shell.outline_matches_model' || r.rule_key === 'target.element_where_drawn' ? { params: { tolerance_ft: 0.25, initial: true } } : {}),
+    ...(r.rule_key === 'opening.bbox_verified' ? { params: { tolerance_in: 1, initial: true } } : {}),
     ...(r.rule_key === 'counter.no_builtin_splash' ? { status: 'accepted', version: 2, decided_by: 'user-michael', decided_by_email: 'michael@barnhaus.test', decided_at: t(120), checker: 'exports/deubner/holes.py', checker_status: 'script' } : {}),
     ...(r.rule_key === 'final.pdf_exists' ? { status: 'retired', version: 2, decided_by: 'user-mitch', decided_by_email: 'mitch@barnhaus.test', decided_at: t(110), decision_note: 'Covered by the final QA check' } : {}),
   })),
