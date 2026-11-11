@@ -433,6 +433,75 @@ row = db.intent_defaults.find((x) => x.topic === 'pantry shelving')
 ok('approver adds a default: stored last in the list, recorded, shown in rooms', row && row.active === true && row.scope === 'house' && row.sort_order > 900 && row.updated_by_email === 'mitch@barnhaus.test' && lastChange(db).action === 'added' && lastChange(db).default_id === row.id && (await roomDefaults()).includes('adjustable melamine, 16 in deep'), JSON.stringify(row))
 ok('defaults and their history are never deleted', !(await (await fetch(mock + '/__calls')).json()).some((c) => c.op.startsWith('delete') && (c.table === 'intent_defaults' || c.table === 'intent_defaults_history')))
 
+// ---------- C6. capabilities: reported by Blueprint, gaps closed only by Mitch or Michael ----------
+const CP = '/blueprint/capabilities'
+const capPost = async (b, headers = SECRET) => { const x = await fetch(app + '/api/capabilities', { method: 'POST', headers, body: JSON.stringify(b) }); return { status: x.status, j: await x.json().catch(() => null) } }
+const michaelCmds = ['revit.create_wall', 'revit.delete_element', 'revit.get_elements_info', 'revit.save_document', 'revit.set_parameter_value']
+ok('capabilities report without the secret: 401', (await capPost({ machine: 'michael', bridge_build: 'x', commands: michaelCmds }, { 'Content-Type': 'application/json' })).status === 401)
+for (const [why, b] of [['no machine', { bridge_build: 'x', commands: michaelCmds }], ['bad machine name', { machine: 'Mitch PC', bridge_build: 'x', commands: michaelCmds }], ['no build', { machine: 'michael', commands: michaelCmds }], ['no commands', { machine: 'michael', bridge_build: 'x', commands: [] }], ['a command that is not a name', { machine: 'michael', bridge_build: 'x', commands: ['revit.ok', 'DROP TABLE'] }], ['proven command not in the report', { machine: 'michael', bridge_build: 'x', commands: michaelCmds, proven: [{ command: 'revit.create_family_box' }] }]]) {
+  before = await getDb()
+  r = await capPost(b)
+  db = await getDb()
+  ok('capabilities report refused: ' + why, r.status === 400 && same(db.intent_bridge_reports, before.intent_bridge_reports) && same(db.intent_bridge_proven, before.intent_bridge_proven), JSON.stringify(r))
+}
+// the same build and commands again: only "last confirmed" moves
+before = await getDb()
+r = await capPost({ machine: 'michael', bridge_build: '8eb2a8b', revit_version: '2025', commands: michaelCmds })
+db = await getDb()
+ok('same report again: no new row, last-confirmed time moves', r.status === 200 && r.j.new_build === false && same(r.j.added, []) && same(r.j.removed, []) && db.intent_bridge_reports.length === before.intent_bridge_reports.length && db.intent_bridge_reports.find((x) => x.id === 'br1').reported_at > before.intent_bridge_reports.find((x) => x.id === 'br1').reported_at && db.intent_bridge_reports.find((x) => x.id === 'br1').first_reported_at === before.intent_bridge_reports.find((x) => x.id === 'br1').first_reported_at, JSON.stringify(r))
+// Michael updates his bridge: new build, two new commands, one proven
+r = await capPost({ machine: 'Michael', bridge_build: 'f98f724', revit_version: '2025', commands: [...michaelCmds.map((name) => ({ name })), { name: 'revit.rehost_element', description: 'Move a hosted element to a new host.' }, 'revit.create_family_box', 'revit.create_wall'], proven: [{ command: 'revit.rehost_element', note: 'Patel fire pit chairs, host read back' }, { command: 'revit.save_document', note: 'again' }] })
+db = await getDb()
+row = db.intent_bridge_reports.filter((x) => x.machine === 'michael').sort((a, b) => (a.reported_at < b.reported_at ? 1 : -1))[0]
+ok('new build reported: a new row, history kept, what changed returned', r.status === 200 && r.j.new_build === true && r.j.previous_build === '8eb2a8b' && same(r.j.added, ['revit.create_family_box', 'revit.rehost_element']) && same(r.j.removed, []) && db.intent_bridge_reports.length === before.intent_bridge_reports.length + 1 && row.bridge_build === 'f98f724' && row.commands.length === 7 && row.commands.find((c) => c.name === 'revit.rehost_element').description === 'Move a hosted element to a new host.' && !!db.intent_bridge_reports.find((x) => x.id === 'br1'), JSON.stringify(r))
+ok('proven: new proof stored with machine and build; an earlier proof is not overwritten', r.j.proven_added === 1 && db.intent_bridge_proven.find((x) => x.command === 'revit.rehost_element').bridge_build === 'f98f724' && db.intent_bridge_proven.find((x) => x.command === 'revit.rehost_element').machine === 'michael' && db.intent_bridge_proven.find((x) => x.command === 'revit.save_document').note === 'Deubner D2, saved and reopened', JSON.stringify(db.intent_bridge_proven))
+html = (await page(CP)).replace(/<!-- -->/g, '')
+ok('page after the update: same build on both machines, no mismatch warning', html.includes('Every machine is on the same build with the same commands.') && !html.includes('different bridge builds') && html.includes('before that: 8eb2a8b') && html.includes('Patel fire pit chairs, host read back'))
+api = await (await fetch(app + '/api/capabilities', { headers: SECRET })).json()
+ok('capabilities read: latest per machine, proven, open gaps', api.machines.length === 2 && api.machines.every((m) => m.bridge_build === 'f98f724' && m.commands.length === 7) && api.proven.length === 3 && api.gaps_open.length === 1 && api.gaps_open[0].title.startsWith('Deleting several elements'), JSON.stringify(api).slice(0, 300))
+ok('capabilities read without secret or login: 401', (await fetch(app + '/api/capabilities')).status === 401)
+// gaps through the machine route: add only
+const gapPost = async (b) => { const x = await fetch(app + '/api/gaps', { method: 'POST', headers: SECRET, body: JSON.stringify(b) }); return { status: x.status, j: await x.json().catch(() => null) } }
+ok('gap without the secret: 401', (await fetch(app + '/api/gaps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status === 401)
+r = await gapPost({ title: 'Soffits need one drawn by hand first', detail: 'A soffit can only be created by copying one that already exists in the model.', workaround: 'Ask for one soffit drawn in Revit, then copy it.', project: 'Whitaker', source_ref: 'test' })
+db = await getDb()
+row = db.intent_gaps.find((x) => x.id === r.j.id)
+ok('gap logged by Blueprint: stored open', r.status === 201 && row && row.status === 'open' && row.proposed_by === 'blueprint' && row.project_name === 'Whitaker' && row.workaround.startsWith('Ask for one soffit') && !row.closed_at, JSON.stringify(row))
+r2 = await gapPost({ title: 'soffits need one drawn by hand FIRST', detail: 'again' })
+ok('same gap again: not added twice', r2.status === 200 && r2.j.duplicate === true && r2.j.id === r.j.id && (await getDb()).intent_gaps.length === db.intent_gaps.length)
+r2 = await gapPost({ title: 'Self-closed', detail: 'x', status: 'closed', close_note: 'fixed' })
+ok('gap sent as already closed: refused', r2.status === 400 && !(await getDb()).intent_gaps.some((x) => x.title === 'Self-closed'))
+ok('gap without detail: refused', (await gapPost({ title: 'No detail' })).status === 400)
+ok('no machine way to close a gap', (await fetch(app + '/api/gaps', { method: 'PATCH', headers: SECRET, body: JSON.stringify({ id: 'g1', status: 'closed' }) })).status === 405)
+// non-approver: read-only for closing
+html = await pageAs(CP, asBlueprint)
+ok('capabilities, non-approver: sees machines and gaps, no close or reopen controls', html.includes('f98f724') && html.includes('Deleting several elements') && !html.includes('name="gap_id"') && !html.includes('Close gap') && html.includes('+ Add a gap yourself'))
+html = await page(CP)
+const closeG1 = form(html, (f) => f.includes('value="g1"') && f.includes('Close gap'), 'close gap g1')
+const reopenG2 = form(html, (f) => f.includes('value="g2"') && f.includes('Reopen'), 'reopen gap g2')
+const addGapForm = form(html, (f) => f.includes('name="detail"') && f.includes('Add gap'), 'add gap')
+before = await getDb()
+r = await postAs(CP, closeG1, { close_note: 'self-closed' }, asBlueprint)
+r2 = await postAs(CP, reopenG2, {}, asBlueprint)
+db = await getDb()
+ok('non-approver posts close / reopen: refused, gaps untouched', r.location.includes('Only Mitch or Michael can close a gap') && r2.location.includes('Only Mitch or Michael can reopen a gap') && same(db.intent_gaps, before.intent_gaps), JSON.stringify([r, r2]))
+r = await postAs(CP, addGapForm, { title: 'Cannot place railings', detail: 'No railing command exists.', workaround: '' }, asBlueprint)
+db = await getDb()
+row = db.intent_gaps.find((x) => x.title === 'Cannot place railings')
+ok('anyone signed in can add a gap', row && row.status === 'open' && row.proposed_by === 'blueprint@barnhaus.test' && r.location.endsWith('#g-' + row.id), JSON.stringify(r))
+// approver
+r = await post(CP, closeG1, { close_note: '  ' })
+ok('close without saying how: refused', r.location.includes('Say how it was closed') && (await getDb()).intent_gaps.find((x) => x.id === 'g1').status === 'open')
+r = await post(CP, closeG1, { close_note: 'Fixed in build f98f724, re-tested on Patel' })
+row = (await getDb()).intent_gaps.find((x) => x.id === 'g1')
+ok('approver closes a gap: who, when and how are kept', row.status === 'closed' && row.closed_by === 'user-mitch' && row.closed_by_email === 'mitch@barnhaus.test' && !!row.closed_at && row.close_note === 'Fixed in build f98f724, re-tested on Patel' && r.location.endsWith('#g-g1'), JSON.stringify(row))
+r = await post(CP, closeG1, { close_note: 'again' })
+ok('close a gap that is already closed: refused', r.location.includes('already changed') && (await getDb()).intent_gaps.find((x) => x.id === 'g1').close_note.startsWith('Fixed in build'))
+r = await post(CP, reopenG2, {})
+row = (await getDb()).intent_gaps.find((x) => x.id === 'g2')
+ok('approver reopens a closed gap', row.status === 'open' && row.closed_at === null && row.closed_by_email === null && row.close_note === null, JSON.stringify(row))
+ok('reports, proofs and gaps are never deleted', !(await (await fetch(mock + '/__calls')).json()).some((c) => c.op.startsWith('delete') && ['intent_bridge_reports', 'intent_bridge_proven', 'intent_gaps'].includes(c.table)))
+
 // ---------- D. delete ----------
 const D = '/projects/p-deubner'
 html = await page(D)

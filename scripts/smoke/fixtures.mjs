@@ -146,6 +146,23 @@ const db = {
     { id: 'sv4', standard_id: 's-build', version: 1, content: build, note: 'created by blueprint', edited_by: null, created_at: t(1400) },
   ],
   portal_messages: [], // what the app tells Blueprint
+  // capabilities: Mitch's machine on a newer bridge build than Michael's (two commands Michael does not have yet)
+  intent_bridge_reports: [
+    { id: 'br3', machine: 'mitch', bridge_build: 'f98f724', revit_version: '2025', reported_by: 'blueprint', first_reported_at: t(300), reported_at: t(40),
+      commands: ['revit.create_wall', 'revit.create_family_box', 'revit.delete_element', 'revit.get_elements_info', 'revit.rehost_element', 'revit.save_document', 'revit.set_parameter_value'].map((name) => ({ name, description: name === 'revit.save_document' ? 'Save the active document.' : null })) },
+    { id: 'br2', machine: 'mitch', bridge_build: '8eb2a8b', revit_version: '2025', reported_by: 'blueprint', first_reported_at: t(3000), reported_at: t(400),
+      commands: ['revit.create_wall', 'revit.delete_element', 'revit.get_elements_info', 'revit.save_document', 'revit.set_parameter_value'].map((name) => ({ name, description: null })) },
+    { id: 'br1', machine: 'michael', bridge_build: '8eb2a8b', revit_version: '2025', reported_by: 'blueprint', first_reported_at: t(3000), reported_at: t(60),
+      commands: ['revit.create_wall', 'revit.delete_element', 'revit.get_elements_info', 'revit.save_document', 'revit.set_parameter_value'].map((name) => ({ name, description: null })) },
+  ],
+  intent_bridge_proven: [
+    { command: 'revit.save_document', machine: 'mitch', bridge_build: '8eb2a8b', note: 'Deubner D2, saved and reopened', proven_at: t(2900) },
+    { command: 'revit.delete_element', machine: 'michael', bridge_build: '8eb2a8b', note: 'Patel, existence checked after', proven_at: t(1500) },
+  ],
+  intent_gaps: [
+    { id: 'g1', status: 'open', title: 'Deleting several elements in one call reports success without deleting', detail: 'The plural delete command returned success and nothing was removed.', workaround: 'Delete one at a time and check each is gone.', project_name: 'Patel', source_ref: 'build 8eb2a8b', proposed_by: 'blueprint', created_at: t(1400), closed_by: null, closed_by_email: null, closed_at: null, close_note: null },
+    { id: 'g2', status: 'closed', title: 'A failed write reported success', detail: 'A rolled-back transaction came back as success.', workaround: 'Read every edit back.', project_name: null, source_ref: null, proposed_by: 'blueprint', created_at: t(5000), closed_by: 'user-mitch', closed_by_email: 'mitch@barnhaus.test', closed_at: t(350), close_note: 'Fixed in build f98f724' },
+  ],
   // defaults are data: the built-in list, one line changed by Michael, one extra line turned off
   intent_defaults: [
     ...DEFAULTS.map((d, i) => ({ id: 'def-' + i, ...d, active: true, sort_order: (i + 1) * 10, updated_by: null, updated_by_email: null, updated_at: null, created_at: t(9000),

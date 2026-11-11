@@ -13,7 +13,7 @@ import Link from 'next/link'
 
 type Event = {
   at: string
-  kind: 'standard' | 'checks' | 'contract' | 'lesson' | 'default'
+  kind: 'standard' | 'checks' | 'contract' | 'lesson' | 'default' | 'bridge'
   title: string
   detail: string | null
   who: 'blueprint' | 'person' | null
@@ -28,6 +28,7 @@ const KINDS: { key: Event['kind']; label: string }[] = [
   { key: 'contract', label: 'Contracts' },
   { key: 'lesson', label: 'Lessons' },
   { key: 'default', label: 'Defaults' },
+  { key: 'bridge', label: 'Bridge' },
 ]
 
 export default async function BlueprintPage({
@@ -168,6 +169,25 @@ export default async function BlueprintPage({
     })
   }
 
+  // a new bridge build seen on a machine
+  const { data: bridgeReports } = await supabase
+    .from('intent_bridge_reports')
+    .select('id, machine, bridge_build, first_reported_at')
+    .order('first_reported_at', { ascending: false })
+    .limit(30)
+  for (const b of (bridgeReports || []) as { id: string; machine: string; bridge_build: string; first_reported_at: string }[]) {
+    events.push({
+      at: b.first_reported_at,
+      kind: 'bridge',
+      title: 'Bridge on ' + b.machine.charAt(0).toUpperCase() + b.machine.slice(1) + ' → build ' + b.bridge_build,
+      detail: 'A new build or a changed command list, as reported by the bridge itself.',
+      who: null,
+      href: '/blueprint/capabilities',
+      cta: 'Open capabilities',
+      by: 'reported by Blueprint',
+    })
+  }
+
   const shown = events.filter((e) => !filter || e.kind === filter).sort((a, b) => (a.at < b.at ? 1 : -1))
   const days = new Map<string, Event[]>()
   for (const e of shown) {
@@ -201,7 +221,7 @@ export default async function BlueprintPage({
                 <div key={i} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Pill tone={e.kind === 'standard' ? 'violet' : e.kind === 'checks' ? 'gold' : e.kind === 'lesson' ? 'blue' : e.kind === 'default' ? 'outline' : 'green'}>
+                      <Pill tone={e.kind === 'standard' ? 'violet' : e.kind === 'checks' ? 'gold' : e.kind === 'lesson' ? 'blue' : e.kind === 'default' ? 'outline' : e.kind === 'bridge' ? 'neutral' : 'green'}>
                         {e.kind}
                       </Pill>
                       <span className="text-sm text-slate-100">{e.title}</span>
@@ -229,8 +249,8 @@ export default async function BlueprintPage({
 
         <section className="rounded-xl border border-bh-border bg-bh-panel/40 px-4 py-4 text-sm text-slate-400 leading-relaxed">
           <div className="font-semibold text-slate-200 mb-1">Not recorded here yet</div>
-          What the Revit bridge can do on each machine, and which version it is on, does not appear here yet. Corrections
-          you give Blueprint in chat appear once Blueprint has written them up as a lesson and one of you has accepted it.
+          Corrections you give Blueprint in chat appear here once Blueprint has written them up as a lesson and one of
+          you has accepted it. Blueprint&apos;s own rule files and playbooks are not in the app.
         </section>
       </div>
     </main>

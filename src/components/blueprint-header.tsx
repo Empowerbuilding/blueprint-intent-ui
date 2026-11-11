@@ -1,10 +1,12 @@
 import Link from 'next/link'
 
-// Blueprint = what Blueprint works from that is not a rule: what changed, and what it has learned.
-export function BlueprintHeader({ active, toAccept }: { active: 'changes' | 'lessons'; toAccept: number }) {
+// Blueprint = what Blueprint works from that is not a rule: what changed, what it has learned, and
+// what the Revit bridge can do on each machine.
+export function BlueprintHeader({ active, toAccept }: { active: 'changes' | 'lessons' | 'capabilities'; toAccept: number }) {
   const tabs = [
     { key: 'changes', href: '/blueprint', label: 'What changed', note: 'day by day' },
     { key: 'lessons', href: '/blueprint/lessons', label: 'Lessons', note: toAccept ? toAccept + ' to accept' : 'what Blueprint has learned' },
+    { key: 'capabilities', href: '/blueprint/capabilities', label: 'Capabilities', note: 'what the bridge can do' },
   ] as const
   return (
     <header className="border-b border-bh-border bg-bh-panel/40">

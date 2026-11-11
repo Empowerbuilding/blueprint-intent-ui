@@ -33,6 +33,7 @@ const pages = [
   ['14-standards-diff', '/rulebook/standards?doc=d1-to-d2-runbook&compare=2'],
   ['15-blueprint', '/blueprint'],
   ['16-lessons', '/blueprint/lessons'],
+  ['17-capabilities', '/blueprint/capabilities'],
 ]
 
 const PORT = 9333
