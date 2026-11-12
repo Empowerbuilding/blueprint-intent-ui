@@ -820,6 +820,7 @@
     "sheet.tags_text_only",
     "sheet.schedules_on_dimension_plan",
     "sheet.scope_boxes_hidden",
+    "sheet.stair_treads_annotated",
     "opening.marks_clean"
    ],
    "qa_scripts": [

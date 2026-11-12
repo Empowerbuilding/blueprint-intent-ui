@@ -148,6 +148,8 @@ export function addedFolderSource(who: string, day: string): string {
   return 'Added on this page by ' + who + ' on ' + day + '. No standard document names this folder: it is on the check on their word.'
 }
 
+// (2026-11-12, spec A120: sheet.stair_treads_annotated carries params.riser_words and params.tread_words, read by
+// automation/checks_sheets.py.)
 // (2026-11-12, spec A117: wall.no_exterior_finish_inside carries params.exterior_finish_words and params.outside_departments,
 // read by automation/checks_walls.py.)
 // A LIST OF TEXTS ON A CHECK. A check may carry a list of short texts under a name this table knows (sheet.set_matches_stage:
@@ -199,6 +201,26 @@ export const CHECK_LISTS: Record<string, ListSpec> = {
     help: 'A Department is its name as the rooms in Revit carry it, 1 to 60 characters.',
     max: 60,
   },
+  riser_words: {
+    title:
+      'Riser words: the words a riser count is written with in a note on a section or an elevation. A whole number directly before one of them, in brackets or not, is a count of risers for this check, whatever the case of the letters: (17) RISERS.',
+    one: 'word',
+    save: 'Save word',
+    add: 'Add word',
+    placeholder: 'another word a riser count is written with',
+    help: 'A riser word is a word or a few words as the notes on the drawings write them, 2 to 40 characters.',
+    max: 40,
+  },
+  tread_words: {
+    title:
+      'Tread words: the words a tread count is written with in a note on a section or an elevation. A whole number directly before one of them, in brackets or not, is a count of treads for this check, whatever the case of the letters: 16 TREADS. A number with an inch mark is a size, not a count.',
+    one: 'word',
+    save: 'Save word',
+    add: 'Add word',
+    placeholder: 'another word a tread count is written with',
+    help: 'A tread word is a word or a few words as the notes on the drawings write them, 2 to 40 characters.',
+    max: 40,
+  },
   tag_families: {
     title: 'Tag families: the door and window tag families that count as text only. The check compares the tags in the model with this list.',
     one: 'tag family',
@@ -243,7 +265,7 @@ export function listEntry(list: string, raw: string): string | null {
     if (!stem || /[*?]/.test(stem)) return null
   }
   // one letter would be found in nearly every name: a countertop name is at least two characters
-  if ((list === 'counter_names' || list === 'exterior_finish_words') && t.length < 2) return null
+  if ((list === 'counter_names' || list === 'exterior_finish_words' || list === 'riser_words' || list === 'tread_words') && t.length < 2) return null
   return t
 }
 /** two entries the checker reads as the same text (it does not tell upper case from lower case, or one space from two) */

@@ -835,6 +835,12 @@
    "description": "No wall shows an exterior finish to a room inside the house.",
    "source": "Mitch 2026-11-09 04:48Z in blueprint-mitch; design-build standard section 8; proposed 2026-11-12 (pre-pilot build, spec A117)",
    "kinds": []
+  },
+  {
+   "rule_key": "sheet.stair_treads_annotated",
+   "description": "A section or elevation on a sheet that shows a stair carries its tread count.",
+   "source": "Michael 2026-11-10 06:10Z, 17:01Z and 2026-11-11 in blueprint-michael; proposed 2026-11-12 (pre-pilot build, spec A120)",
+   "kinds": []
   }
  ]
 }
