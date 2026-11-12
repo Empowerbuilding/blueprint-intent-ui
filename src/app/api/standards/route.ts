@@ -8,7 +8,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 // GET  /api/standards?slug=...   → one standard (404 if unknown)
 // POST /api/standards            → upsert by slug (Blueprint pushes its own doc
 //                                  updates back so the UI stays current as it learns)
-//   body: { slug, content, title?, description?, category?, note?, source_path? }
+//   body: { slug, content, title?, description?, category?, note?, source_path?, stage? }
+//   stage: the stage pack the document is a part of (d1_to_d2); a push that does not name one keeps what the document has
 //   categories: modeling | construction_docs | process | components
 
 const CATEGORIES = ['modeling', 'construction_docs', 'process', 'components']
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   const slug = request.nextUrl.searchParams.get('slug')
   let query = supabase
     .from('intent_standards')
-    .select('slug, category, title, description, content, format, source_path, version, updated_at')
+    .select('slug, category, title, description, content, format, source_path, stage, version, updated_at')
     .eq('active', true)
     .order('slug')
   if (slug) query = query.eq('slug', slug)
@@ -72,6 +73,8 @@ export async function POST(request: NextRequest) {
   const note = typeof body.note === 'string' && body.note.trim() ? body.note.trim() : null
   const sourcePath = typeof body.source_path === 'string' ? body.source_path : null
   const pushedBy = typeof body.pushed_by === 'string' ? body.pushed_by : 'blueprint'
+  // undefined = not sent (an update keeps the document's stage); null or '' = no stage
+  const stage = typeof body.stage === 'string' ? body.stage.trim() || null : body.stage === null ? null : undefined
   const expectedVersion = typeof body.expected_version === 'number' ? body.expected_version : null
 
   const { data: existing } = await supabase
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
     const nextVersion = (existing.version || 1) + 1
     const { error: updErr } = await supabase
       .from('intent_standards')
-      .update({ content, category, title, description, source_path: sourcePath, version: nextVersion, updated_at: new Date().toISOString() })
+      .update({ content, category, title, description, source_path: sourcePath, version: nextVersion, updated_at: new Date().toISOString(), ...(stage !== undefined ? { stage } : {}) })
       .eq('id', existing.id)
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
     await supabase.from('intent_standards_versions').insert({
@@ -107,7 +110,7 @@ export async function POST(request: NextRequest) {
 
   const { data: inserted, error: insErr } = await supabase
     .from('intent_standards')
-    .insert({ slug, category, title, description, content, source_path: sourcePath, version: 1, active: true })
+    .insert({ slug, category, title, description, content, source_path: sourcePath, stage: stage ?? null, version: 1, active: true })
     .select('id')
     .single()
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })

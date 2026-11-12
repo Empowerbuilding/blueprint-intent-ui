@@ -148,6 +148,8 @@ const db = {
   intent_standards: [
     { id: 's-run', slug: 'd1-to-d2-runbook', category: 'process', title: 'D1 → D2 Runbook', description: 'The Draft 1 to Draft 2 pipeline, stage by stage.', content: runbook, format: 'markdown', source_path: 'standards/D1_TO_D2_RUNBOOK.md', version: 3, active: true, updated_at: t(1250) },
     { id: 's-build', slug: 'design-build-standard', category: 'modeling', title: 'Design Build Standard', description: 'Palette, casework, bath and floor rules.', content: build, format: 'markdown', source_path: 'standards/DESIGN_BUILD_STANDARD.md', version: 1, active: true, updated_at: t(1400) },
+    { id: 's-p10', slug: 'stage-d1-to-d2-p10', category: 'process', stage: 'd1_to_d2', title: 'P10 Roof', description: 'Procedure slice of the D1 to D2 stage playbook.', content: '# P10 Roof\n\nEntry: the roof phase of the stage playbook.', format: 'markdown', source_path: 'stages/d1_to_d2/p10.md', version: 1, active: true, updated_at: t(900) },
+    { id: 's-p2', slug: 'stage-d1-to-d2-p2s', category: 'process', stage: 'd1_to_d2', title: 'P2S Shell changes', description: 'Procedure slice of the D1 to D2 stage playbook.', content: '# P2S Shell changes\n\nEntry: the shell phase of the stage playbook.', format: 'markdown', source_path: 'stages/d1_to_d2/p2s.md', version: 1, active: true, updated_at: t(900) },
   ],
   intent_standards_versions: [
     { id: 'sv1', standard_id: 's-run', version: 1, content: runbookV1, note: 'created by blueprint', edited_by: null, created_at: t(1400) },

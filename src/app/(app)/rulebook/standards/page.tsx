@@ -20,6 +20,10 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: 'components', label: 'Component library' },
 ]
 
+// A document that is a part of a stage pack (spec 3.3) is listed under its stage, not under its category.
+const STAGES: Record<string, string> = { d1_to_d2: 'D1 to D2' }
+const stageLabel = (key: string) => 'Stage playbook: ' + (STAGES[key] || key)
+
 type Standard = {
   id: string
   slug: string
@@ -28,6 +32,7 @@ type Standard = {
   description: string
   content: string
   source_path: string | null
+  stage?: string | null
   version: number
   updated_at: string
 }
@@ -50,7 +55,16 @@ export default async function StandardsPage({
 
   const { data: standardRows } = await supabase.from('intent_standards').select('*').eq('active', true).order('title')
   const standards = (standardRows || []) as Standard[]
-  const current = standards.find((s) => s.slug === doc) || standards[0] || null
+  const current = standards.find((s) => s.slug === doc) || standards.find((s) => !s.stage) || standards[0] || null
+  const stageKeys = [...new Set(standards.map((s) => s.stage).filter((k): k is string => !!k))].sort()
+  const groups = [
+    ...CATEGORIES.map((cat) => ({ key: cat.key, label: cat.label, docs: standards.filter((s) => !s.stage && s.category === cat.key) })),
+    ...stageKeys.map((k) => ({
+      key: 'stage-' + k,
+      label: stageLabel(k),
+      docs: standards.filter((s) => s.stage === k).sort((a, b) => a.slug.localeCompare(b.slug, undefined, { numeric: true })),
+    })),
+  ]
 
   let versions: VersionRow[] = []
   let diff: { version: number; rows: ReturnType<typeof foldDiff>; added: number; removed: number; first: boolean } | null = null
@@ -87,8 +101,8 @@ export default async function StandardsPage({
       <div className="app-container py-8 grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
         {/* document list */}
         <nav className="space-y-5 lg:sticky lg:top-24 lg:self-start" aria-label="Standards documents">
-          {CATEGORIES.map((cat) => {
-            const docs = standards.filter((s) => s.category === cat.key)
+          {groups.map((cat) => {
+            const docs = cat.docs
             if (!docs.length) return null
             return (
               <div key={cat.key}>
@@ -141,6 +155,7 @@ export default async function StandardsPage({
                 <div className="text-[11px] text-slate-600 mt-2">
                   Version {current.version} · updated {fmtDateTime(current.updated_at, tz)}
                   {current.source_path ? ' · Blueprint keeps a copy at ' + current.source_path : ''}
+                  {current.stage ? ' · part of the ' + (STAGES[current.stage] || current.stage) + ' stage playbook' : ''}
                 </div>
               </div>
 

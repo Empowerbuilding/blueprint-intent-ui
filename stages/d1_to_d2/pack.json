@@ -1,0 +1,962 @@
+{
+ "_history": "VERSION 1. Reviewed and accepted by Tony 2026-11-12 04:07Z (blueprint-mitch); moved from stages/_draft/d1_to_d2 by Blueprint the same hour. Until then: WORKING DRAFT v0.1 by Blueprint 2026-11-11 (accepted as the working draft by Tony 07:10Z). Not synced from the app. Fields starting with _ and the fields evidence / open are draft annotations, not schema. Since 2026-11-12 the compiler reads judgment_slots, runtime_calls, library_refs and defaults_scope and refuses a pack where one of them names something it does not know.",
+ "stage": "d1_to_d2",
+ "pack_version": 1,
+ "provenance": [
+  "banks",
+  "schwan",
+  "deubner"
+ ],
+ "_provenance_note": "Drawing sets: Banks, Schwan, Deubner (D1 and D2 both held). Build procedure: Deubner run; one gate from the Whitaker run. Lowry has no D1 set; Patel has no D2 set.",
+ "entry": {
+  "requires": [
+   "contract.locked",
+   "2d.all_approved",
+   "bridge_build>=f98f724",
+   "doc.is_d2_save_as",
+   "room.no_zero_area",
+   "room.no_duplicate_numbers",
+   "room.numbers_match_board",
+   "sheet.no_later_stage_sheets"
+  ],
+  "_note": "The last five are the gate of the old P2 (save-as + cleanup), folded in per SPEC A15. P1 runs them."
+ },
+ "phase_order": [
+  "P1",
+  "P2S",
+  "P3",
+  "P4",
+  "P5",
+  "P6",
+  "P7",
+  "P8",
+  "P9",
+  "P10",
+  "P10S",
+  "P11",
+  "P12"
+ ],
+ "deferred_kinds": [
+  "mep.electrical",
+  "mep.plumbing",
+  "structure.foundation"
+ ],
+ "_deferred_kinds_note": "SPEC A14. A work item of one of these kinds is not built in this stage; it is carried to d2_to_d3. Every deferral is listed in the posted plan.",
+ "phases": [
+  {
+   "id": "P1",
+   "title": "Intake check",
+   "kinds": [],
+   "procedure_md": "stages/d1_to_d2/p1.md",
+   "standard_items": [],
+   "acceptance": [
+    "intake.doc_title_matches",
+    "intake.rooms_match_contract",
+    "intake.fingerprint_current",
+    "doc.is_d2_save_as",
+    "room.no_zero_area",
+    "room.no_duplicate_numbers",
+    "room.numbers_match_board",
+    "sheet.no_later_stage_sheets"
+   ],
+   "qa_scripts": [
+    "checks_intake"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "RB stage 1; compiler STAGES P1.",
+    "Entry checks folded in from the old P2 (RB stages 2 and 2b). S: no foundation, electrical or plumbing sheet in any D2 set (Banks, Schwan, Deubner, Lowry's D2)."
+   ],
+   "open": []
+  },
+  {
+   "id": "P2S",
+   "title": "Shell changes (walls moved, house resized, stairs)",
+   "kinds": [
+    "structure.resize",
+    "structure.modify",
+    "structure.stairs",
+    "surface.wall"
+   ],
+   "procedure_md": "stages/d1_to_d2/p2s.md",
+   "standard_items": [],
+   "acceptance": [
+    "shell.rooms_still_enclosed",
+    "room.numbers_match_board",
+    "model.warnings_not_up",
+    "shell.outline_matches_model"
+   ],
+   "qa_scripts": [
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": {
+    "by": "item",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": false,
+   "judgment_slots": [
+    "unusual_geometry"
+   ],
+   "runtime_calls": [
+    "join_condition"
+   ],
+   "evidence": [
+    "T: every D1 to D2 list has shell decisions. Banks: glass stairwell wall to a solid framed wall; central garage column removed. Schwan: house depth to 48 ft; upstairs baths reconfigured; master bath linen closets removed; garage stairwell aligned. Deubner: steam room enlarged; wall added to enclose a toilet.",
+    "S: Schwan dimension plan '50' - 0\"' x3 becomes '48' - 0\"' x3; total area 7437 SF to 7038 SF.",
+    "RB: the runbook has NO stage for this work."
+   ],
+   "open": [],
+   "_shell_changed": "SPEC A12: rooms touched here carry shell_changed: true in the contract; their outlines were drawn on the proposed geometry; gate shell.outline_matches_model checks outline vs post-shell model within tolerance."
+  },
+  {
+   "id": "P3",
+   "title": "Openings",
+   "kinds": [
+    "opening.place",
+    "opening.replace",
+    "opening.modify"
+   ],
+   "procedure_md": "stages/d1_to_d2/p3.md",
+   "standard_items": [],
+   "acceptance": [
+    "opening.bbox_verified",
+    "opening.marks_clean"
+   ],
+   "qa_scripts": [
+    "checks_openings",
+    "qa-marks",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house",
+    "secondary"
+   ],
+   "split": null,
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection"
+   ],
+   "evidence": [
+    "RB stage 3.",
+    "T: openings are 4 of 21 decisions (Banks), 1 of 23 (Schwan), 11 of 36 (Deubner).",
+    "S: a type mark at every opening in all three D2 sets."
+   ],
+   "open": []
+  },
+  {
+   "id": "P4",
+   "title": "Rooms: department and palette",
+   "kinds": [
+    "room.config",
+    "room.palette"
+   ],
+   "procedure_md": "stages/d1_to_d2/p4.md",
+   "standard_items": [
+    {
+     "id": "si-room-department",
+     "kind": "room.config",
+     "summary": "Department set on every room",
+     "params": {
+      "field": "Department"
+     },
+     "acceptance": [
+      "room.no_zero_area",
+      "room.numbers_match_board"
+     ],
+     "evidence": "RB stage 4"
+    },
+    {
+     "id": "si-room-palette",
+     "kind": "room.palette",
+     "summary": "Room colour scheme by Department, standard palette",
+     "params": {
+      "scheme_by": "Department"
+     },
+     "acceptance": [
+      "room.palette_rgb"
+     ],
+     "evidence": "S 3/3: colour-filled plans in every D2 (Banks already in D1; Schwan and Deubner new in D2). RB stage 4."
+    }
+   ],
+   "acceptance": [
+    "room.no_zero_area",
+    "room.numbers_match_board",
+    "room.palette_rgb"
+   ],
+   "qa_scripts": [
+    "checks_rooms",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "RB stage 4.",
+    "S 3/3 colour fills by D2."
+   ],
+   "open": []
+  },
+  {
+   "id": "P5",
+   "title": "Casework per room",
+   "kinds": [
+    "casework.place",
+    "casework.modify",
+    "casework.rehost",
+    "appliance.place"
+   ],
+   "procedure_md": "stages/d1_to_d2/p5.md",
+   "standard_items": [],
+   "acceptance": [
+    "casework.no_overlap",
+    "casework.position_within_1in_of_2d",
+    "casework.no_opening_intersection",
+    "casework.faces_have_material"
+   ],
+   "qa_scripts": [
+    "checks_casework",
+    "qa-model"
+   ],
+   "library_refs": [
+    "01_Casework\\Kitchen",
+    "01_Casework\\Mud-Pantry-Laundry",
+    "01_Casework\\Bar-Media-Fireplace",
+    "01_Casework\\Closets",
+    "01_Casework\\Garage",
+    "05_Specialty Equipment"
+   ],
+   "defaults_scope": [
+    "public",
+    "master",
+    "secondary",
+    "garage"
+   ],
+   "split": {
+    "by": "room",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection",
+    "unusual_geometry"
+   ],
+   "evidence": [
+    "RB stage 5.",
+    "T: casework is 3 of 21 decisions (Banks), 7 of 23 (Schwan), 9 of 36 (Deubner).",
+    "S: furniture and casework drawn on the plans in all three D2 sets."
+   ],
+   "open": [
+    "The outline rules (island_clearance_42, uppers_aff_54, no_blind_corners, walkway_min_36, closet_clearance_36, door_clearance_36) are measured on the 2D outline today. Whether they are re-measured on the built model is not decided."
+   ]
+  },
+  {
+   "id": "P6",
+   "title": "Counters and sinks",
+   "kinds": [
+    "casework.counter",
+    "plumbing.sink"
+   ],
+   "procedure_md": "stages/d1_to_d2/p6.md",
+   "standard_items": [],
+   "acceptance": [
+    "sink.cutout_matches_bowl",
+    "counter.no_builtin_splash",
+    "casework.faces_have_material"
+   ],
+   "qa_scripts": [
+    "checks_counters",
+    "qa-model"
+   ],
+   "library_refs": [
+    "02_Countertops",
+    "03_Plumbing Fixtures"
+   ],
+   "defaults_scope": [
+    "public",
+    "bath"
+   ],
+   "split": {
+    "by": "room",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection"
+   ],
+   "evidence": [
+    "RB stage 6.",
+    "T: no list has a counter-only decision; counters arrive inside kitchen and vanity decisions (for example 'island wood-wrapped, no waterfall' on both Banks and Schwan)."
+   ],
+   "open": []
+  },
+  {
+   "id": "P7",
+   "title": "Baths",
+   "kinds": [
+    "plumbing.place",
+    "plumbing.niche"
+   ],
+   "procedure_md": "stages/d1_to_d2/p7.md",
+   "standard_items": [],
+   "acceptance": [
+    "plumbing.toilet_clearance_15_21",
+    "bath.tile_cut_at_openings",
+    "bath.niche_void_cut",
+    "bath.one_room_per_bath"
+   ],
+   "qa_scripts": [
+    "checks_baths",
+    "qa-model"
+   ],
+   "library_refs": [
+    "01_Casework\\Baths",
+    "03_Plumbing Fixtures",
+    "06_Generic Models\\Shower Niches",
+    "06_Generic Models\\Steam Room"
+   ],
+   "defaults_scope": [
+    "bath",
+    "master"
+   ],
+   "split": {
+    "by": "room",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection",
+    "join_condition"
+   ],
+   "evidence": [
+    "RB stage 7.",
+    "T: plumbing fixtures are 2 of 21 decisions (Banks), 4 of 23 (Schwan), 7 of 36 (Deubner). A curbless shower with a bench is decided on both Banks and Schwan."
+   ],
+   "open": []
+  },
+  {
+   "id": "P8",
+   "title": "Floors, ceilings, walls to ceiling",
+   "kinds": [
+    "surface.floor",
+    "surface.ceiling",
+    "surface.beam",
+    "surface.soffit"
+   ],
+   "procedure_md": "stages/d1_to_d2/p8.md",
+   "standard_items": [
+    {
+     "id": "si-finish-floors",
+     "scope": "level",
+     "kind": "surface.floor",
+     "summary": "Finish floor in every room, to door centrelines",
+     "params": {},
+     "acceptance": [
+      "floor.threshold_both_sides",
+      "floor.no_uncovered_slab"
+     ],
+     "evidence": "RB stage 8; threshold gate added after the Whitaker run missed 18 doors"
+    },
+    {
+     "id": "si-ceilings",
+     "scope": "level",
+     "kind": "surface.ceiling",
+     "summary": "Ceiling in every room per notes and work items",
+     "params": {},
+     "acceptance": [
+      "ceiling.edge_z_measured"
+     ],
+     "evidence": "RB stage 8. S: a ceiling label per room on the D2 dimension plan (Schwan)"
+    },
+    {
+     "id": "si-walls-to-ceiling",
+     "scope": "level",
+     "kind": "surface.wall",
+     "summary": "Interior walls run to the ceiling and are attached",
+     "params": {},
+     "acceptance": [
+      "model.warnings_not_up"
+     ],
+     "evidence": "RB stage 8"
+    }
+   ],
+   "acceptance": [
+    "floor.threshold_both_sides",
+    "floor.no_uncovered_slab",
+    "ceiling.edge_z_measured",
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [
+    "checks_floors",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house",
+    "public",
+    "master",
+    "secondary",
+    "garage"
+   ],
+   "split": {
+    "by": "level",
+    "house_items": "each_part",
+    "unplaced_rooms": "own_part",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "join_condition"
+   ],
+   "evidence": [
+    "RB stage 8.",
+    "T: surface decisions are 4 of 21 (Banks), 3 of 23 (Schwan), 2 of 36 (Deubner)."
+   ],
+   "open": [
+    "surface.wall is claimed by P2S (wall layout). The walls-to-ceiling pass sits here as a standard item. If a wall-HEIGHT decision is typed surface.wall it would route to P2S; not decided."
+   ],
+   "_soffit": "soffit_max_18 left this exit on 2026-11-12 (M3 prep A6A7). It is a rule of the outline rulebook in the app, measured on the 2D drawing by the math gate (the 2d section of this pack), and it was never one of the model checks. Nothing measures a built soffit in the model; P8 builds what the approved drawing shows."
+  },
+  {
+   "id": "P9",
+   "title": "Materials",
+   "kinds": [
+    "finish.material"
+   ],
+   "procedure_md": "stages/d1_to_d2/p9.md",
+   "standard_items": [
+    {
+     "id": "si-house-material-set",
+     "kind": "finish.material",
+     "summary": "Every element on the house material set; audit clean",
+     "params": {},
+     "acceptance": [
+      "material.one_per_role",
+      "material.no_project_named",
+      "material.appearance_paths_resolve",
+      "casework.faces_have_material"
+     ],
+     "evidence": "RB stage 9 and section 8"
+    }
+   ],
+   "acceptance": [
+    "material.one_per_role",
+    "material.no_project_named",
+    "material.appearance_paths_resolve",
+    "casework.faces_have_material"
+   ],
+   "qa_scripts": [
+    "checks_materials",
+    "qa-model"
+   ],
+   "library_refs": [
+    "09_Patterns & Images"
+   ],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "ambiguous_provenance"
+   ],
+   "evidence": [
+    "RB stage 9.",
+    "T: finish decisions are 5 of 21 (Banks), 3 of 23 (Schwan), 3 of 36 (Deubner).",
+    "S: material labels on the D2 elevations (Schwan, Deubner)."
+   ],
+   "open": []
+  },
+  {
+   "id": "P10",
+   "title": "Roof",
+   "kinds": [
+    "roof.modify"
+   ],
+   "procedure_md": "stages/d1_to_d2/p10.md",
+   "standard_items": [],
+   "acceptance": [
+    "roof.z_vs_walls",
+    "roof.overhang_dims_clear_of_grids"
+   ],
+   "qa_scripts": [
+    "checks_roof_site",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": null,
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "RB stage 10.",
+    "T: one roof decision each on Banks (porch roofs extended) and Deubner (22 in roof profile approved); none on Schwan.",
+    "S: the red TBD list on the roof sheet (roof colour and material, gutter, downspout) is replaced by a list of selections on Schwan D2 and is still there on Banks D2 and Deubner D2. Not a standard item: it changes only when the selections were decided."
+   ],
+   "open": []
+  },
+  {
+   "id": "P10S",
+   "title": "Site",
+   "kinds": [
+    "site.modify",
+    "site.fence",
+    "site.pool"
+   ],
+   "procedure_md": "stages/d1_to_d2/p10s.md",
+   "standard_items": [
+    {
+     "id": "si-site-conceptual",
+     "kind": "site.modify",
+     "summary": "Conceptual site: driveway as a toposolid split, services labelled where known, conceptual note on the sheet",
+     "params": {
+      "conceptual": true
+     },
+     "acceptance": [
+      "site.driveway_is_toposolid_split",
+      "site.conceptual_note_present"
+     ],
+     "evidence": "S 3/3: a site plan sheet in every D2 (new in D2 on Banks and Schwan; already in D1 on Deubner). The red conceptual note is on Schwan D2 and Deubner D2; Banks D2 shows house, driveway and contours only."
+    }
+   ],
+   "acceptance": [
+    "site.driveway_is_toposolid_split",
+    "site.conceptual_note_present"
+   ],
+   "qa_scripts": [
+    "checks_roof_site",
+    "qa-model"
+   ],
+   "library_refs": [
+    "08_Site-Exterior"
+   ],
+   "defaults_scope": [
+    "outdoor"
+   ],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [
+    "fence_recipe"
+   ],
+   "runtime_calls": [
+    "unusual_geometry"
+   ],
+   "evidence": [
+    "T: one site decision per project (Banks: pad and roof outside the garage door; Schwan: fencing only around the pool; Deubner: water tank on the hill).",
+    "S: no pool sheets in any D2. Lowry's D2 plan carries the text 'Pool (Draft 3)'; its six pool sheets appear at D3."
+   ],
+   "open": [
+    "The runbook has no site stage; site work sits inside its sheets stage. Drafted as its own phase because site.* is model work.",
+    "site.fence is built by one of its two recipes, picked at compile (rule and number: the kind in the app). The reader automation/fence_host.py has not run on a model. No bridge command or recipe exists for site.pool."
+   ]
+  },
+  {
+   "id": "P11",
+   "title": "Sheets",
+   "kinds": [
+    "sheet.create",
+    "sheet.view",
+    "sheet.annotate",
+    "export.render"
+   ],
+   "procedure_md": "stages/d1_to_d2/p11.md",
+   "standard_items": [
+    {
+     "id": "si-floor-plan",
+     "kind": "sheet.annotate",
+     "summary": "Floor plan filled in: furniture and casework visible, room names as text, area schedule",
+     "params": {
+      "sheet": "A101.x"
+     },
+     "acceptance": [
+      "sheet.tags_text_only"
+     ],
+     "evidence": "S 3/3"
+    },
+    {
+     "id": "si-dimension-plan",
+     "kind": "sheet.annotate",
+     "summary": "Dimension plan dimensioned for D2",
+     "params": {
+      "sheet": "A102.x"
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 3/3: dimension strings on the level-1 sheet rise 101 to 155 (Banks), 110 to 142 (Schwan), 156 to 190 (Deubner)"
+    },
+    {
+     "id": "si-schedules",
+     "kind": "sheet.create",
+     "summary": "Door schedule and window schedule on the dimension plan, with a type mark at every opening",
+     "params": {
+      "sheet": "A102.x",
+      "schedules": [
+       "door",
+       "window"
+      ]
+     },
+     "acceptance": [
+      "sheet.schedules_on_dimension_plan",
+      "opening.marks_clean"
+     ],
+     "evidence": "S 3/3. Every D1 dimension plan carries the line 'Door & window schedules on Draft 2'"
+    },
+    {
+     "id": "si-exterior-elevations",
+     "kind": "sheet.view",
+     "summary": "Two exterior elevation sheets (sides; front and back)",
+     "params": {
+      "sheets": [
+       "A105",
+       "A106"
+      ]
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 3/3"
+    },
+    {
+     "id": "si-cut-sections",
+     "kind": "sheet.view",
+     "summary": "Cut sections",
+     "params": {
+      "sheets": [
+       "A106.1"
+      ]
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 3/3: two sheets on Banks and Schwan, one on Deubner. Key plans showing the cuts on Schwan and Deubner"
+    },
+    {
+     "id": "si-section-details",
+     "kind": "sheet.view",
+     "summary": "Typical details sheet (eave, slab edge, floor frame)",
+     "params": {
+      "sheets": [
+       "A106.3"
+      ]
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 2/3: Schwan (five details) and Deubner (three) have it at D2; Banks not until D3; Lowry in no stage"
+    },
+    {
+     "id": "si-interior-elevations",
+     "scope": "sheet_group",
+     "kind": "sheet.view",
+     "summary": "Interior sheets: one sheet per room group, each with the enlarged plan, the elevations and the 3D views of that group, all at 3/8 in",
+     "params": {
+      "sheets": "A107.x",
+      "composition": {
+       "per": "room_group",
+       "views": [
+        "enlarged_plan",
+        "elevations",
+        "3d"
+       ],
+       "scale": "3/8 in = 1 ft"
+      }
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "Mitch ruling 2026-11-11 (flag 4, SPEC A42): the Schwan layout. S 3/3 have the sheets: 5 (Banks), 9 (Schwan), 4 (Deubner). The Banks layout (each elevation paired with its 3D at 1/2 in) and the Lowry / Deubner layout (elevation sheets and 3D sheets kept separate) are rejected"
+    },
+    {
+     "id": "si-interior-3d",
+     "scope": "sheet_group",
+     "kind": "sheet.view",
+     "summary": "Interior 3D detail views, placed on the interior sheet of their room group (no interior 3D sheets of their own)",
+     "params": {
+      "sheets": "A107.x",
+      "placed_on": "room_group_sheet",
+      "scale": "3/8 in = 1 ft"
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "Mitch ruling 2026-11-11 (flag 4, SPEC A42): the Schwan layout. S 3/3 have the views: on the interior elevation sheets (Schwan); on their own sheets (Banks, Deubner), which is rejected"
+    },
+    {
+     "id": "si-exterior-3d",
+     "kind": "sheet.view",
+     "summary": "Exterior 3D views and cut-away ISO views",
+     "params": {
+      "sheets": "A107.x"
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 3/3"
+    },
+    {
+     "id": "si-site-sheet",
+     "kind": "sheet.view",
+     "summary": "Site plan sheet",
+     "params": {
+      "sheets": [
+       "A100.2"
+      ]
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 3/3 present in D2"
+    },
+    {
+     "id": "si-site-3d",
+     "kind": "sheet.view",
+     "summary": "Site 3D sheet",
+     "params": {
+      "sheets": [
+       "A100.3"
+      ],
+      "optional": true
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 2/3: Banks (new in D2) and Deubner (already in D1); not on Schwan"
+    },
+    {
+     "id": "si-grid-bubbles",
+     "kind": "sheet.annotate",
+     "summary": "Grid lines with bubbles on the elevations",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/3: Schwan and Deubner; not noted on Banks"
+    },
+    {
+     "id": "si-concept-pictures",
+     "kind": "export.render",
+     "summary": "Concept pictures page redone",
+     "params": {
+      "sheet": "A100.1",
+      "needs_human": true
+     },
+     "acceptance": [],
+     "evidence": "S 3/3: pictures replaced in whole or part in every D2. The runbook says the cover keeps the existing renders until Michael re-renders"
+    },
+    {
+     "id": "si-cover-index",
+     "order": "last",
+     "kind": "sheet.create",
+     "summary": "Cover sheet and sheet index match the set",
+     "params": {
+      "sheet": "A100"
+     },
+     "acceptance": [
+      "sheet.set_matches_stage"
+     ],
+     "evidence": "RB stage 11"
+    }
+   ],
+   "acceptance": [
+    "sheet.set_matches_stage",
+    "sheet.no_later_stage_sheets",
+    "sheet.bounds_edge_clean",
+    "sheet.tags_text_only",
+    "sheet.schedules_on_dimension_plan",
+    "opening.marks_clean"
+   ],
+   "qa_scripts": [
+    "checks_sheets",
+    "qa-marks",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": {
+    "by": "sheet_group",
+    "house_items": "whole_house_part",
+    "unplaced_rooms": "whole_house_part",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [
+    "human_task"
+   ],
+   "runtime_calls": [],
+   "evidence": [
+    "RB stage 11.",
+    "S: +15 sheets (Banks, Deubner) to +20 (Schwan); none removed except Banks' second concept page."
+   ],
+   "open": [
+    "Who produces the concept pictures (they are made outside the model) is not decided; drafted as needs_human.",
+    "A design-options sheet (Deubner only) is manual in v1 and is not a standard item, although the runbook's defaults list one."
+   ]
+  },
+  {
+   "id": "P12",
+   "title": "Final QA and handover",
+   "kinds": [
+    "qa.run",
+    "export.pdf"
+   ],
+   "procedure_md": "stages/d1_to_d2/p12.md",
+   "standard_items": [
+    {
+     "id": "si-final-qa",
+     "kind": "qa.run",
+     "summary": "Final QA clean",
+     "params": {},
+     "acceptance": [
+      "final.qa_clean"
+     ],
+     "evidence": "RB stage 12"
+    },
+    {
+     "id": "si-pdf",
+     "kind": "export.pdf",
+     "summary": "PDF of the full set",
+     "params": {},
+     "acceptance": [
+      "final.pdf_exists"
+     ],
+     "evidence": "RB stage 12"
+    }
+   ],
+   "acceptance": [
+    "final.qa_clean",
+    "final.pdf_exists",
+    "material.appearance_paths_resolve"
+   ],
+   "qa_scripts": [
+    "qa-model",
+    "qa-marks",
+    "review_visual",
+    "checks_sheets",
+    "checks_materials",
+    "checks_final"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "RB stage 12."
+   ],
+   "open": []
+  }
+ ],
+ "2d": {
+  "_status": "DRAFTED 2026-11-12 (M3 prep A6A7; SPEC 4.5). The compiler builds the 2D work order from this section and holds none of it. Not run through the host runner: the M2 drawings were made in attended turns.",
+  "procedure_md": "stages/d1_to_d2/2d.md",
+  "batch_rooms": 5,
+  "gate": "the outline rulebook in the app (GET /api/rules), every rule that applies to a drawing, run by outline_draft.py locally and by the app on push. soffit_max_18 is one of its rules.",
+  "phases": [
+   {
+    "id": "D0",
+    "role": "scan",
+    "section": "D0",
+    "title": "Shell scan (read-only)",
+    "est_minutes": 15,
+    "brief": "OUTLINE_EXPECT_DOC=\"{doc}\" bridge.py script automation/outline_scan.py -> projects/<slug>/outlines/shell.json. Read-only.",
+    "verify": {
+     "readback": "shell.json room count == rooms the contract marks needs_2d; solids_complete true"
+    }
+   },
+   {
+    "id": "D{n}",
+    "role": "batch",
+    "section": "D-batch",
+    "title": "2D outlines: {rooms}",
+    "est_minutes_per_room": 12,
+    "brief": "Per room: draw every work item listed (tag each drawn element with \"work_item\": \"<id>\"; list the items that have no place on a drawing). A room marked shell_changed is drawn on the PROPOSED shape and its geometry.meta says \"shell\": \"proposed\". Context lines constrain the layout and are not drawn as work. Inspiration pictures: fetch the room's pictures (inspo_fetch.py) and LOOK at each one yourself, beside the details the app read from it. Use a detail where the typed work items and the context leave the layout open; a typed decision ALWAYS wins over a picture. The layout's \"inspo\" block lists every detail as used, or as not used with a reason; it goes into geometry.meta.inspo. Then outline_draft.py -> local gate -> outline_push.py --from-report --wait-vision.",
+    "verify": {
+     "math": "app math gate pass",
+     "vision": "no conflict",
+     "coverage": "every work item drawn or declared not drawable",
+    "inspo": "every layout detail of the room's pictures listed as used, or as not used with a reason (geometry.meta.inspo)"
+    }
+   },
+   {
+    "id": "DW",
+    "role": "review",
+    "section": "DW",
+    "title": "2D review (Michael)",
+    "est_minutes": 0,
+    "brief": "Humans: approve or reject each drawing in the room cards, then mark the room 2D-approved.",
+    "verify": {
+     "gate": "work_order_compile.py --schema v2 --stage 3d exits 0"
+    }
+   }
+  ]
+ },
+ "exit": {
+  "acceptance": [
+   "final.qa_clean"
+  ],
+  "artifacts": [
+   "pdf",
+   "backup"
+  ]
+ },
+ "library": {
+  "kind": "folder",
+  "root": "the shared library Blueprint Families on H:",
+  "map": "standards/BLUEPRINT_LIBRARY.md",
+  "note": "SETTLED for version 1 (2026-11-12, M3 prep A6A7; Blueprint's reading, not reviewed): library_refs of a phase are FOLDERS of the shared library, relative to its root. The compiler refuses a pack that names a folder the folder map does not have, and puts the folders in the phase brief. Keys per family (SPEC 3.2) do not exist: no registry of families is in the app."
+ },
+ "defaults": {
+  "kind": "app default group",
+  "groups": [
+   "house",
+   "public",
+   "secondary",
+   "garage",
+   "adu",
+   "bath",
+   "master",
+   "outdoor"
+  ],
+  "source": "blueprint-intent-ui src/lib/defaults.ts (the scope of a house default)",
+  "note": "SETTLED for version 1 (2026-11-12, M3 prep A6A7; Blueprint's reading, not reviewed): defaults_scope of a phase names the default groups whose accepted defaults usually become work of that phase. It is information for whoever reviews the pack. The compiler checks the names against the list above and does nothing else with them: an accepted default reaches a phase as a typed work item of the contract, routed by its kind like every other."
+ }
+}
