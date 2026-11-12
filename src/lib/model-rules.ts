@@ -62,6 +62,43 @@ export function missingNumbers(params: Record<string, unknown> | null | undefine
   return ruleNumbers(params).filter((n) => n.value === null)
 }
 
+// A PALETTE ON A CHECK. room.palette_rgb carries the standard room colours in params.palette: one entry per Department,
+// { "<Department>": [red, green, blue] }, whole numbers from 0 to 255. params.palette_source says, per Department, where its
+// colour comes from (the graphic standard: document, section, date). The checker (automation/checks_rooms.py) reads
+// params.palette from GET /api/model-rules and carries no colour of its own. An approver can change a row on the page; no
+// row is added or removed there.
+export type PaletteRow = { department: string; rgb: [number, number, number]; source: string | null }
+export const PALETTE_ORIGIN = 'Source of the first value: '
+const isChannel = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 255
+/** the palette rows of a check, by Department. null = the check carries no palette */
+export function rulePalette(params: Record<string, unknown> | null | undefined): PaletteRow[] | null {
+  const p = (params || {}).palette
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return null
+  const src = (params || {}).palette_source
+  const sources = src && typeof src === 'object' && !Array.isArray(src) ? (src as Record<string, unknown>) : {}
+  return Object.entries(p as Record<string, unknown>)
+    .filter(([, c]) => Array.isArray(c) && c.length === 3 && c.every(isChannel))
+    .map(([department, c]) => ({
+      department,
+      rgb: c as [number, number, number],
+      source: typeof sources[department] === 'string' && (sources[department] as string).trim() ? (sources[department] as string) : null,
+    }))
+    .sort((a, b) => a.department.localeCompare(b.department))
+}
+/** "252" -> 252; anything that is not a whole number from 0 to 255 -> null */
+export function colourChannel(raw: string): number | null {
+  const t = raw.trim()
+  if (!/^\d{1,3}$/.test(t)) return null
+  const n = Number(t)
+  return isChannel(n) ? n : null
+}
+/** the note a changed row carries: who changed it and from what, and still where its first value came from */
+export function changedPaletteSource(prev: string | null, who: string, day: string, from: number[], to: number[]): string {
+  const before = prev || 'no source was recorded'
+  const origin = before.includes(PALETTE_ORIGIN) ? before.slice(before.indexOf(PALETTE_ORIGIN) + PALETTE_ORIGIN.length) : before
+  return 'Changed on this page by ' + who + ' on ' + day + ', from ' + from.join('/') + ' to ' + to.join('/') + '. ' + PALETTE_ORIGIN + origin
+}
+
 // the two Supabase clients (user session, service role) have different generics; only .from() is used
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = { from: (t: string) => any }

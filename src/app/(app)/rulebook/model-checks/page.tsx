@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { decideModelRule, proposeModelRule, setModelRuleNumber } from '@/app/model-rules-actions'
-import { CHECKER_LABEL, loadModelRules, missingNumbers, ruleNumbers, type ModelRule } from '@/lib/model-rules'
+import { decideModelRule, proposeModelRule, setModelRuleNumber, setModelRulePalette } from '@/app/model-rules-actions'
+import { CHECKER_LABEL, loadModelRules, missingNumbers, ruleNumbers, rulePalette, type ModelRule } from '@/lib/model-rules'
 import { approverNames, loadApprovers, whoLabel } from '@/lib/lessons'
 import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -19,6 +19,8 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
   const numbers = ruleNumbers(r.params)
   const waiting = numbers.filter((n) => n.value === null)
   const canEdit = isApprover && r.status !== 'retired'
+  // the palette the check carries (room colours): one row per Department, each with a note that names where its colour comes from
+  const palette = rulePalette(r.params)
   return (
     <div id={'r-' + r.rule_key} className="px-4 py-3 scroll-mt-32">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
@@ -74,9 +76,64 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               accepted.
             </div>
           )}
-          {(r.params_at || numbers.some((n) => n.value !== null)) && (
+          {palette && (
+            <div className="mt-2 space-y-2">
+              <div className="text-[11px] text-slate-400">
+                Palette: the colour each Department is filled with (red / green / blue, 0 to 255). The check compares the model with these.
+              </div>
+              {palette.map((c) => (
+                <div key={c.department} className="pl-2 border-l border-slate-800">
+                  {canEdit ? (
+                    <form action={setModelRulePalette} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="rule_id" value={r.id} />
+                      <input type="hidden" name="department" value={c.department} />
+                      <span
+                        aria-hidden="true"
+                        className="inline-block h-4 w-4 rounded border border-slate-600"
+                        style={{ backgroundColor: 'rgb(' + c.rgb.join(',') + ')' }}
+                      />
+                      <span className="text-[11px] text-slate-300 w-20">{c.department}</span>
+                      {(['red', 'green', 'blue'] as const).map((k, i) => (
+                        <input
+                          key={k}
+                          name={k}
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="255"
+                          required
+                          defaultValue={c.rgb[i]}
+                          aria-label={c.department + ' ' + k}
+                          className="field !w-16 !py-1 text-xs"
+                        />
+                      ))}
+                      <button className="btn-secondary-sm">Save colour</button>
+                    </form>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
+                      <span
+                        aria-hidden="true"
+                        className="inline-block h-4 w-4 rounded border border-slate-600"
+                        style={{ backgroundColor: 'rgb(' + c.rgb.join(',') + ')' }}
+                      />
+                      {c.department}: {c.rgb.join('/')}
+                    </div>
+                  )}
+                  <div className={'text-[11px] break-words ' + (c.source ? 'text-slate-500' : 'text-amber-400/80')}>
+                    {c.source || 'No source is recorded for this colour.'}
+                  </div>
+                </div>
+              ))}
+              {!palette.length && <div className="text-[11px] text-amber-400/80">The palette has no readable row: the check cannot pass.</div>}
+            </div>
+          )}
+          {(r.params_at || numbers.some((n) => n.value !== null) || (palette && palette.length > 0)) && (
             <div className="text-[11px] text-slate-600 break-words">
-              {r.params_at ? 'number set by ' + who(r.params_by) + ' · ' + fmtDate(r.params_at, tz) : 'starting value; nobody has changed the number'}
+              {r.params_at
+                ? (palette ? 'colour set by ' : 'number set by ') + who(r.params_by) + ' · ' + fmtDate(r.params_at, tz)
+                : palette
+                  ? 'starting palette; nobody has changed a colour'
+                  : 'starting value; nobody has changed the number'}
             </div>
           )}
           {r.decided_at && (
@@ -159,7 +216,8 @@ export default async function ModelChecksPage({ searchParams }: { searchParams: 
           </p>
           <p className="text-xs text-slate-500">
             Where a check carries a number, such as a tolerance, {isApprover ? 'you can change it here' : names + ' can change it here'}. Blueprint is
-            told, and a work order compiled with the old number has to be compiled again.
+            told, and a work order compiled with the old number has to be compiled again. The same goes for the room colours on the palette
+            check.
             {waitingForNumber > 0 &&
               ' ' +
                 waitingForNumber +

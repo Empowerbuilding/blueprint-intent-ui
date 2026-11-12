@@ -699,6 +699,43 @@ html = (await page(MC)).replace(/<!-- -->/g, '')
 r = await post(MC, { ...numForm, rule_id: tgt.id }, { value: '0.6' })
 ok('number on a check: a retired check has no field and refuses a posted number', r.location.includes('is retired') && ruleOf(await getDb(), 'target.element_where_drawn').params.tolerance_ft === 0.5 && html.includes('Tolerance: 0.5 ft'), JSON.stringify(r))
 
+// the palette on the room colour check (flag 76, A91): one row per Department, each row names its source; only Mitch or Michael change a
+// colour, the check keeps its status, the row's note then says who changed it and still names the graphic standard
+// the notes are counted in what a person sees: the page also carries its text a second time as data for the browser
+const sourceNotes = (h) => (h.replace(/<script[\s\S]*?<\/script>/g, '').match(/Graphic standard: standards\/D2_GRAPHIC_STANDARD\.md, section A101\.1 Floor Plan/g) || []).length
+const palRule = ruleOf(await getDb(), 'room.palette_rgb')
+html = await pageAs(MC, asBlueprint)
+ok('palette, non-approver: sees every row with its source, has no field', html.includes('Kitchen: 252/246/214') && html.includes('Outdoor: 240/240/240') && sourceNotes(html) === 5 && !html.includes('name="department"'), '')
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const palForm = form(html, (f) => f.includes('name="department"') && f.includes('value="Kitchen"') && f.includes('value="' + palRule.id + '"'), 'palette form (Kitchen)')
+ok('palette, approver: five rows, each with three fields holding the colour', (html.match(/name="department"/g) || []).length === 5 && /name="department" value="Kitchen"[\s\S]{0,900}?name="red"[^>]*value="252"[\s\S]{0,400}?name="green"[^>]*value="246"[\s\S]{0,400}?name="blue"[^>]*value="214"/.test(html), '')
+before = await getDb()
+r = await postAs(MC, palForm, { red: '250', green: '240', blue: '200' }, asBlueprint)
+ok('palette, non-approver posts a colour: refused, nothing changed', r.location.includes('Only Mitch or Michael can change a colour on a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+let badColours = []
+for (const bad of [{ red: '256', green: '240', blue: '200' }, { red: '-1', green: '240', blue: '200' }, { red: '250', green: '1.5', blue: '200' }, { red: '250', green: '240', blue: '' }, { red: 'abc', green: '240', blue: '200' }]) {
+  r = await post(MC, palForm, bad)
+  if (!r.location.includes('each a whole number from 0 to 255')) badColours.push(bad)
+}
+ok('palette: above 255, a negative, a fraction, blank and text are refused, nothing changed', badColours.length === 0 && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(badColours))
+r = await post(MC, palForm, { red: '252', green: '246', blue: '214' })
+ok('palette: the same colour changes nothing', r.location.includes('already says 252/246/214 for Kitchen') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, { ...palForm, department: 'Library' }, { red: '1', green: '2', blue: '3' })
+ok('palette: a Department the check does not carry cannot be added', r.location.includes('carries no colour for') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, { ...palForm, rule_id: shellRule.id }, { red: '1', green: '2', blue: '3' })
+ok('palette: a check without a palette refuses a posted colour', r.location.includes('carries no colour for') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, palForm, { red: '250', green: '240', blue: '200' })
+db = await getDb()
+row = ruleOf(db, 'room.palette_rgb')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('palette, approver changes a colour: saved, version up, status kept, the other rows untouched, who and when kept, Blueprint told', r.location.includes('saved=room.palette_rgb: Kitchen 250/240/200') && same(row.params.palette.Kitchen, [250, 240, 200]) && same(row.params.palette.Bedroom, [230, 217, 200]) && Object.keys(row.params.palette).length === 5 && row.params.initial === false && row.version === palRule.version + 1 && row.status === palRule.status && row.params_by === 'mitch@barnhaus.test' && !!row.params_at && lastMsg.includes('Model check colour changed: `room.palette_rgb`') && lastMsg.includes('Kitchen 252/246/214 → 250/240/200') && lastMsg.includes('This is a notice, not a go'), JSON.stringify([r, row.params, lastMsg]))
+ok('palette: the changed row says who changed it and from what, and still names the graphic standard; the other rows keep their note', row.params.palette_source.Kitchen.startsWith('Changed on this page by mitch@barnhaus.test on ') && row.params.palette_source.Kitchen.includes('from 252/246/214 to 250/240/200. Source of the first value: Graphic standard: standards/D2_GRAPHIC_STANDARD.md, section A101.1 Floor Plan') && row.params.palette_source.Kitchen.includes('(Mitch, 2026-11-08)') && row.params.palette_source.Bedroom === palRule.params.palette_source.Bedroom, JSON.stringify(row.params.palette_source))
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+mr = (await res.json()).rules.find((x) => x.rule_key === 'room.palette_rgb')
+ok('api model-rules: the palette is what the checker reads, with the note of each row', same(mr.params.palette, { Bedroom: [230, 217, 200], Kitchen: [250, 240, 200], Shower: [210, 220, 247], Carport: [240, 240, 240], Outdoor: [240, 240, 240] }) && Object.keys(mr.params.palette_source).length === 5 && mr.version === palRule.version + 1 && mr.checker_status === 'tool' && mr.params_by === 'mitch@barnhaus.test', JSON.stringify(mr))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('palette: the page shows the new colour, its note and who set it', /name="department" value="Kitchen"[\s\S]{0,900}?name="red"[^>]*value="250"/.test(html) && html.includes('Changed on this page by mitch@barnhaus.test on ') && html.includes('colour set by Mitch') && sourceNotes(html) === 5, '')
+
 // a number the check carries WITHOUT a value (rule A83: the checker needs it, the sentence does not state it, nobody guessed it):
 // an approver types its first value; until then the check is not accepted
 res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })

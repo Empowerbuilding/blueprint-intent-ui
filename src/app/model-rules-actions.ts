@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { approverNames, loadApprovers } from '@/lib/lessons'
 import { notifyBlueprint } from '@/lib/notify'
-import { missingNumbers, numberLabel } from '@/lib/model-rules'
+import { changedPaletteSource, colourChannel, missingNumbers, numberLabel, rulePalette } from '@/lib/model-rules'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -149,4 +149,63 @@ export async function setModelRuleNumber(formData: FormData) {
   revalidatePath(PAGE)
   revalidatePath('/blueprint')
   redirect(back({ saved: row.rule_key + ': ' + label.toLowerCase() + ' ' + show(value), anchor }))
+}
+
+// A colour of the palette on a check (params.palette: one row per Department, red / green / blue). Only an approver changes
+// one, on a check that is proposed or accepted; an accepted check stays accepted, the version goes up. No row is added or
+// removed here: only a Department the check already carries can be changed. The row's note (params.palette_source) then
+// says who changed it and from what, and keeps naming where its first value came from.
+export async function setModelRulePalette(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const approvers = await loadApprovers(supabase)
+  if (!approvers.some((a) => a.user_id === user.id)) {
+    redirect(back({ err: 'Only ' + approverNames(approvers) + ' can change a colour on a check. Nothing was changed.' }))
+  }
+  const id = String(formData.get('rule_id') || '')
+  const department = String(formData.get('department') || '')
+  if (!id || !department) redirect(back({ err: 'Nothing was changed.' }))
+  const { data: row } = await supabase.from('intent_model_rules').select('id, rule_key, description, status, version, params').eq('id', id).single()
+  if (!row) redirect(back({ err: 'That check no longer exists. Nothing was changed.' }))
+  const anchor = 'r-' + row.rule_key
+  if (row.status === 'retired') redirect(back({ err: '"' + row.rule_key + '" is retired. Put it back as proposed first. Nothing was changed.', anchor }))
+  const params = (row.params || {}) as Record<string, unknown>
+  const old = (rulePalette(params) || []).find((p) => p.department === department)
+  if (!old) redirect(back({ err: '"' + row.rule_key + '" carries no colour for "' + department + '". Nothing was changed.', anchor }))
+  const rgb = ['red', 'green', 'blue'].map((k) => colourChannel(String(formData.get(k) ?? '')))
+  if (rgb.some((n) => n === null)) {
+    redirect(back({ err: 'Red, green and blue are each a whole number from 0 to 255. Nothing was changed.', anchor }))
+  }
+  const next3 = rgb as number[]
+  if (next3.every((n, i) => n === old.rgb[i])) {
+    redirect(back({ err: '"' + row.rule_key + '" already says ' + next3.join('/') + ' for ' + department + '. Nothing was changed.', anchor }))
+  }
+  const now = new Date().toISOString()
+  const who = user.email || user.id
+  const sources = params.palette_source && typeof params.palette_source === 'object' && !Array.isArray(params.palette_source) ? (params.palette_source as Record<string, unknown>) : {}
+  const next: Record<string, unknown> = {
+    ...params,
+    palette: { ...(params.palette as Record<string, unknown>), [department]: next3 },
+    palette_source: { ...sources, [department]: changedPaletteSource(old.source, who, now.slice(0, 10), old.rgb, next3) },
+  }
+  if ('initial' in next) next.initial = false // it is no longer the starting palette
+  const { data: changed, error } = await supabase
+    .from('intent_model_rules')
+    .update({ params: next, version: (row.version || 1) + 1, params_by: who, params_at: now, updated_at: now })
+    .eq('id', id)
+    .eq('version', row.version)
+    .select('id')
+  if (error || !changed || changed.length === 0) {
+    redirect(back({ err: 'The colour was not saved' + (error ? ': ' + error.message : ' (the check changed in the meantime, or the database refused it).'), anchor }))
+  }
+  await notifyBlueprint(
+    '🧪 **Model check colour changed: `' + row.rule_key + '`** — ' + department + ' ' + old.rgb.join('/') + ' → ' + next3.join('/') + ' (the check is ' + row.status + '). By ' + who +
+      '.\nThe room colour check now compares with the new colour: GET /api/model-rules. A work order compiled with the old version is stale. This is a notice, not a go.',
+  )
+  revalidatePath(PAGE)
+  revalidatePath('/blueprint')
+  redirect(back({ saved: row.rule_key + ': ' + department + ' ' + next3.join('/'), anchor }))
 }

@@ -6,7 +6,7 @@ import { roomNameMatches, runMathGate } from '../src/lib/rules.ts'
 import { deterministicDimensionCheck } from '../src/lib/dimension-check.ts'
 import { normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGroup } from '../src/lib/vocab.ts'
 import { buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
-import { missingNumbers, ruleNumbers } from '../src/lib/model-rules.ts'
+import { changedPaletteSource, colourChannel, missingNumbers, ruleNumbers, rulePalette } from '../src/lib/model-rules.ts'
 import fs from 'node:fs'
 let fails = 0
 const canon = (v) => Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v
@@ -196,5 +196,17 @@ eq('v2: a kind that was turned off is not accepted', buildContractV2({ ...base, 
 eq('check numbers: values and waiting ones are listed, by name; flags and text are not', ruleNumbers({ tolerance_in: 1, initial: true, clear_depth_in: null, note: 'x', bad: NaN }), [{ key: 'clear_depth_in', value: null, label: 'Clear depth', unit: 'in' }, { key: 'tolerance_in', value: 1, label: 'Tolerance', unit: 'in' }])
 eq('check numbers: only the ones with no value are waiting', missingNumbers({ tolerance_in: 1, clear_depth_in: null }).map((n) => n.key), ['clear_depth_in'])
 eq('check numbers: no params = nothing, nothing waiting', [ruleNumbers(null), missingNumbers(undefined), missingNumbers({})], [[], [], []])
+
+// ---- the palette on a model check: one row per Department, each with its source; a number is never read as a colour ----
+const PAL = { palette: { Kitchen: [252, 246, 214], Bedroom: [230, 217, 200] }, palette_source: { Kitchen: 'Graphic standard: doc, 2026-11-08.' }, initial: true }
+eq('check palette: rows by Department, with the source of each; a row without one says so with null', rulePalette(PAL), [{ department: 'Bedroom', rgb: [230, 217, 200], source: null }, { department: 'Kitchen', rgb: [252, 246, 214], source: 'Graphic standard: doc, 2026-11-08.' }])
+eq('check palette: no palette on the check = null, not an empty list', [rulePalette(null), rulePalette({}), rulePalette({ tolerance_in: 1 }), rulePalette({ palette: null }), rulePalette({ palette: [1, 2, 3] })], [null, null, null, null, null])
+eq('check palette: a row that is not three whole numbers from 0 to 255 is not shown as a colour', rulePalette({ palette: { A: [1, 2], B: [1, 2, 256], C: [1.5, 2, 3], D: ['1', 2, 3], E: [0, 0, 0], F: [-1, 0, 0] } }).map((p) => p.department), ['E'])
+eq('check palette: the palette and its notes are not numbers, so nothing waits for a value', [ruleNumbers(PAL), missingNumbers(PAL)], [[], []])
+eq('check palette: a colour value is a whole number from 0 to 255', ['0', '255', ' 12 ', '256', '-1', '1.5', '', 'abc', '0012', '1e2'].map(colourChannel), [0, 255, 12, null, null, null, null, null, null, null])
+const ch1 = changedPaletteSource('Graphic standard: doc, 2026-11-08.', 'mitch@x', '2026-11-12', [252, 246, 214], [250, 240, 200])
+eq('check palette: a changed row says who, when, from what, and still names its first source', ch1, 'Changed on this page by mitch@x on 2026-11-12, from 252/246/214 to 250/240/200. Source of the first value: Graphic standard: doc, 2026-11-08.')
+eq('check palette: a second change keeps the first source, not the chain', changedPaletteSource(ch1, 'michael@x', '2026-11-13', [250, 240, 200], [1, 2, 3]), 'Changed on this page by michael@x on 2026-11-13, from 250/240/200 to 1/2/3. Source of the first value: Graphic standard: doc, 2026-11-08.')
+eq('check palette: a row that had no source says so', changedPaletteSource(null, 'm', '2026-11-12', [1, 1, 1], [2, 2, 2]), 'Changed on this page by m on 2026-11-12, from 1/1/1 to 2/2/2. Source of the first value: no source was recorded')
 console.log(fails ? 'FAILED ' + fails : 'ALL PASS')
 process.exit(fails ? 1 : 0)
