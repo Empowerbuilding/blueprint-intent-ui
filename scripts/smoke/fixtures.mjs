@@ -154,7 +154,9 @@ const db = {
   // contract v2: vocabulary (draft) + model checks, all proposed except one Michael accepted and one Mitch dismissed
   intent_kinds: v2seed.kinds.map((k) => {
     const l = lockRow(k.kind)
-    return { ...k, created_at: t(200), bridge_commands: l ? l.commands : [], status: l ? l.status : k.status, locked_build: l && l.status === 'locked' ? kindsLocked.bridge_build : null, locked_at: l && l.status === 'locked' ? t(30) : null, status_note: l ? l.note : null, backing: l ? l.backing || 'command' : 'command', recipe: l ? l.recipe || null : null }
+    return { ...k, created_at: t(200), bridge_commands: l ? l.commands : [], status: l ? l.status : k.status, locked_build: l && l.status === 'locked' ? kindsLocked.bridge_build : null, locked_at: l && l.status === 'locked' ? t(30) : null, status_note: l ? l.note : null, backing: l ? l.backing || 'command' : 'command', recipe: l ? l.recipe || null : null,
+      // the fence number of 20261112zc (A69): on the kind without a value, waiting for an approver; no other kind carries a number
+      params: k.kind === 'site.fence' ? { flat_max_in: null } : null, params_note: k.kind === 'site.fence' ? 'How far the heights under a fence line may differ, in inches, and still count as flat. Until Mitch or Michael type one, every fence is a decision point whose default is the wall type.' : null, params_by: null, params_at: null }
   }),
   intent_model_rules: v2seed.model_rules.map((r, i) => ({
     id: 'mr-' + i, ...r, status: 'proposed', params: {}, checker: null, checker_status: 'none', version: 1, proposed_by: 'blueprint',

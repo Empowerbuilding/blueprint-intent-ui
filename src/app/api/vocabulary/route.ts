@@ -6,7 +6,7 @@ import { CONTEXT_KIND, ROLE_ALIASES, ROOM_ROLES, SHELL_KINDS } from '@/lib/vocab
 // GET /api/vocabulary — the controlled words contract v2 is written in, for machine clients (Blueprint).
 // -> { status: "draft" | "locked", locked: n, draft: n,
 //      by_backing: { command: n, recipe: n, unmapped: n },
-//      kinds: [{ kind, family, label, description, status, stage_scope, bridge_commands, locked_build, status_note, backing, recipe, target_need }],
+//      kinds: [{ kind, family, label, description, status, stage_scope, bridge_commands, locked_build, status_note, backing, recipe, target_need, params, params_note }],
 //      context_marker, shell_kinds, roles: [...], role_aliases: {...} }
 // A kind is "locked" when every bridge command it names is on the live bridge and its parameters were read from the
 // bridge source at locked_build. Locked is not proven: whether a command has been run is on the Capabilities page.
@@ -16,6 +16,9 @@ import { CONTEXT_KIND, ROLE_ALIASES, ROOM_ROLES, SHELL_KINDS } from '@/lib/vocab
 // target_need says what a work item of that kind must be pinned to before a build phase may write: "element" (an existing
 // element), "location" (a drawn position on the approved 2D), "any" (either), "none" (house-wide or room-wide). Mitch or
 // Michael change it on the Kinds of work page; the compiler reads it here at every compile.
+// params are the numbers a kind carries ({ "flat_max_in": 2 }); null when it has none. A number whose value is null is waiting
+// for Mitch or Michael to type it on the Kinds of work page: a rule that needs it decides nothing until then (site.fence:
+// how far the heights under a fence line may differ and still count as flat). params_note says what the numbers mean.
 // context_marker is NOT a kind: a line typed with it is carried as room-level context, never as a work item.
 // "draft" means the list has not been checked against a live bridge yet: nothing is locked.
 // Read only. Kinds are changed by an approver. Auth: x-prefill-secret header, or a signed-in user.
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await client
     .from('intent_kinds')
-    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe, target_need')
+    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe, target_need, params, params_note')
     .order('sort_order')
   if (error || !data) return NextResponse.json({ error: 'the list of kinds could not be read' }, { status: 500 })
   const kinds = (data as { active: boolean; status: string; executable: boolean; backing: string | null }[]).filter((k) => k.active && k.executable)

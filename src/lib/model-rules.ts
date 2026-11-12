@@ -374,6 +374,12 @@ export type KindOption = {
   target_need_by: string | null
   target_need_at: string | null
   recipe: KindRecipe | null
+  /** numbers the kind carries ({ flat_max_in: 2 }); a number with value null is waiting for an approver. The compiler reads them from /api/vocabulary. */
+  params: Record<string, unknown> | null
+  /** what those numbers mean, in plain words */
+  params_note: string | null
+  params_by: string | null
+  params_at: string | null
 }
 /** what a kind must be pinned to before a build phase may write. The compiler reads this from /api/vocabulary. */
 export const TARGET_NEEDS = ['element', 'location', 'any', 'none'] as const
@@ -396,7 +402,7 @@ export type KindRecipe = {
 export async function loadKinds(client: AnyClient): Promise<KindOption[] | null> {
   const { data, error } = await client
     .from('intent_kinds')
-    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe, target_need, target_need_by, target_need_at')
+    .select('kind, family, label, description, executable, status, stage_scope, active, sort_order, bridge_commands, locked_build, status_note, backing, recipe, target_need, target_need_by, target_need_at, params, params_note, params_by, params_at')
     .order('sort_order')
   if (error || !data) return null
   return data as KindOption[]

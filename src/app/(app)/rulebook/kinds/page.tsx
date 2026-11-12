@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { loadKinds, TARGET_NEEDS, TARGET_NEED_LABEL } from '@/lib/model-rules'
-import { setKindTargetNeed } from '@/app/kinds-actions'
+import { loadKinds, ruleNumbers, TARGET_NEEDS, TARGET_NEED_LABEL } from '@/lib/model-rules'
+import { setKindNumber, setKindTargetNeed } from '@/app/kinds-actions'
 import { approverNames, loadApprovers } from '@/lib/lessons'
 import { ROLE_ALIASES, ROOM_ROLES, roleLabel } from '@/lib/vocab'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -122,6 +122,42 @@ export default async function KindsPage({ searchParams }: { searchParams: Promis
                           </select>
                           <button className="btn-secondary-sm">Save</button>
                         </form>
+                      )}
+                      {ruleNumbers(k.params).length > 0 && (
+                        <div className="mt-1 space-y-1">
+                          {k.params_note && <div className="text-[11px] text-slate-500 break-words">{k.params_note}</div>}
+                          {ruleNumbers(k.params).map((n) => (
+                            <div key={n.key} className="text-[11px] break-words">
+                              <span className={n.value === null ? 'text-amber-400/80' : 'text-slate-300'}>
+                                {n.label}: {n.value === null ? 'no value yet' : String(n.value) + (n.unit ? ' ' + n.unit : '')}
+                              </span>
+                              <span className="text-slate-500">
+                                {n.value === null
+                                  ? ' · waiting for ' + names + ' to type it'
+                                  : k.params_by
+                                    ? ' · set by ' + k.params_by
+                                    : ''}
+                              </span>
+                              {isApprover && (
+                                <form action={setKindNumber} className="flex flex-wrap items-center gap-2 mt-1">
+                                  <input type="hidden" name="kind" value={k.kind} />
+                                  <input type="hidden" name="param" value={n.key} />
+                                  <input
+                                    name="value"
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    defaultValue={n.value === null ? '' : n.value}
+                                    className="field !w-24 !py-1 text-xs"
+                                    aria-label={n.label + (n.unit ? ' in ' + n.unit : '') + ', for ' + k.label}
+                                  />
+                                  {n.unit && <span className="text-[11px] text-slate-500">{n.unit}</span>}
+                                  <button className="btn-secondary-sm">{n.value === null ? 'Set' : 'Save'}</button>
+                                </form>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       )}
                       {k.recipe && (
                         <div className="text-[11px] text-slate-400 break-words">
