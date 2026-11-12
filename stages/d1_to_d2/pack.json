@@ -819,6 +819,7 @@
     "sheet.bounds_edge_clean",
     "sheet.tags_text_only",
     "sheet.schedules_on_dimension_plan",
+    "sheet.scope_boxes_hidden",
     "opening.marks_clean"
    ],
    "qa_scripts": [
