@@ -1185,6 +1185,48 @@ html = (await page(MC)).replace(/<!-- -->/g, '')
 ok('lists: a tag family is removed; the last one cannot be, and the page offers no Remove for it', r.location.includes('tag family removed, Window Tag - Text Only') && r2.location.includes('would have no tag family left and could not be run') && same(db.intent_model_rules, before.intent_model_rules) && same(row.params.tag_families, ['Door Tag - Text Only']) && same(Object.keys(row.params.tag_families_source), ['Door Tag - Text Only']) && row.status === tagRule.status && (html.match(/name="entry"/g) || []).length === 17 && (html.split(LBTN('remove')).length - 1) === 15, JSON.stringify([r, r2, row.params]))
 ok('lists: the page shows the adoption, the changed row and who changed a list', seen(html).includes('Accepted as shown by mitch@barnhaus.test on ') && seen(html).includes(', from "A107.*" to "A107.1*"'.replace(/"/g, '&quot;')) && html.includes('list changed by Mitch') && sheetNotes(html) === 3 && tagNotes(html) === 1, '')
 
+// ---- a push never drops a row without a word (SPEC A123; 2026-11-12: 114 of 200 lines of one push vanished) ----
+const vocabG = await (await fetch(app + '/api/vocabulary', { headers: SECRET })).json()
+ok('api vocabulary: lists the sources a pushed decision may carry', same(vocabG.decision_sources, ['transcript', 'redline', 'inspo', 'default', 'manual']), JSON.stringify(vocabG.decision_sources))
+const pushG = async (rooms) => {
+  const r0 = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body: JSON.stringify({ project: { name: 'Guard Push' }, rooms }) })
+  return { status: r0.status, body: await r0.json() }
+}
+let g = await pushG([
+  { section_code: '301', name: 'Kitchen',
+    decisions: [
+      { topic: 'island', value: '84 x 42', source: 'redline' },
+      { topic: 'hood', value: 'Plaster', source: 'model_note', source_ref: 'note 12' },
+      { topic: 'floor', value: 'Oak', source: 'review' },
+      { topic: 'no value' },
+      { topic: 'sink', value: 'Undermount' },
+    ],
+    open_questions: [{ question: 'Pot filler?' }, { question: '' }],
+    redline_notes: [{ note_type: 'beam', text: 'Beam here' }, { note_type: 'note', text: '' }] },
+  { section_code: '', name: 'No number', decisions: [{ topic: 'a', value: 'b' }], redline_notes: [{ note_type: 'note', text: 'lost with its room' }] },
+])
+db = await getDb()
+const GP = g.body.project_id
+const ofG = (t) => db[t].filter((x) => x.project_id === GP)
+let ni = g.body.not_inserted || {}
+ok('push: lines with a source the app does not know are not stored, the rest is, and the reply counts every row that is missing', g.status === 200 && g.body.ok === true && g.body.complete === false && g.body.rooms === 1 && g.body.decisions.inserted === 2 && g.body.open_questions === 1 && g.body.redline_notes === 1 && same([ni.rooms, ni.decisions, ni.open_questions, ni.redline_notes], [1, 4, 1, 2]) && same(ofG('intent_decisions').map((d) => d.source).sort(), ['redline', 'transcript']) && ofG('intent_rooms').length === 1 && ofG('intent_open_questions').length === 1 && ofG('intent_redline_notes').length === 1, JSON.stringify(g.body))
+ok('push: the reply gives the reason per row (the unknown source by name, with what the database said) and names every redline note that is missing', (ni.first || []).length === 6 && same(ni.first[0], { room: '301', what: 'decision', row: 'hood: Plaster', reason: 'the source "model_note" is not one the app knows (transcript, redline, inspo, default, manual). The database said: new row for relation "intent_decisions" violates check constraint "intent_decisions_source_check"' }) && ni.first[1].reason.includes('"review" is not one the app knows') && same(ni.first[2], { room: '301', what: 'decision', row: 'no value', reason: 'a decision needs a topic and a value' }) && ni.first[3].what === 'open question' && ni.first[4].what === 'redline note' && same(ni.first[5], { room: '', what: 'room', row: 'No number', reason: 'a room needs a number (section_code) and a name' }) && same(ni.redline_notes_failed, [{ room: '301', index: 1 }, { room: '', index: 0 }]), JSON.stringify(ni))
+// the same lines again: nothing is doubled, and what is already there is counted as such
+g = await pushG([{ section_code: '301', name: 'Kitchen', decisions: [{ topic: 'island', value: '84 x 42', source: 'redline' }, { topic: 'sink', value: 'Undermount' }], open_questions: [{ question: 'Pot filler?' }] }])
+db = await getDb()
+ni = g.body.not_inserted || {}
+ok('push: a second push of the same lines is complete; what was already there is counted, nothing is doubled', g.body.complete === true && g.body.decisions.inserted === 0 && g.body.decisions.skipped_duplicate === 2 && g.body.open_questions === 0 && g.body.open_questions_skipped_duplicate === 1 && same([ni.rooms, ni.decisions, ni.open_questions, ni.redline_notes], [0, 0, 0, 0]) && same(ni.first, []) && same(ni.redline_notes_failed, []) && ofG('intent_decisions').length === 2 && ofG('intent_open_questions').length === 1, JSON.stringify(g.body))
+// a row the database refuses for a reason the app cannot foresee: an open question, a redline note, a whole room
+await setMode({ refuseInsert: 'intent_open_questions' })
+g = await pushG([{ section_code: '301', name: 'Kitchen', open_questions: [{ question: 'Second sink?' }] }])
+await setMode({ refuseInsert: 'intent_redline_notes' })
+const g2 = await pushG([{ section_code: '301', name: 'Kitchen', redline_notes: [{ note_type: 'note', text: 'Keep the window' }] }])
+await setMode({ refuseInsert: 'intent_rooms' })
+const g3 = await pushG([{ section_code: '302', name: 'Pantry', decisions: [{ topic: 'shelves', value: 'Five' }], open_questions: [{ question: 'Door?' }], redline_notes: [{ note_type: 'note', text: 'x' }] }])
+await setMode({ refuseInsert: '' })
+db = await getDb()
+ok('push: a refused open question, a refused redline note and a refused room are each reported with what the database said; a refused room takes its lines with it', g.body.complete === false && g.body.not_inserted.open_questions === 1 && g.body.not_inserted.first[0].what === 'open question' && g.body.not_inserted.first[0].row === 'Second sink?' && g.body.not_inserted.first[0].reason.includes('check constraint') && g2.body.complete === false && g2.body.not_inserted.redline_notes === 1 && same(g2.body.not_inserted.redline_notes_failed, [{ room: '301', index: 0 }]) && g3.body.ok === true && g3.body.rooms === 0 && same([g3.body.not_inserted.rooms, g3.body.not_inserted.decisions, g3.body.not_inserted.open_questions, g3.body.not_inserted.redline_notes], [1, 1, 1, 1]) && g3.body.not_inserted.first.length === 1 && g3.body.not_inserted.first[0].reason.startsWith('the room was not stored: ') && ofG('intent_rooms').length === 1 && ofG('intent_open_questions').length === 1 && ofG('intent_redline_notes').length === 1, JSON.stringify([g.body, g2.body, g3.body]))
+
 const unknown = await (await fetch(mock + '/__unknown')).json()
 ok('mock understood every request', unknown.length === 0, unknown.join(' ; '))
 console.log(fails ? 'ACTIONS FAILED: ' + fails : 'ACTIONS PASS')

@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { CONTEXT_KIND, ROLE_ALIASES, ROOM_ROLES, SHELL_KINDS } from '@/lib/vocab'
+import { CONTEXT_KIND, DECISION_SOURCES, ROLE_ALIASES, ROOM_ROLES, SHELL_KINDS } from '@/lib/vocab'
 
 // GET /api/vocabulary — the controlled words contract v2 is written in, for machine clients (Blueprint).
 // -> { status: "draft" | "locked", locked: n, draft: n,
 //      by_backing: { command: n, recipe: n, unmapped: n },
 //      kinds: [{ kind, family, label, description, status, stage_scope, bridge_commands, locked_build, status_note, backing, recipe, target_need, params, params_note }],
-//      context_marker, shell_kinds, roles: [...], role_aliases: {...} }
+//      context_marker, shell_kinds, roles: [...], role_aliases: {...}, decision_sources: [...] }
 // A kind is "locked" when every bridge command it names is on the live bridge and its parameters were read from the
 // bridge source at locked_build. Locked is not proven: whether a command has been run is on the Capabilities page.
 // backing says how a kind is built: "command" = named bridge commands; "recipe" = direct Revit calls sent through the
@@ -19,6 +19,8 @@ import { CONTEXT_KIND, ROLE_ALIASES, ROOM_ROLES, SHELL_KINDS } from '@/lib/vocab
 // params are the numbers a kind carries ({ "flat_max_in": 2 }); null when it has none. A number whose value is null is waiting
 // for Mitch or Michael to type it on the Kinds of work page: a rule that needs it decides nothing until then (site.fence:
 // how far the heights under a fence line may differ and still count as flat). params_note says what the numbers mean.
+// decision_sources are the sources a pushed decision line may carry (decision.source). A line with another source is not
+// stored; Blueprint's push reads this list and refuses such a line before it sends anything.
 // context_marker is NOT a kind: a line typed with it is carried as room-level context, never as a work item.
 // "draft" means the list has not been checked against a live bridge yet: nothing is locked.
 // Read only. Kinds are changed by an approver. Auth: x-prefill-secret header, or a signed-in user.
@@ -59,6 +61,7 @@ export async function GET(request: NextRequest) {
     shell_kinds: SHELL_KINDS,
     roles: ROOM_ROLES,
     role_aliases: ROLE_ALIASES,
+    decision_sources: DECISION_SOURCES,
     source: 'app',
   })
 }

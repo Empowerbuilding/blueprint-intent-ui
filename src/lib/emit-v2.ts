@@ -95,7 +95,7 @@ export type V2Result =
 export const slugOf = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 /** the app's decision sources -> the contract's. A line typed by hand in the app stays "manual". */
-const SOURCE_MAP: Record<string, string> = { transcript: 'meeting', redline: 'redline', inspo: 'inspo', default: 'default', manual: 'manual' }
+export const SOURCE_MAP: Record<string, string> = { transcript: 'meeting', redline: 'redline', inspo: 'inspo', default: 'default', manual: 'manual' }
 
 // same canonical form Blueprint's contract_fetch.py hashes: sorted keys, no spaces
 const canon = (v: unknown): string =>

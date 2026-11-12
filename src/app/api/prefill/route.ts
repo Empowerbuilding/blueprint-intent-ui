@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { normaliseRole, tidyName } from '@/lib/vocab'
+import { DECISION_SOURCES, normaliseRole, tidyName } from '@/lib/vocab'
 
 // POST /api/prefill — design-brain pushes transcript-derived intent into the UI.
 // Auth: x-prefill-secret header (PREFILL_SECRET env).
@@ -31,6 +31,16 @@ import { normaliseRole, tidyName } from '@/lib/vocab'
 //   decision.kind, .params the kind of work (GET /api/vocabulary) and its numbers
 //   redline_note.kind
 // A kind or role that is not in the vocabulary refuses the WHOLE push (422, nothing written).
+// decision.source is one of the app's sources (GET /api/vocabulary, decision_sources); without one a line is stored as "transcript".
+//
+// What the reply says (SPEC A123). No row is dropped without a word:
+//   rooms, decisions.inserted, decisions.skipped_duplicate, open_questions, open_questions_skipped_duplicate, redline_notes
+//                          what went in, and what was already there
+//   complete               false when at least one row that was sent is not in the app after the push
+//   not_inserted           { rooms, decisions, open_questions, redline_notes: how many were not stored,
+//                            first: up to 10 of them as { room, what, row, reason },
+//                            redline_notes_failed: every redline note not stored as { room, index } (index in the room's list as sent) }
+// A row that fails does not stop the push: the others still go in, and the reply is still 200 with ok: true.
 // Whether a room gets 2D drawings is NOT accepted here: a person says so in the app. The same goes for the room's
 // interior sheet group: a push cannot set it.
 
@@ -136,11 +146,40 @@ export async function POST(request: NextRequest) {
   let decisionsInserted = 0
   let decisionsSkipped = 0
   let opensInserted = 0
+  let opensSkipped = 0
   let redlinesInserted = 0
 
+  // rows that were sent and are NOT in the app after this push: counted, and the first ones carry the reason
+  const FIRST_MAX = 10
+  const missed = { rooms: 0, decisions: 0, open_questions: 0, redline_notes: 0 }
+  const WHAT = { rooms: 'room', decisions: 'decision', open_questions: 'open question', redline_notes: 'redline note' } as const
+  const first: { room: string; what: string; row: string; reason: string }[] = []
+  const redlineFailed: { room: string; index: number }[] = []
+  const short = (s: unknown, n: number) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
+  const miss = (what: keyof typeof missed, room: string, row: unknown, reason: string) => {
+    missed[what]++
+    if (first.length < FIRST_MAX) first.push({ room, what: WHAT[what], row: short(row, 80), reason: short(reason, 300) })
+  }
+  const said = (e: { message?: string } | null | undefined) => (e && e.message ? e.message : 'the database gave no reason')
+  const known = DECISION_SOURCES as readonly string[]
+
   for (const room of body.rooms || []) {
-    if (!room.section_code || !room.name) continue
-    const { data: roomRow } = await supabase
+    const code = String(room.section_code || '')
+    // a room that is not stored takes its lines with it: they are counted too
+    const missRoom = (reason: string) => {
+      miss('rooms', code, room.name, reason)
+      missed.decisions += (room.decisions || []).length
+      missed.open_questions += (room.open_questions || []).length
+      ;(room.redline_notes || []).forEach((_n, index) => {
+        missed.redline_notes++
+        redlineFailed.push({ room: code, index })
+      })
+    }
+    if (!room.section_code || !room.name) {
+      missRoom('a room needs a number (section_code) and a name')
+      continue
+    }
+    const { data: roomRow, error: roomErr } = await supabase
       .from('intent_rooms')
       .upsert(
         {
@@ -158,11 +197,17 @@ export async function POST(request: NextRequest) {
       )
       .select('id')
       .single()
-    if (!roomRow) continue
+    if (!roomRow) {
+      missRoom('the room was not stored: ' + said(roomErr))
+      continue
+    }
     roomsUpserted++
 
     for (const d of room.decisions || []) {
-      if (!d.topic || !d.value) continue
+      if (!d.topic || !d.value) {
+        miss('decisions', code, d.topic || d.value, 'a decision needs a topic and a value')
+        continue
+      }
       const { data: existing } = await supabase
         .from('intent_decisions')
         .select('id')
@@ -188,10 +233,17 @@ export async function POST(request: NextRequest) {
         ...(d.params && typeof d.params === 'object' ? { params: d.params } : {}),
       })
       if (!error) decisionsInserted++
+      else {
+        const why = d.source && !known.includes(d.source) ? 'the source "' + d.source + '" is not one the app knows (' + known.join(', ') + '). The database said: ' : ''
+        miss('decisions', code, d.topic + ': ' + d.value, why + said(error))
+      }
     }
 
     for (const o of room.open_questions || []) {
-      if (!o.question) continue
+      if (!o.question) {
+        miss('open_questions', code, '', 'an open question needs its question')
+        continue
+      }
       const { data: existingOpen } = await supabase
         .from('intent_open_questions')
         .select('id')
@@ -199,7 +251,10 @@ export async function POST(request: NextRequest) {
         .eq('room_id', roomRow.id)
         .eq('question', o.question)
         .maybeSingle()
-      if (existingOpen) continue
+      if (existingOpen) {
+        opensSkipped++
+        continue
+      }
       const { error } = await supabase.from('intent_open_questions').insert({
         project_id: project.id,
         room_id: roomRow.id,
@@ -208,10 +263,15 @@ export async function POST(request: NextRequest) {
         blocking: o.blocking ?? true,
       })
       if (!error) opensInserted++
+      else miss('open_questions', code, o.question, said(error))
     }
 
-    for (const r of room.redline_notes || []) {
-      if (!r.text) continue
+    for (const [index, r] of (room.redline_notes || []).entries()) {
+      if (!r.text) {
+        miss('redline_notes', code, r.note_type, 'a redline note needs its text')
+        redlineFailed.push({ room: code, index })
+        continue
+      }
       const { error } = await supabase.from('intent_redline_notes').insert({
         project_id: project.id,
         room_id: roomRow.id,
@@ -221,6 +281,10 @@ export async function POST(request: NextRequest) {
         ...(r.kind ? { kind: r.kind } : {}),
       })
       if (!error) redlinesInserted++
+      else {
+        miss('redline_notes', code, r.text, said(error))
+        redlineFailed.push({ room: code, index })
+      }
     }
   }
 
@@ -230,6 +294,9 @@ export async function POST(request: NextRequest) {
     rooms: roomsUpserted,
     decisions: { inserted: decisionsInserted, skipped_duplicate: decisionsSkipped },
     open_questions: opensInserted,
+    open_questions_skipped_duplicate: opensSkipped,
     redline_notes: redlinesInserted,
+    complete: missed.rooms + missed.decisions + missed.open_questions + missed.redline_notes === 0,
+    not_inserted: { ...missed, first, redline_notes_failed: redlineFailed },
   })
 }

@@ -88,6 +88,13 @@ export function suggestSheetGroup(role: string | null | undefined): string | nul
   return r ? roleLabel(r) : null
 }
 
+/** Where a decision line comes from, as the app stores it (intent_decisions.source). These five are what the app itself
+ *  writes, shows on the room page and maps into the contract. A pushed line with another source is not stored: on
+ *  2026-11-12 the table refused "model_note" and "review" (114 of 200 lines of one push). GET /api/vocabulary lists them
+ *  so a push can check beforehand; POST /api/prefill reports a row it could not store. The table's own constraint was
+ *  not read for this list. Adding a source is a person's call (SPEC A123). */
+export const DECISION_SOURCES = ['transcript', 'redline', 'inspo', 'default', 'manual'] as const
+
 export const CONTEXT_KIND = 'context'
 /** kinds that change the room shell (spec amendment A12) */
 export const SHELL_KINDS = ['structure.resize', 'structure.modify', 'structure.stairs', 'surface.wall']

@@ -8,9 +8,12 @@ const db = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
 const port = Number(process.argv[3] || 54399)
 const unknown = new Set()
 const calls = [] // every write, in order — the action tests assert on this
-let mode = { fk: 'cascade', loseBucket: '', denySign: false }
+let mode = { fk: 'cascade', loseBucket: '', denySign: false, refuseInsert: '' }
 const CHILD_TABLES = ['intent_outlines', 'intent_emissions', 'intent_inspo_images', 'intent_redline_notes', 'intent_open_questions', 'intent_decisions', 'intent_rooms']
 // one column, or several that are unique together (migration 20261112zd: one version of a project's contract exists once)
+// a column that takes only some values. A stand-in for the real table's refusal of a decision whose source it does not
+// know (2026-11-12: model_note and review were refused); the real constraint was not read, the values are the app's own list.
+const CHECKS = { intent_decisions: { source: ['transcript', 'redline', 'inspo', 'default', 'manual'] } }
 const UNIQUE = { intent_rules: 'rule_key', intent_model_rules: 'rule_key', intent_emissions: ['project_id', 'version'] }
 
 const readBody = (req) =>
@@ -132,6 +135,13 @@ http
           ...(table === 'intent_decisions' ? { status: 'active', superseded_by: null } : {}), // column defaults in the real table
           ...r,
         }))
+        // a value the column does not take, or a table the test told to refuse every insert (mode.refuseInsert)
+        const chk = CHECKS[table]
+        const badCol = chk && Object.keys(chk).find((c) => list.some((r) => r[c] != null && !chk[c].includes(r[c])))
+        if (badCol || mode.refuseInsert === table) {
+          calls.push({ op: 'insert-rejected', table, reason: badCol ? 'check ' + badCol : 'refused by the test' })
+          return send(res, 400, { code: '23514', message: 'new row for relation "' + table + '" violates check constraint "' + table + '_' + (badCol || 'test') + '_check"', details: null, hint: null })
+        }
         // upsert (POST ?on_conflict=a,b with Prefer: resolution=merge-duplicates): a matching row is updated, not added
         const conflict = u.searchParams.get('on_conflict')
         if (conflict && prefer.includes('resolution=merge-duplicates')) {

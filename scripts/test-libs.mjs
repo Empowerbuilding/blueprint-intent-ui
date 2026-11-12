@@ -4,8 +4,8 @@ import { lineDiff, foldDiff, diffStats } from '../src/lib/diff.ts'
 import { describeRule, describeScope, ruleToFields, fieldsToRule, keyFromDescription } from '../src/lib/rule-text.ts'
 import { roomNameMatches, runMathGate } from '../src/lib/rules.ts'
 import { deterministicDimensionCheck } from '../src/lib/dimension-check.ts'
-import { normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGroup } from '../src/lib/vocab.ts'
-import { buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
+import { DECISION_SOURCES, normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGroup } from '../src/lib/vocab.ts'
+import { SOURCE_MAP, buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
 import { UNREVIEWED, addedEntrySource, addedFolderSource, adoptRoles, adoptUnreviewed, adoptedRoleSource, changedFolderSource, changedPaletteSource, changedRoleSource, changedTextSource, checkText, colourChannel, folderPath, listEntry, missingNumbers, numberSource, roleName, roleNames, ruleFolders, ruleLists, ruleNumbers, rulePalette, ruleRoles, ruleTexts, sameEntry, sameFolder } from '../src/lib/model-rules.ts'
 import { contentOfV1, contentOfV2, sameAsBeingWritten, sameAsEmitted } from '../src/lib/emit-same.ts'
 import { ANALYSIS_PROMPT, LAYOUT_DETAILS_MAX, LAYOUT_DETAIL_CHARS, detailState, inspoUse, mergeTags, parseAnalysis, tidyLayoutDetails } from '../src/lib/inspo-analysis.ts'
@@ -101,6 +101,7 @@ eq('manual done ignored when data says review', p.current, 'review')
 
 // ---- contract v2: vocabulary suggestions (never saved by themselves) ----
 eq('role: suggestions from names', ['Master Bath', 'Bath 2', 'M Closet', 'Great Room / Living', 'Golf Room', 'Bedroom 3', 'Master Suite', 'Covered Patio', 'Outdoor Kitchen', 'Zzz'].map(suggestRole), ['primary-bath', 'bath', 'closet', 'great', 'game-room', 'bedroom', 'primary-bedroom', 'patio', 'outdoor-kitchen', null])
+eq('decision sources: the list a push is checked against is the list the contract maps', [...DECISION_SOURCES].sort(), Object.keys(SOURCE_MAP).sort())
 eq('role: normalise + alias', [normaliseRole('Game Room'), normaliseRole('golf-room'), normaliseRole('primary_bath'), normaliseRole('other'), normaliseRole('')], ['game-room', 'game-room', 'primary-bath', null, null])
 eq('2d: the old heuristic, as a suggestion', [suggestNeeds2d('Kitchen', '103'), suggestNeeds2d('Bedroom 2', '110'), suggestNeeds2d('House-Level (global)', 'HOUSE'), suggestNeeds2d('Site / Exterior', 'S1')], [true, false, false, false])
 eq('kind: suggestions from wording', [suggestKind('island', '84 x 42 island'), suggestKind('general', 'Trash pullout at the sink'), suggestKind('sink', 'Undermount, centred on the window'), suggestKind('counter material', 'Marble 05'), suggestKind('windows', 'casements in bedrooms'), suggestKind('fencing', 'only around the pool'), suggestKind('vanity', 'two vanities with legs'), suggestKind('x', 'y')], ['casework.place', 'casework.place', 'plumbing.sink', 'casework.counter', 'opening.modify', 'site.fence', 'plumbing.place', null])
