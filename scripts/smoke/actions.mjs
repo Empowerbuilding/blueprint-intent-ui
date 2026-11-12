@@ -1040,6 +1040,33 @@ r = await post(SE, h, {})
 db = await getDb()
 ok('and the press after that writes nothing again', r.location.includes('/emit?same=4') && emCount(db) === 4)
 
+// ---------- C9. inspiration pictures feed the 2D drawings (spec A97) ----------
+{
+  const DEU = 'p-deubner'
+  // the machine route: the pictures of a project's rooms with a signed link each
+  let res = await fetch(app + '/api/inspo?project_id=' + DEU, { headers: SECRET })
+  let j = await res.json()
+  const c3 = (j.pictures || []).find((x) => x.id === 'i3')
+  ok('inspo route: lists the pictures attached to a room with their details and a signed link; unassigned pictures are not listed', res.status === 200 && j.pictures.every((x) => x.room && x.image_url.includes('/object/sign/intent-inspo/') && x.image_url.includes('token=mock-600')) && !!c3 && c3.room === '103' && c3.storage_path.endsWith('/c.jpg')
+    && same(c3.layout_details, ['island with seating on one side', 'range on the back wall']) && j.pictures.length === (await getDb()).intent_inspo_images.filter((x) => x.project_id === DEU && x.room_id).length && j.link_seconds === 600, JSON.stringify(j).slice(0, 600))
+  res = await fetch(app + '/api/inspo?project_id=' + DEU + '&room=114', { headers: SECRET }); j = await res.json()
+  ok('inspo route: one room only; a room without pictures gives an empty list', res.status === 200 && j.pictures.length === 0 && j.room === '114', JSON.stringify(j).slice(0, 300))
+  ok('inspo route: refused without the secret or a session, and a project is required', (await fetch(app + '/api/inspo?project_id=' + DEU)).status === 401 && (await fetch(app + '/api/inspo', { headers: SECRET })).status === 400 && (await fetch(app + '/api/inspo?project_id=nope', { headers: SECRET })).status === 404)
+  // "Read the picture again": with no vision key the analysis fails, the page says so and nothing is changed
+  const RP = '/projects/' + DEU + '/rooms/r-d103'
+  let html9 = await page(RP)
+  const h9 = form(html9, (f) => f.includes('Read the picture again') && f.includes('value="i3"'), 'read-again form')
+  const before9 = await getDb()
+  const r9 = await post(RP, h9)
+  const db9 = await getDb()
+  const pic = (d) => d.intent_inspo_images.find((x) => x.id === 'i3')
+  ok('read the picture again: a failed reading sends the person back with the reason and leaves the picture as it was', r9.status === 303 && r9.location.includes(RP + '?pic=failed#inspo') && same(pic(db9), pic(before9)), JSON.stringify(r9))
+  html9 = (await page(RP + '?pic=failed')).replace(/<!-- -->/g, '')
+  ok('read the picture again: the page says the picture could not be read and still lists what was read before', html9.includes('The picture could not be read') && html9.includes('What was listed before is unchanged') && html9.includes('island with seating on one side'))
+  res = await fetch(app + '/api/analyze-image', { method: 'POST', headers: SECRET, body: JSON.stringify({ image_id: 'i3' }) })
+  ok('analyze-image: without a vision key the route answers 502 and writes nothing; an unknown picture is 404', res.status === 502 && same(pic(await getDb()), pic(before9)) && (await fetch(app + '/api/analyze-image', { method: 'POST', headers: SECRET, body: JSON.stringify({ image_id: 'nope' }) })).status === 404)
+}
+
 // ---------- D. delete ----------
 const D = '/projects/p-deubner'
 html = await page(D)

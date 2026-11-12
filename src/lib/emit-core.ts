@@ -49,7 +49,7 @@ export async function buildV2(
       decisions: args.activeDecisions.map((d) => ({ id: d.id, room_id: d.room_id ?? null, topic: d.topic, value: d.value, source: d.source, source_ref: d.source_ref ?? null, kind: d.kind ?? null, params: d.params ?? null })),
       opens: args.opens.map((o) => ({ room_id: o.room_id ?? null, question: o.question, answer: o.answer ?? null, default_if_unanswered: o.default_if_unanswered ?? null, blocking: !!o.blocking })),
       redlines: args.redlines.map((n) => ({ id: n.id, room_id: n.room_id ?? null, note_type: n.note_type, text: n.text, source_ref: n.source_ref ?? null, kind: n.kind ?? null })),
-      images: args.images.filter((i) => i.room_id).map((i) => ({ room_id: i.room_id, storage_path: i.storage_path, notes: i.notes ?? null, tags: i.tags || [] })),
+      images: args.images.filter((i) => i.room_id).map((i) => ({ room_id: i.room_id, storage_path: i.storage_path, notes: i.notes ?? null, tags: i.tags || [], layout_details: i.layout_details ?? [] })),
       kinds: kinds as KindRow[],
       modelRules: (rules || []) as ModelRuleRow[],
       defaultTopics: defaults.map((d) => d.topic),

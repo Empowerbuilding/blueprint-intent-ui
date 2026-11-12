@@ -97,9 +97,11 @@ const db = {
     { id: 'n1', project_id: P.deu, room_id: 'r-d103', note_type: 'beam', text: 'Beam, not a wall, between kitchen and great room', source_ref: 'A101.1', created_at: t(2500) },
   ],
   intent_inspo_images: [
-    { id: 'i1', project_id: P.deu, room_id: null, parked: false, storage_path: P.deu + '/a.jpg', notes: 'Walnut island with waterfall edge', tags: ['walnut'], assigned_at: null, created_at: t(2000) },
-    { id: 'i2', project_id: P.deu, room_id: null, parked: false, storage_path: P.deu + '/b.jpg', notes: null, tags: [], assigned_at: null, created_at: t(2000) },
-    { id: 'i3', project_id: P.deu, room_id: 'r-d103', parked: false, storage_path: P.deu + '/c.jpg', notes: 'Black range hood', tags: [], assigned_at: t(1900), created_at: t(2000) },
+    { id: 'i1', project_id: P.deu, room_id: null, parked: false, storage_path: P.deu + '/a.jpg', notes: 'Walnut island with waterfall edge', tags: ['walnut'], layout_details: [], analyzed_at: null, assigned_at: null, created_at: t(2000) },
+    { id: 'i2', project_id: P.deu, room_id: null, parked: false, storage_path: P.deu + '/b.jpg', notes: null, tags: [], layout_details: [], analyzed_at: null, assigned_at: null, created_at: t(2000) },
+    { id: 'i3', project_id: P.deu, room_id: 'r-d103', parked: false, storage_path: P.deu + '/c.jpg', notes: 'Black range hood', tags: [], layout_details: ['island with seating on one side', 'range on the back wall'], analyzed_at: t(1900), assigned_at: t(1900), created_at: t(2000) },
+    // spec A97: a picture on a room that has drawings; the drawing awaiting review says what it took from it, the approved one was drawn before
+    { id: 'i4', project_id: P.whi, room_id: 'r-wb3', parked: false, storage_path: P.whi + '/k.jpg', notes: 'Long island facing the range wall', tags: ['island'], layout_details: ['island with seating on one side', 'range on the back wall', 'sink under the window'], analyzed_at: t(1500), assigned_at: t(1500), created_at: t(1600) },
   ],
   intent_emissions: [
     { id: 'e1', project_id: P.whi, version: 1, emitted_at: t(600), blueprint_status: 'handed_off', intent_json: {}, brief_md: '# Whitaker' },
@@ -120,7 +122,10 @@ const db = {
         { topic: 'pendants', verdict: 'missing', note: 'not visible on a plan' },
         { topic: 'hardware', verdict: 'na', note: 'finish, not drawable' },
       ] },
-    }),
+    }, { geometry: { units: 'in', elements: [{ id: 'i1', kind: 'island', x: 40, y: 60, w: 84, h: 42 }, { id: 'c1', kind: 'counter', x: 0, y: 0, w: 200, h: 25 }],
+      meta: { inspo: { pictures: [{ storage_path: P.whi + '/k.jpg', details: 2 }],
+        used: [{ picture: P.whi + '/k.jpg', detail: 'island with seating on one side', element: 'i1', source: 'app' }, { picture: P.whi + '/k.jpg', detail: 'pantry door beside the fridge', element: null, source: 'blueprint' }],
+        not_used: [{ picture: P.whi + '/k.jpg', detail: 'range on the back wall', reason: 'the typed decision puts the range on the north wall' }] } } } }),
     outline('o-elev', P.whi, 'r-wb3', 'elevation', 'North wall', 'approved', 300, {
       math: math([{ rule_key: 'uppers_aff_54', description: 'Upper cabinets mount at 54" above finished floor (±1").', status: 'fail', measured: 'bottom @ 60" AFF', required: '54" ± 1"', detail: 'Uppers' }]),
       vision: { ran_at: t(299), model: 'glm-4.6v+code', status: 'ok', results: [{ topic: 'range wall', verdict: 'confirmed', note: 'hood centred' }] },

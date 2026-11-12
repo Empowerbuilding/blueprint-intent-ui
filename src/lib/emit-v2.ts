@@ -11,6 +11,7 @@
 
 import { createHash } from 'node:crypto'
 import { CONTEXT_KIND, SHELL_KINDS, isHouseSection, normaliseRole, tidyName } from './vocab.ts'
+import { tidyLayoutDetails } from './inspo-analysis.ts'
 
 export const V2_SCHEMA = 'intent-contract/2.0'
 
@@ -42,7 +43,7 @@ export type V2DecisionIn = {
 }
 export type V2OpenIn = { room_id: string | null; question: string; answer: string | null; default_if_unanswered: string | null; blocking: boolean }
 export type V2RedlineIn = { id: string; room_id: string | null; note_type: string; text: string; source_ref: string | null; kind: string | null }
-export type V2ImageIn = { room_id: string | null; storage_path: string; notes: string | null; tags: string[] | null }
+export type V2ImageIn = { room_id: string | null; storage_path: string; notes: string | null; tags: string[] | null; layout_details?: unknown }
 
 export type WorkItem = {
   id: string
@@ -73,7 +74,8 @@ export type V2Room = {
   work_items: WorkItem[]
   context: ContextLine[]
   opens: V2Open[]
-  inspo: { storage_path: string; notes: string | null; tags: string[] }[]
+  /** the pictures attached to the room. layout_details: what a floor plan can show of the picture, read by the vision analysis (spec A97); empty = not read, or nothing a plan can draw */
+  inspo: { storage_path: string; notes: string | null; tags: string[]; layout_details: string[] }[]
 }
 export type ContractV2 = {
   schema: typeof V2_SCHEMA
@@ -246,7 +248,7 @@ export function buildContractV2(input: {
       opens: opensOf((o) => !!o.room_id && roomById.get(o.room_id)?.section_code === r.section_code),
       inspo: input.images
         .filter((i) => !!i.room_id && roomById.get(i.room_id)?.section_code === r.section_code)
-        .map((i) => ({ storage_path: i.storage_path, notes: i.notes, tags: i.tags || [] })),
+        .map((i) => ({ storage_path: i.storage_path, notes: i.notes, tags: i.tags || [], layout_details: tidyLayoutDetails(i.layout_details) })),
     })
   }
   // level and sheet group are additive (SPEC A71): a room without one is emitted, and the list says what follows from it
@@ -323,6 +325,11 @@ export function validateContractV2(contract: unknown, kinds: { kind: string }[])
     if (!Array.isArray(r.work_items) || !Array.isArray(r.opens) || !Array.isArray(r.inspo)) {
       out.push(at + ': work_items, opens and inspo must be lists')
       continue
+    }
+    // additive (spec A97): a contract emitted before 2026-11-12 03:50Z has pictures without layout_details
+    for (const p of r.inspo) {
+      const ld = (p as Record<string, unknown>)?.layout_details
+      if (ld !== undefined && (!Array.isArray(ld) || ld.some((x) => typeof x !== 'string'))) out.push(at + ': layout_details of a picture must be a list of texts')
     }
     for (const w of r.work_items) {
       checkItem(w, at)

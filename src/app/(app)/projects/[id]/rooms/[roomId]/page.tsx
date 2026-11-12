@@ -14,6 +14,8 @@ import {
 } from '@/app/actions'
 import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
 import { setDecisionKind, setRedlineKind, setRoomTyping, setTopicKind } from '@/app/typing-actions'
+import { analyseImageAgain } from '@/app/emit-actions'
+import { detailState, inspoUse, tidyLayoutDetails } from '@/lib/inspo-analysis'
 import { loadKinds, type KindOption } from '@/lib/model-rules'
 import { ROOM_ROLES, isHouseSection, roleLabel, suggestKind, suggestNeeds2d, suggestRedlineKind, suggestRole, suggestSheetGroup } from '@/lib/vocab'
 import { defaultsForRoom, loadDefaults } from '@/lib/defaults'
@@ -69,7 +71,9 @@ type OpenQuestion = {
   blocking: boolean
 }
 type Redline = { id: string; note_type: string; text: string; source_ref: string | null; kind: string | null }
-type Inspo = { id: string; storage_path: string; notes: string | null }
+type Inspo = { id: string; storage_path: string; notes: string | null; layout_details: unknown; analyzed_at: string | null }
+// a room's picture as a drawing card shows it: the signed link for this render and the details read out of it
+type Picture = { storage_path: string; notes: string | null; details: string[]; url: string | null }
 type Outline = {
   id: string
   outline_type: string
@@ -78,7 +82,7 @@ type Outline = {
   pushed_at: string
   pushed_by: string | null
   storage_path: string | null
-  geometry: { elements?: unknown[] } | null
+  geometry: { elements?: unknown[]; meta?: unknown } | null
   checks: Record<string, unknown> | null
   feedback: string | null
 }
@@ -263,8 +267,11 @@ function VerdictRow({ v, tone }: { v: VisionResult; tone: 'red' | 'gold' | 'gree
 }
 
 // imageUrl is a signed link that expires (lib/storage.ts); null = the file could not be signed
-function OutlineCard({ o, projectId, roomId, imageUrl }: { o: Outline; projectId: string; roomId: string; imageUrl: string | null }) {
+function OutlineCard({ o, projectId, roomId, imageUrl, pictures }: { o: Outline; projectId: string; roomId: string; imageUrl: string | null; pictures: Picture[] }) {
   const c = summariseChecks(o.checks)
+  // what this drawing says it took from the room's pictures (geometry.meta.inspo, spec A97)
+  const use = inspoUse(o.geometry)
+  const unsaid = use.said ? pictures.flatMap((p) => p.details.filter((d) => detailState(use, p.storage_path, d).state === 'unsaid')) : []
   const elements = Array.isArray(o.geometry?.elements) ? o.geometry!.elements!.length : 0
   const visionResults = c.vision?.status === 'ok' ? c.vision.results || [] : []
   const notDrawable = visionResults.filter((v) => v.verdict === 'na')
@@ -404,6 +411,57 @@ function OutlineCard({ o, projectId, roomId, imageUrl }: { o: Outline; projectId
             )}
           </div>
 
+          {/* inspiration pictures beside the drawing: which of their details it used, which not and why */}
+          {(pictures.length > 0 || use.said) && (
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="section-title">Inspiration pictures</span>
+                <span className="text-xs text-slate-500">
+                  {use.said ? use.used.length + ' used · ' + use.not_used.length + ' not used' : 'not said by this drawing'}
+                </span>
+              </div>
+              {pictures.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {pictures.map((p) =>
+                    p.url ? (
+                      <a key={p.storage_path} href={p.url} target="_blank" rel="noreferrer" title={p.notes || 'Open the picture in a new tab'}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.url} alt={p.notes || 'inspiration picture'} className="h-16 w-24 rounded border border-bh-border object-cover" />
+                      </a>
+                    ) : (
+                      <div key={p.storage_path} className="h-16 w-24 rounded border border-bh-border flex items-center justify-center text-[10px] text-slate-600">
+                        picture unavailable
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+              {!use.said && (
+                <p className="text-xs text-slate-500">
+                  This drawing does not say what it took from the pictures: it was drawn before pictures fed the drawings, or the room had none then.
+                </p>
+              )}
+              {use.used.map((u, i) => (
+                <div key={'u' + i} className="text-xs text-slate-300">
+                  ✓ {u.detail}
+                  {u.source === 'blueprint' ? <span className="text-slate-500"> · seen in the picture by Blueprint</span> : null}
+                </div>
+              ))}
+              {use.not_used.map((u, i) => (
+                <div key={'n' + i} className="text-xs text-slate-400">
+                  – {u.detail}
+                  <span className="text-slate-500"> · not used: {u.reason}</span>
+                </div>
+              ))}
+              {unsaid.length > 0 && (
+                <div className="text-xs text-amber-300/90">Read from a picture after this drawing was made: {unsaid.join('; ')}</div>
+              )}
+              {o.status === 'pushed' && use.said && (
+                <p className="text-[11px] text-slate-600">Approving the drawing approves what it took from the pictures.</p>
+              )}
+            </div>
+          )}
+
           {c.override && (
             <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
               Approved despite a failed rule — “{c.override.reason}”
@@ -462,10 +520,10 @@ export default async function RoomPage({
   searchParams,
 }: {
   params: Promise<{ id: string; roomId: string }>
-  searchParams: Promise<{ view?: string; err2d?: string; err?: string; edit?: string }>
+  searchParams: Promise<{ view?: string; err2d?: string; err?: string; edit?: string; pic?: string }>
 }) {
   const { id, roomId } = await params
-  const { view: viewParam, err2d: err2dParam, err: errParam, edit: editId } = await searchParams
+  const { view: viewParam, err2d: err2dParam, err: errParam, edit: editId, pic: picParam } = await searchParams
   const err2d = err2dParam || errParam
   const supabase = await createClient()
 
@@ -491,7 +549,7 @@ export default async function RoomPage({
         .eq('room_id', roomId)
         .order('created_at'),
       supabase.from('intent_redline_notes').select('id, note_type, text, source_ref, kind').eq('room_id', roomId).order('created_at'),
-      supabase.from('intent_inspo_images').select('id, storage_path, notes').eq('room_id', roomId).order('created_at'),
+      supabase.from('intent_inspo_images').select('id, storage_path, notes, layout_details, analyzed_at').eq('room_id', roomId).order('created_at'),
       supabase.from('intent_outlines').select('*').eq('room_id', roomId).order('pushed_at', { ascending: false }),
       supabase.from('intent_rooms').select('id, section_code, name, review_state, sheet_group').eq('project_id', id).order('sort_order'),
       supabase.from('intent_outlines').select('room_id').eq('project_id', id).eq('status', 'pushed'),
@@ -525,6 +583,7 @@ export default async function RoomPage({
     signedUrls(supabase, INSPO_BUCKET, images.map((i) => i.storage_path)),
   ])
   const pendingElsewhere = ((pendingRes.data || []) as { room_id: string }[]).filter((p) => p.room_id !== roomId)
+  const pictures: Picture[] = images.map((i) => ({ storage_path: i.storage_path, notes: i.notes, details: tidyLayoutDetails(i.layout_details), url: inspoUrls.get(i.storage_path) || null }))
 
   // ---- decisions + defaults, one list ----
   const byTopic = new Map<string, Decision[]>()
@@ -1042,8 +1101,24 @@ export default async function RoomPage({
                     Manage images →
                   </Link>
                 </div>
+                {picParam === 'read' && (
+                  <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-200/90">
+                    The picture was read again. What it shows for the 2D drawing is listed under it.
+                  </div>
+                )}
+                {picParam === 'failed' && (
+                  <div className="rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-xs text-red-300">
+                    The picture could not be read: the vision model gave no usable answer. What was listed before is unchanged.
+                  </div>
+                )}
+                {images.length > 0 && (
+                  <p className="text-xs text-slate-500">
+                    Blueprint looks at these pictures when it draws this room in 2D, and uses the details listed under each one where the
+                    decisions above leave the layout open. A decision always wins over a picture.
+                  </p>
+                )}
                 {images.length ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     {images.map((img) => (
                       <div key={img.id} className="card overflow-hidden">
                         {inspoUrls.get(img.storage_path) ? (
@@ -1052,7 +1127,31 @@ export default async function RoomPage({
                         ) : (
                           <div className="h-28 flex items-center justify-center text-[11px] text-slate-600">image unavailable</div>
                         )}
-                        {img.notes && <div className="text-[11px] text-slate-500 px-2 py-1.5 truncate">{img.notes}</div>}
+                        {img.notes && <div className="text-[11px] text-slate-500 px-2 py-1.5">{img.notes}</div>}
+                        <div className="px-2 pb-2 space-y-1.5">
+                          {tidyLayoutDetails(img.layout_details).length ? (
+                            <>
+                              <div className="text-[10px] uppercase tracking-wider text-slate-600">For the 2D drawing</div>
+                              <ul className="list-disc pl-4 text-[11px] text-slate-300 space-y-0.5">
+                                {tidyLayoutDetails(img.layout_details).map((d) => (
+                                  <li key={d}>{d}</li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : (
+                            <div className="text-[11px] text-slate-600">
+                              {img.analyzed_at ? 'Nothing a floor plan can show was read from this picture.' : 'Not read for layout details yet.'}
+                            </div>
+                          )}
+                          <form action={analyseImageAgain}>
+                            <input type="hidden" name="image_id" value={img.id} />
+                            <input type="hidden" name="project_id" value={id} />
+                            <input type="hidden" name="room_id" value={roomId} />
+                            <button className="text-[11px] text-slate-500 hover:text-white transition-colors">
+                              ↻ {img.analyzed_at ? 'Read the picture again' : 'Read the picture'}
+                            </button>
+                          </form>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1090,12 +1189,12 @@ export default async function RoomPage({
                 <h2 className="section-title">To review ({pending.length})</h2>
               )}
               {pending.map((o) => (
-                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} />
+                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} pictures={pictures} />
               ))}
 
               {approved.length > 0 && <h2 className="section-title pt-2">Approved ({approved.length})</h2>}
               {approved.map((o) => (
-                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} />
+                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} pictures={pictures} />
               ))}
 
               {rejected.length > 0 && (

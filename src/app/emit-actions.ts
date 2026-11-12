@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildAndEmit } from '@/lib/emit-core'
+import { analyseStoredImage } from '@/lib/inspo-analyse-run'
 
 export async function assignImage(imageId: string, roomId: string | null, projectId: string) {
   const supabase = await createClient()
@@ -37,6 +38,22 @@ export async function assignImageForm(formData: FormData) {
     .eq('id', imageId)
   revalidatePath(`/projects/${projectId}/images`)
   revalidatePath(`/projects/${projectId}`)
+}
+
+// "Read the picture again" on a room page: the vision analysis runs again and replaces the picture's layout details.
+// Any signed-in person may press it; it changes nothing but the picture's own description, tags and details.
+export async function analyseImageAgain(formData: FormData) {
+  const supabase = await createClient()
+  const imageId = String(formData.get('image_id') || '')
+  const projectId = String(formData.get('project_id') || '')
+  const roomId = String(formData.get('room_id') || '')
+  const back = '/projects/' + projectId + '/rooms/' + roomId
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || !imageId) redirect(back + '?pic=failed#inspo')
+  const r = await analyseStoredImage(supabase, imageId)
+  revalidatePath(back)
+  revalidatePath('/projects/' + projectId + '/images')
+  redirect(back + (r.ok ? '?pic=read' : '?pic=failed') + '#inspo')
 }
 
 export async function emitContract(formData: FormData) {

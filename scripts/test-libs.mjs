@@ -8,6 +8,7 @@ import { normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGr
 import { buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
 import { UNREVIEWED, addedEntrySource, addedFolderSource, adoptRoles, adoptUnreviewed, adoptedRoleSource, changedFolderSource, changedPaletteSource, changedRoleSource, changedTextSource, checkText, colourChannel, folderPath, listEntry, missingNumbers, roleName, roleNames, ruleFolders, ruleLists, ruleNumbers, rulePalette, ruleRoles, ruleTexts, sameEntry, sameFolder } from '../src/lib/model-rules.ts'
 import { contentOfV1, contentOfV2, sameAsBeingWritten, sameAsEmitted } from '../src/lib/emit-same.ts'
+import { ANALYSIS_PROMPT, LAYOUT_DETAILS_MAX, LAYOUT_DETAIL_CHARS, detailState, inspoUse, mergeTags, parseAnalysis, tidyLayoutDetails } from '../src/lib/inspo-analysis.ts'
 import fs from 'node:fs'
 let fails = 0
 const canon = (v) => Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v
@@ -284,5 +285,37 @@ eq('emit-same: no emission, an empty one, or one that holds no contract is never
 eq('emit-same: only the version and the time are left out of the contract, only version, time and fingerprint out of the typed one', [contentOfV1(E1) === contentOfV1(E1next), contentOfV1(E1).includes('emitted_'), contentOfV1(E1).includes('"name":"S"'), contentOfV2(E2, null) === contentOfV2(E2next, null), /version|emitted_at|sha256_intent/.test(contentOfV2(E2, null)), contentOfV2(E2, null).includes('intent-contract/2.0')], [true, false, true, true, false, true])
 eq('emit-same: the inputs are not changed by the comparison', [E1next.project.emitted_version, E2next.sha256_intent, EROW.intent_json.project.emitted_at], [4, 'bbb', '2026-11-12T01:00:00Z'])
 eq('emit-same, two presses at once: the other press wrote the contract and not yet the typed half = the same; other content = not', [sameAsBeingWritten({ version: 4, intent_json: E1next, intent_v2_json: null, v2_errors: null }, E1next, E2next, null), sameAsBeingWritten({ version: 4, intent_json: E1next, intent_v2_json: E2next, v2_errors: null }, E1next, E2next, null), sameAsBeingWritten({ version: 4, intent_json: { ...E1next, parked_images: 5 }, intent_v2_json: null, v2_errors: null }, E1next, E2next, null), sameAsBeingWritten({ version: 4, intent_json: E1next, intent_v2_json: withRoom(E2next, { role: 'pantry' }), v2_errors: null }, E1next, E2next, null), sameAsBeingWritten(null, E1next, E2next, null)], [true, true, false, false, false])
+
+// ---- inspiration pictures feed the 2D drawings (spec A97) ----
+eq('inspo: layout details are short texts, one line each, no doubles, no closing full stop, at most ' + LAYOUT_DETAILS_MAX,
+  [tidyLayoutDetails([' Island with  seating on one side. ', 'island with seating on one side', 7, null, '', 'Range on the back wall;', ...Array.from({ length: 10 }, (_, i) => 'detail ' + i)]).slice(0, 3), tidyLayoutDetails(Array.from({ length: 12 }, (_, i) => 'd' + i)).length, tidyLayoutDetails('island'), tidyLayoutDetails(null), tidyLayoutDetails(['x'.repeat(200)])[0].length],
+  [['Island with seating on one side', 'Range on the back wall', 'detail 0'], LAYOUT_DETAILS_MAX, [], [], LAYOUT_DETAIL_CHARS])
+const ANS = 'thinking...\n{"description": "Walnut island under a black hood", "tags": ["walnut", "black"], "palette": ["#222222"], "suggested_room": "Kitchen", "layout_details": ["island with seating on one side", "range on the back wall", 3]}'
+eq('inspo: the model answer is read with its layout details; an answer written before they existed gives an empty list; no JSON gives nothing',
+  [parseAnalysis(ANS), parseAnalysis('{"description": "d", "tags": [], "palette": [], "suggested_room": "Bath"}').layout_details, parseAnalysis('no json here'), parseAnalysis('{bad'), parseAnalysis('[1]')],
+  [{ description: 'Walnut island under a black hood', tags: ['walnut', 'black'], palette: ['#222222'], suggested_room: 'Kitchen', layout_details: ['island with seating on one side', 'range on the back wall'] }, [], null, null, null])
+eq('inspo: the prompt asks for layout details a plan can show, and rules out colours and materials', [ANALYSIS_PROMPT.includes('"layout_details"'), ANALYSIS_PROMPT.includes('FLOOR PLAN'), ANALYSIS_PROMPT.includes('No colours, no materials')], [true, true, true])
+eq('inspo: reading a picture again keeps the tags that were there and adds the new ones once', mergeTags(['mine', 'walnut', 'color:#222222'], { tags: ['walnut', 'oak'], palette: ['#222222', '#ffffff'] }), ['mine', 'walnut', 'color:#222222', 'oak', 'color:#ffffff'])
+const GEO = { elements: [], meta: { inspo: { pictures: [{ storage_path: 'p/a.jpg', details: 2 }], used: [{ picture: 'p/a.jpg', detail: 'island with seating on one side', element: 'isl', source: 'app' }, { picture: 'p/b.jpg', detail: 'pantry beside the fridge', source: 'blueprint' }, { detail: '' }, 'x'], not_used: [{ picture: 'p/a.jpg', detail: 'range on the back wall', reason: 'the typed decision puts the range on the island' }, { picture: null, detail: 'tub under the window' }] } } }
+const USE = inspoUse(GEO)
+eq('inspo: what a drawing says it did with the pictures is read from its meta; entries without a detail are dropped; a missing reason is said',
+  [USE.said, USE.used, USE.not_used],
+  [true, [{ picture: 'p/a.jpg', detail: 'island with seating on one side', element: 'isl', source: 'app' }, { picture: 'p/b.jpg', detail: 'pantry beside the fridge', element: null, source: 'blueprint' }],
+    [{ picture: 'p/a.jpg', detail: 'range on the back wall', reason: 'the typed decision puts the range on the island' }, { picture: null, detail: 'tub under the window', reason: 'no reason given' }]])
+eq('inspo: a drawing made before pictures fed the drawings says nothing, and that is not an empty list', [inspoUse({ elements: [] }), inspoUse(null), inspoUse({ meta: { inspo: null } }), inspoUse({ meta: { inspo: [] } }).said], [{ said: false, used: [], not_used: [] }, { said: false, used: [], not_used: [] }, { said: false, used: [], not_used: [] }, false])
+eq('inspo: one detail of one picture as the drawing treated it: used, not used with the reason, or not mentioned; an entry that names no picture covers any; another picture does not',
+  [detailState(USE, 'p/a.jpg', 'Island with seating  on one side'), detailState(USE, 'p/a.jpg', 'range on the back wall'), detailState(USE, 'p/a.jpg', 'double vanity'), detailState(USE, 'p/z.jpg', 'tub under the window').state, detailState(USE, 'p/z.jpg', 'island with seating on one side').state],
+  [{ state: 'used', reason: null }, { state: 'not_used', reason: 'the typed decision puts the range on the island' }, { state: 'unsaid', reason: null }, 'not_used', 'unsaid'])
+{
+  const withDetails = buildContractV2({ ...base, images: [{ room_id: 'r1', storage_path: 'p/a.jpg', notes: 'hood', tags: ['walnut'], layout_details: [' island with seating on one side. ', 3, 'island with seating on one side'] }, { room_id: 'r1', storage_path: 'p/b.jpg', notes: null, tags: null }, { room_id: null, storage_path: 'p/parked.jpg', notes: null, tags: [] }] })
+  const plain = buildContractV2(base)
+  eq('v2 inspo: a room\'s pictures carry notes, tags and layout details; a picture never read has an empty list; a picture on no room is not in the contract',
+    [withDetails.ok && withDetails.contract.rooms.find((r) => r.section_code === '201').inspo, plain.ok && plain.contract.rooms.find((r) => r.section_code === '201').inspo],
+    [[{ storage_path: 'p/a.jpg', notes: 'hood', tags: ['walnut'], layout_details: ['island with seating on one side'] }, { storage_path: 'p/b.jpg', notes: null, tags: [], layout_details: [] }], [{ storage_path: 'p/a.jpg', notes: 'hood', tags: [], layout_details: [] }]])
+  eq('v2 inspo: the details are part of the fingerprint, and a typed contract with them is valid', [withDetails.contract.sha256_intent !== plain.contract.sha256_intent, validateContractV2(withDetails.contract, KINDS), validateContractV2(plain.contract, KINDS)], [true, [], []])
+  const old = JSON.parse(JSON.stringify(plain.contract)); for (const r of old.rooms) for (const p of r.inspo) delete p.layout_details
+  const bad = JSON.parse(JSON.stringify(withDetails.contract)); bad.rooms.find((r) => r.section_code === '201').inspo[0].layout_details = ['ok', 4]
+  eq('v2 inspo: a contract emitted before the details existed is still valid; details that are not texts are not', [validateContractV2({ ...old, sha256_intent: contractSha(old) }, KINDS), validateContractV2({ ...bad, sha256_intent: contractSha(bad) }, KINDS)], [[], ['room 201: layout_details of a picture must be a list of texts']])
+}
 console.log(fails ? 'FAILED ' + fails : 'ALL PASS')
 process.exit(fails ? 1 : 0)
