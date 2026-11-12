@@ -281,7 +281,8 @@
    "acceptance": [
     "sink.cutout_matches_bowl",
     "counter.no_builtin_splash",
-    "casework.faces_have_material"
+    "casework.faces_have_material",
+    "counter.sits_on_boxes"
    ],
    "qa_scripts": [
     "checks_counters",
