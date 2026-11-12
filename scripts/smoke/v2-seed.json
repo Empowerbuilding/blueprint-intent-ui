@@ -823,6 +823,12 @@
    "description": "Before a build phase changes an element that already exists, the element is within the tolerance set on this check of where the approved drawing shows it. If it has moved further than that since the drawing was approved, the phase stops instead of changing it.",
    "source": "was a constant in the work-order compiler; made a check by ruling 2026-11-11 (flag 45, spec amendment A46)",
    "kinds": []
+  },
+  {
+   "rule_key": "casework.no_stacked_boxes",
+   "description": "A tall or upper cabinet is one element, never two boxes stacked.",
+   "source": "Mitch 2026-11-07 07:33Z in blueprint-mitch; runbook section 3 gate 4; proposed 2026-11-12 (pre-pilot build, spec A114)",
+   "kinds": []
   }
  ]
 }

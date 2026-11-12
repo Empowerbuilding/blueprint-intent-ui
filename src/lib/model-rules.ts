@@ -57,6 +57,13 @@ export function ruleNumbers(params: Record<string, unknown> | null | undefined):
     .map(([key, v]) => ({ key, value: v as number | null, ...numberLabel(key) }))
     .sort((a, b) => a.key.localeCompare(b.key))
 }
+/** the note a number carries: params.<name>_source says where its value comes from. A note that starts with UNREVIEWED marks a
+ *  value that is Blueprint's own reading (rule A96): the check is proposed with it, and the page shows the note in amber.
+ *  null = the number carries no note (its value is stated by the check's own sentence, or an approver typed it) */
+export function numberSource(params: Record<string, unknown> | null | undefined, key: string): string | null {
+  const src = (params || {})[key + '_source']
+  return typeof src === 'string' && src.trim() ? src : null
+}
 /** the numbers a check carries without a value: it cannot pass, and is not accepted, until an approver types them */
 export function missingNumbers(params: Record<string, unknown> | null | undefined): RuleNumber[] {
   return ruleNumbers(params).filter((n) => n.value === null)
@@ -160,6 +167,16 @@ export const CHECK_LISTS: Record<string, ListSpec> = {
     help: 'A sheet entry is a sheet number, with * at the end for every number that starts the same way and ? at the end when the sheet may be missing: A100, A107.* or A100.3?, up to 40 characters.',
     max: 40,
   },
+  counter_names: {
+    title:
+      'Countertop names: words that mark a countertop. An element whose family, type or element name holds one of them is a countertop for this check, whatever the case of the letters.',
+    one: 'name',
+    save: 'Save name',
+    add: 'Add name',
+    placeholder: 'another word or words found in the name of a countertop',
+    help: 'A countertop name is a word or a few words found in the name of the family, the type or the element, 2 to 60 characters.',
+    max: 60,
+  },
   tag_families: {
     title: 'Tag families: the door and window tag families that count as text only. The check compares the tags in the model with this list.',
     one: 'tag family',
@@ -203,6 +220,8 @@ export function listEntry(list: string, raw: string): string | null {
     stem = stem.endsWith('*') ? stem.slice(0, -1).trim() : stem
     if (!stem || /[*?]/.test(stem)) return null
   }
+  // one letter would be found in nearly every name: a countertop name is at least two characters
+  if (list === 'counter_names' && t.length < 2) return null
   return t
 }
 /** two entries the checker reads as the same text (it does not tell upper case from lower case, or one space from two) */

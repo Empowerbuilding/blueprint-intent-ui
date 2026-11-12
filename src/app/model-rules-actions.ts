@@ -18,6 +18,7 @@ import {
   listEntry,
   missingNumbers,
   numberLabel,
+  numberSource,
   roleName,
   roleNames,
   ruleFolders,
@@ -167,6 +168,10 @@ export async function setModelRuleNumber(formData: FormData) {
   const next: Record<string, unknown> = { ...params, [key]: value }
   if ('initial' in next) next.initial = false // it is no longer the starting value
   const now = new Date().toISOString()
+  // a number that carries a note (params.<name>_source: where its value comes from, and whether anybody reviewed it) says who
+  // changed it and from what, and keeps naming where its first value came from; a number without a note gets none here
+  const note = numberSource(params, key)
+  if (note) next[key + '_source'] = changedTextSource(note, user.email || user.id, now.slice(0, 10), first ? 'no value' : show(old as number), show(value))
   const { data: changed, error } = await supabase
     .from('intent_model_rules')
     .update({ params: next, version: (row.version || 1) + 1, params_by: user.email || user.id, params_at: now, updated_at: now })

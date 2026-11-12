@@ -226,7 +226,8 @@
     "casework.no_overlap",
     "casework.position_within_1in_of_2d",
     "casework.no_opening_intersection",
-    "casework.faces_have_material"
+    "casework.faces_have_material",
+    "casework.no_stacked_boxes"
    ],
    "qa_scripts": [
     "checks_casework",

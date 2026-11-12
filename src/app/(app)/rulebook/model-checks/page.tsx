@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { decideModelRule, proposeModelRule, setModelRuleFolder, setModelRuleListEntry, setModelRuleNumber, setModelRulePalette, setModelRuleRole, setModelRuleText } from '@/app/model-rules-actions'
-import { CHECKER_LABEL, UNREVIEWED, loadModelRules, missingNumbers, ruleFolders, ruleLists, ruleNumbers, rulePalette, ruleRoles, ruleTexts, type ModelRule } from '@/lib/model-rules'
+import { CHECKER_LABEL, UNREVIEWED, loadModelRules, missingNumbers, numberSource, ruleFolders, ruleLists, ruleNumbers, rulePalette, ruleRoles, ruleTexts, type ModelRule } from '@/lib/model-rules'
 import { approverNames, loadApprovers, whoLabel } from '@/lib/lessons'
 import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -79,6 +79,14 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               </div>
             ),
           )}
+          {numbers
+            .map((n) => ({ n, note: numberSource(r.params, n.key) }))
+            .filter((x) => x.note)
+            .map(({ n, note }) => (
+              <div key={'src-' + n.key} className={'text-[11px] break-words mt-1 ' + (note!.startsWith(UNREVIEWED) ? 'text-amber-400/80' : 'text-slate-500')}>
+                {n.label}: {note}
+              </div>
+            ))}
           {waiting.length > 0 && (
             <div className="text-[11px] text-amber-400/80 break-words mt-1">
               Waiting for a number ({waiting.map((n) => n.label.toLowerCase()).join(', ')}): nothing written gives it, so none was filled in.{' '}
