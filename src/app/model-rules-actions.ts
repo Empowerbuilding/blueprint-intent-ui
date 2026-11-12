@@ -4,8 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { approverNames, loadApprovers } from '@/lib/lessons'
 import { notifyBlueprint } from '@/lib/notify'
 import {
+  CHECK_LISTS,
+  addedEntrySource,
   addedFolderSource,
-  adoptRoles,
+  adoptUnreviewed,
   changedFolderSource,
   changedPaletteSource,
   changedRoleSource,
@@ -13,14 +15,17 @@ import {
   checkText,
   colourChannel,
   folderPath,
+  listEntry,
   missingNumbers,
   numberLabel,
   roleName,
   roleNames,
   ruleFolders,
+  ruleLists,
   rulePalette,
   ruleRoles,
   ruleTexts,
+  sameEntry,
   sameFolder,
 } from '@/lib/model-rules'
 import { revalidatePath } from 'next/cache'
@@ -95,8 +100,9 @@ export async function decideModelRule(formData: FormData) {
     )
   }
   const now = new Date().toISOString()
-  // a row of roles that is still marked as not reviewed keeps its marking through an acceptance and says who adopted it as shown
-  const adopted = step.to === 'accepted' ? adoptRoles(row.params as Record<string, unknown> | null, user.email || user.id, now.slice(0, 10)) : null
+  // a row (a role, an entry of a list, the words) that is still marked as not reviewed keeps its marking through an acceptance and
+  // says who adopted it as shown
+  const adopted = step.to === 'accepted' ? adoptUnreviewed(row.params as Record<string, unknown> | null, user.email || user.id, now.slice(0, 10)) : null
   const { data: changed, error } = await supabase
     .from('intent_model_rules')
     .update({
@@ -325,6 +331,89 @@ export async function setModelRuleFolder(formData: FormData) {
   revalidatePath(PAGE)
   revalidatePath('/blueprint')
   redirect(back({ saved: row.rule_key + ': folder ' + (step === 'change' ? 'changed to ' + value : step === 'add' ? 'added, ' + value : 'removed, ' + (old as { folder: string }).folder), anchor }))
+}
+
+// An entry of a list of texts on a check (params.sheet_list, params.tag_families: see CHECK_LISTS). Only an approver changes
+// one, adds one or removes one, on a check that is proposed or accepted; the check keeps its status, the version goes up.
+// Only a list the check already carries can be edited here. The entry's note (params.<list>_source) then says who changed or
+// added it; a changed entry keeps naming where its first value came from, with its marking when it was Blueprint's reading.
+// The last entry cannot be removed: with none the check cannot be run.
+export async function setModelRuleListEntry(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const approvers = await loadApprovers(supabase)
+  if (!approvers.some((a) => a.user_id === user.id)) {
+    redirect(back({ err: 'Only ' + approverNames(approvers) + ' can change a list on a check. Nothing was changed.' }))
+  }
+  const id = String(formData.get('rule_id') || '')
+  const step = String(formData.get('list_step') || '')
+  const list = String(formData.get('list') || '')
+  const entry = String(formData.get('entry') || '')
+  const spec = CHECK_LISTS[list]
+  if (!id || !spec || !FOLDER_STEPS.includes(step)) redirect(back({ err: 'Nothing was changed.' }))
+  const { data: row } = await supabase.from('intent_model_rules').select('id, rule_key, description, status, version, params').eq('id', id).single()
+  if (!row) redirect(back({ err: 'That check no longer exists. Nothing was changed.' }))
+  const anchor = 'r-' + row.rule_key
+  if (row.status === 'retired') redirect(back({ err: '"' + row.rule_key + '" is retired. Put it back as proposed first. Nothing was changed.', anchor }))
+  const params = (row.params || {}) as Record<string, unknown>
+  const found = ruleLists(params).find((l) => l.key === list)
+  if (!found) redirect(back({ err: '"' + row.rule_key + '" carries no list of that kind. Nothing was changed.', anchor }))
+  const rows = found.rows
+  const old = step === 'add' ? null : rows.find((x) => x.value === entry) || null
+  if (step !== 'add' && !old) redirect(back({ err: '"' + row.rule_key + '" does not list "' + entry + '". Nothing was changed.', anchor }))
+  let value: string | null = null
+  if (step !== 'remove') {
+    value = listEntry(list, String(formData.get('value') ?? ''))
+    if (!value) redirect(back({ err: spec.help + ' Nothing was changed.', anchor }))
+    if (old && value === old.value) redirect(back({ err: '"' + row.rule_key + '" already lists ' + value + '. Nothing was changed.', anchor }))
+    const twin = rows.find((x) => x !== old && sameEntry(x.value, value as string))
+    if (twin) redirect(back({ err: '"' + row.rule_key + '" already lists ' + twin.value + '. Nothing was changed.', anchor }))
+  }
+  if (step === 'remove' && rows.length === 1) {
+    redirect(back({ err: '"' + row.rule_key + '" would have no ' + spec.one + ' left and could not be run. Change the entry instead. Nothing was changed.', anchor }))
+  }
+  const now = new Date().toISOString()
+  const who = user.email || user.id
+  const day = now.slice(0, 10)
+  const src = params[list + '_source']
+  const sources: Record<string, unknown> = { ...(src && typeof src === 'object' && !Array.isArray(src) ? (src as Record<string, unknown>) : {}) }
+  let entries = rows.map((x) => x.value)
+  if (step === 'change' && old && value) {
+    entries = entries.map((x) => (x === old.value ? (value as string) : x))
+    delete sources[old.value]
+    sources[value] = changedTextSource(old.source, who, day, old.value, value)
+  } else if (step === 'add' && value) {
+    entries = [...entries, value]
+    sources[value] = addedEntrySource(who, day, spec.one)
+  } else if (step === 'remove' && old) {
+    entries = entries.filter((x) => x !== old.value)
+    delete sources[old.value]
+  }
+  const next: Record<string, unknown> = { ...params, [list]: entries, [list + '_source']: sources }
+  if ('initial' in next) next.initial = false // it is no longer the starting list
+  const { data: changed, error } = await supabase
+    .from('intent_model_rules')
+    .update({ params: next, version: (row.version || 1) + 1, params_by: who, params_at: now, updated_at: now })
+    .eq('id', id)
+    .eq('version', row.version)
+    .select('id')
+  if (error || !changed || changed.length === 0) {
+    redirect(back({ err: 'The list was not saved' + (error ? ': ' + error.message : ' (the check changed in the meantime, or the database refused it).'), anchor }))
+  }
+  const what =
+    step === 'change' ? 'changed: `' + row.rule_key + '`** — ' + (old as { value: string }).value + ' → ' + value
+    : step === 'add' ? 'added: `' + row.rule_key + '`** — ' + value
+    : 'removed: `' + row.rule_key + '`** — ' + (old as { value: string }).value
+  await notifyBlueprint(
+    '🧪 **Model check ' + spec.one + ' ' + what + ' (the check is ' + row.status + '; its list now has ' + entries.length + (entries.length === 1 ? ' entry' : ' entries') + '). By ' + who +
+      '.\nThe check now compares with the new list: GET /api/model-rules. A work order compiled with the old version is stale. This is a notice, not a go.',
+  )
+  revalidatePath(PAGE)
+  revalidatePath('/blueprint')
+  redirect(back({ saved: row.rule_key + ': ' + spec.one + ' ' + (step === 'change' ? 'changed to ' + value : step === 'add' ? 'added, ' + value : 'removed, ' + (old as { value: string }).value), anchor }))
 }
 
 // The words on a check (params.<name>_text: what the checker looks for, such as the words of the site plan note). Only an

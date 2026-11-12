@@ -983,6 +983,82 @@ html = await page('/projects?deleted=Schwan&files_left=1')
 ok('delete: confirmation + leftover warning shown', html.includes('was deleted') && html.includes('could not be removed'))
 ok('delete: deleted project page is a 404', (await fetch(app + '/projects/p-schwan', { headers: { cookie } })).status === 404)
 
+// the lists of texts on the sheet checks (flag 81, A98): the sheet list and the tag families, one row per entry, each row names its
+// source and a row that is Blueprint's reading is marked; only Mitch or Michael change, add or remove an entry, the check keeps its
+// status; the last entry cannot be removed; accepting the check keeps the marking of an untouched row and says who adopted it
+const setRule = ruleOf(await getDb(), 'sheet.set_matches_stage')
+const tagRule = ruleOf(await getDb(), 'sheet.tags_text_only')
+const sheetNotes = (h) => (seen(h).match(/section Sheet index/g) || []).length
+const tagNotes = (h) => (seen(h).match(/section Tags and schedules/g) || []).length
+const LBTN = (v) => 'value="' + v + '" class="btn-secondary-sm" name="list_step"'
+html = await pageAs(MC, asBlueprint)
+ok('lists, non-approver: sees the three sheets and the two tag families with their source, has no field', seen(html).includes('A107.*') && seen(html).includes('A100.3?') && seen(html).includes('Window Tag - Text Only') && sheetNotes(html) === 3 && tagNotes(html) === 2 && !html.includes('name="entry"') && !html.includes('Add sheet') && !html.includes('Add family'), '')
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const entForm = (list, entry, id) => form(html, (f) => f.includes('name="list" value="' + list + '"') && f.includes('name="entry" value="' + entry + '"') && f.includes('value="' + id + '"'), 'entry form (' + entry + ')')
+const sheetA100 = entForm('sheet_list', 'A100', setRule.id)
+const sheetA107 = entForm('sheet_list', 'A107.*', setRule.id)
+const tagDoor = entForm('tag_families', 'Door Tag - Text Only', tagRule.id)
+const tagWindow = entForm('tag_families', 'Window Tag - Text Only', tagRule.id)
+const addSheet = form(html, (f) => f.includes(LBTN('add')) && f.includes('name="list" value="sheet_list"') && f.includes('value="' + setRule.id + '"'), 'add-sheet form')
+const addFamily = form(html, (f) => f.includes(LBTN('add')) && f.includes('name="list" value="tag_families"') && f.includes('value="' + tagRule.id + '"'), 'add-family form')
+const setDecide = form(html, (f) => f.includes('name="decision"') && f.includes('value="' + setRule.id + '"'), 'decide form (sheet.set_matches_stage)')
+ok('lists, approver: five rows, each with its entry in a field and a Remove button, and one field per list to add an entry; a marked row is told from a stated one', (html.match(/name="entry"/g) || []).length === 5 && (html.split(LBTN('remove')).length - 1) === 5 && (html.split(LBTN('add')).length - 1) === 2 && (html.split(LBTN('change')).length - 1) === 5 && sheetA100.entry === 'A100' && sheetA107.list === 'sheet_list' && tagDoor.list === 'tag_families' && !('entry' in addSheet) && !('entry' in addFamily) && seen(html).includes('starting list; nobody has changed an entry') && seen(html).includes('not reviewed. From the graphic standard, section Sheet index. The * is'), JSON.stringify([sheetA100, sheetA107, tagDoor, addSheet, addFamily]))
+before = await getDb()
+r = await postAs(MC, sheetA100, { list_step: 'change', value: 'A200' }, asBlueprint)
+r2 = await postAs(MC, addFamily, { list_step: 'add', value: 'Door Tag' }, asBlueprint)
+ok('lists, non-approver posts an entry: refused, nothing changed', r.location.includes('Only Mitch or Michael can change a list on a check') && r2.location.includes('Only Mitch or Michael can change a list on a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2]))
+let badEntries = []
+for (const bad of ['', '*', '?', 'A1*7', 'A100?*', 'A'.repeat(41)]) {
+  for (const step of ['change', 'add']) {
+    r = await post(MC, step === 'add' ? addSheet : sheetA100, { list_step: step, value: bad })
+    if (!r.location.includes('A sheet entry is a sheet number')) badEntries.push([step, bad])
+  }
+}
+r = await post(MC, addFamily, { list_step: 'add', value: 'a'.repeat(121) })
+ok('lists: blank, a bare * or ?, a * inside, ? before * and an over-long entry are refused, nothing changed', badEntries.length === 0 && r.location.includes('A tag family is its name as Revit shows it') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([badEntries, r]))
+r = await post(MC, sheetA100, { list_step: 'change', value: ' A100 ' })
+r2 = await post(MC, addSheet, { list_step: 'add', value: ' a107.* ' })
+r3 = await post(MC, tagDoor, { list_step: 'change', value: 'WINDOW TAG -  TEXT ONLY' })
+ok('lists: the same entry, and an entry the check already lists (in any case, with any spacing), change nothing', r.location.includes('already lists A100') && r2.location.includes('already lists A107.*') && r3.location.includes('already lists Window Tag - Text Only') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2, r3]))
+r = await post(MC, { ...sheetA100, entry: 'A999' }, { list_step: 'change', value: 'A200' })
+r2 = await post(MC, { ...sheetA100, entry: 'A999' }, { list_step: 'remove' })
+ok('lists: an entry the check does not list cannot be changed or removed', r.location.includes('does not list "A999"') && r2.location.includes('does not list "A999"') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2]))
+r = await post(MC, { ...addSheet, rule_id: shellRule.id }, { list_step: 'add', value: 'A200' })
+r2 = await post(MC, { ...addSheet, list: 'tag_families' }, { list_step: 'add', value: 'Door Tag' })
+r3 = await post(MC, { ...addSheet, list: 'texture_folders' }, { list_step: 'add', value: 'H:\\x' })
+const r4 = await post(MC, sheetA100, { list_step: 'empty', value: 'A200' })
+ok('lists: a check without that list refuses a posted entry; a list the app does not know and an unknown step change nothing', r.location.includes('carries no list of that kind') && r2.location.includes('carries no list of that kind') && r3.location.includes('Nothing was changed') && r4.location.includes('Nothing was changed') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2, r3, r4]))
+r = await post(MC, addSheet, { list_step: 'add', value: '  A108.* ' })
+db = await getDb()
+row = ruleOf(db, 'sheet.set_matches_stage')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('lists, approver adds a sheet: saved at the end of the list, version up, status kept, the three rows and their notes untouched, Blueprint told', r.location.includes('saved=sheet.set_matches_stage: sheet added, A108.*') && same(row.params.sheet_list, ['A100', 'A100.3?', 'A107.*', 'A108.*']) && ['A100', 'A100.3?', 'A107.*'].every((k) => row.params.sheet_list_source[k] === setRule.params.sheet_list_source[k]) && row.params.initial === false && row.version === setRule.version + 1 && row.status === setRule.status && row.params_by === 'mitch@barnhaus.test' && !!row.params_at && lastMsg.includes('Model check sheet added: `sheet.set_matches_stage`') && lastMsg.includes('A108.*') && lastMsg.includes('its list now has 4 entries') && lastMsg.includes('This is a notice, not a go'), JSON.stringify([r, row.params, lastMsg]))
+ok('lists: the added sheet says a person added it and that no standard names it', row.params.sheet_list_source['A108.*'].startsWith('Added on this page by mitch@barnhaus.test on ') && row.params.sheet_list_source['A108.*'].includes('No standard document names this sheet'), JSON.stringify(row.params.sheet_list_source))
+r = await post(MC, sheetA107, { list_step: 'change', value: 'A107.1*' })
+db = await getDb()
+row = ruleOf(db, 'sheet.set_matches_stage')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('lists, approver changes a marked sheet: saved in its place, version up, the old entry and its note gone, the new note says who and from what and keeps the marking of the first value', r.location.includes('saved=sheet.set_matches_stage: sheet changed to A107.1*') && same(row.params.sheet_list, ['A100', 'A100.3?', 'A107.1*', 'A108.*']) && !('A107.*' in row.params.sheet_list_source) && row.params.sheet_list_source['A107.1*'].startsWith('Changed on this page by mitch@barnhaus.test on ') && row.params.sheet_list_source['A107.1*'].includes(', from "A107.*" to "A107.1*". Source of the first value: Blueprint\'s reading, not reviewed.') && row.version === setRule.version + 2 && row.status === 'proposed' && lastMsg.includes('Model check sheet changed: `sheet.set_matches_stage`') && lastMsg.includes('A107.* → A107.1*'), JSON.stringify([r, row.params, lastMsg]))
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+mr = (await res.json()).rules.find((x) => x.rule_key === 'sheet.set_matches_stage')
+ok('api model-rules: the sheet list is what the checker reads, with the note of each entry', same(mr.params.sheet_list, ['A100', 'A100.3?', 'A107.1*', 'A108.*']) && same(Object.keys(mr.params.sheet_list_source).sort(), ['A100', 'A100.3?', 'A107.1*', 'A108.*']) && mr.version === setRule.version + 2 && mr.checker_status === 'tool' && mr.status === 'proposed' && mr.params_by === 'mitch@barnhaus.test', JSON.stringify(mr))
+r = await post(MC, setDecide, { decision: 'accept', note: 'Sheets as shown' })
+row = ruleOf(await getDb(), 'sheet.set_matches_stage')
+ok('lists, approver accepts the check: the marked row nobody changed keeps its marking and says who adopted it; the stated, the changed and the added row are left as they were', r.location.includes('saved=sheet.set_matches_stage accepted') && row.status === 'accepted' && row.decided_by_email === 'mitch@barnhaus.test' && row.params.sheet_list_source['A100.3?'].startsWith("Blueprint's reading, not reviewed.") && row.params.sheet_list_source['A100.3?'].includes('Accepted as shown by mitch@barnhaus.test on ') && row.params.sheet_list_source.A100 === setRule.params.sheet_list_source.A100 && row.params.sheet_list_source['A107.1*'].startsWith('Changed on this page by ') && !row.params.sheet_list_source['A107.1*'].includes('Accepted as shown') && row.params.sheet_list_source['A108.*'].startsWith('Added on this page by ') && !row.params.sheet_list_source['A108.*'].includes('Accepted as shown') && same(row.params.sheet_list, mr.params.sheet_list), JSON.stringify([r, row]))
+r = await post(MC, { ...sheetA100, entry: 'A108.*' }, { list_step: 'remove' })
+db = await getDb()
+row = ruleOf(db, 'sheet.set_matches_stage')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('lists, approver removes a sheet from the accepted check: gone with its note, the check stays accepted, Blueprint told', r.location.includes('sheet removed, A108.*') && same(row.params.sheet_list, ['A100', 'A100.3?', 'A107.1*']) && same(Object.keys(row.params.sheet_list_source).sort(), ['A100', 'A100.3?', 'A107.1*']) && row.status === 'accepted' && lastMsg.includes('Model check sheet removed: `sheet.set_matches_stage`') && lastMsg.includes('the check is accepted; its list now has 3 entries'), JSON.stringify([r, row.params, lastMsg]))
+r = await post(MC, tagWindow, { list_step: 'remove' })
+before = await getDb()
+r2 = await post(MC, tagDoor, { list_step: 'remove' })
+db = await getDb()
+row = ruleOf(db, 'sheet.tags_text_only')
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('lists: a tag family is removed; the last one cannot be, and the page offers no Remove for it', r.location.includes('tag family removed, Window Tag - Text Only') && r2.location.includes('would have no tag family left and could not be run') && same(db.intent_model_rules, before.intent_model_rules) && same(row.params.tag_families, ['Door Tag - Text Only']) && same(Object.keys(row.params.tag_families_source), ['Door Tag - Text Only']) && row.status === tagRule.status && (html.match(/name="entry"/g) || []).length === 4 && (html.split(LBTN('remove')).length - 1) === 3, JSON.stringify([r, r2, row.params]))
+ok('lists: the page shows the adoption, the changed row and who changed a list', seen(html).includes('Accepted as shown by mitch@barnhaus.test on ') && seen(html).includes(', from "A107.*" to "A107.1*"'.replace(/"/g, '&quot;')) && html.includes('list changed by Mitch') && sheetNotes(html) === 3 && tagNotes(html) === 1, '')
+
 const unknown = await (await fetch(mock + '/__unknown')).json()
 ok('mock understood every request', unknown.length === 0, unknown.join(' ; '))
 console.log(fails ? 'ACTIONS FAILED: ' + fails : 'ACTIONS PASS')

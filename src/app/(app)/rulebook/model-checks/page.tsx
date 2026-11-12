@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { decideModelRule, proposeModelRule, setModelRuleFolder, setModelRuleNumber, setModelRulePalette, setModelRuleRole, setModelRuleText } from '@/app/model-rules-actions'
-import { CHECKER_LABEL, UNREVIEWED, loadModelRules, missingNumbers, ruleFolders, ruleNumbers, rulePalette, ruleRoles, ruleTexts, type ModelRule } from '@/lib/model-rules'
+import { decideModelRule, proposeModelRule, setModelRuleFolder, setModelRuleListEntry, setModelRuleNumber, setModelRulePalette, setModelRuleRole, setModelRuleText } from '@/app/model-rules-actions'
+import { CHECKER_LABEL, UNREVIEWED, loadModelRules, missingNumbers, ruleFolders, ruleLists, ruleNumbers, rulePalette, ruleRoles, ruleTexts, type ModelRule } from '@/lib/model-rules'
 import { approverNames, loadApprovers, whoLabel } from '@/lib/lessons'
 import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -23,6 +23,10 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
   const palette = rulePalette(r.params)
   // the texture folders the check carries (the shared library folders): one row per folder, each with a note that names where it comes from
   const folders = ruleFolders(r.params)
+  // the lists of texts the check carries (the sheet list, the tag families): one row per entry, each with a note that names its source
+  // and, in amber, what in it nobody has reviewed
+  const lists = ruleLists(r.params)
+  const listed = lists.some((l) => l.rows.length > 0)
   // the words the check carries (the words of a note the checker looks for), with a note that names where they come from
   const texts = ruleTexts(r.params)
   // the material roles the check carries: one row per role, each with a note that names its source and what in it nobody has reviewed
@@ -174,6 +178,47 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               )}
             </div>
           )}
+          {lists.map((l) => (
+            <div key={l.key} className="mt-2 space-y-2">
+              <div className="text-[11px] text-slate-400">{l.spec.title}</div>
+              {l.rows.map((x) => (
+                <div key={x.value} className="pl-2 border-l border-slate-800">
+                  {canEdit ? (
+                    <form action={setModelRuleListEntry} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="rule_id" value={r.id} />
+                      <input type="hidden" name="list" value={l.key} />
+                      <input type="hidden" name="entry" value={x.value} />
+                      <input name="value" type="text" required maxLength={l.spec.max} defaultValue={x.value} aria-label={l.spec.one} className="field !w-64 max-w-full !py-1 text-xs font-mono" />
+                      <button name="list_step" value="change" className="btn-secondary-sm">
+                        {l.spec.save}
+                      </button>
+                      {l.rows.length > 1 && (
+                        <button name="list_step" value="remove" className="btn-secondary-sm">
+                          Remove
+                        </button>
+                      )}
+                    </form>
+                  ) : (
+                    <div className="text-[11px] text-slate-300 font-mono break-all">{x.value}</div>
+                  )}
+                  <div className={'text-[11px] break-words ' + (x.source && !x.source.startsWith(UNREVIEWED) ? 'text-slate-500' : 'text-amber-400/80')}>
+                    {x.source || 'No source is recorded for this ' + l.spec.one + '.'}
+                  </div>
+                </div>
+              ))}
+              {!l.rows.length && <div className="text-[11px] text-amber-400/80">The list has no entry: the check cannot be run.</div>}
+              {canEdit && (
+                <form action={setModelRuleListEntry} className="flex flex-wrap items-center gap-2 pl-2">
+                  <input type="hidden" name="rule_id" value={r.id} />
+                  <input type="hidden" name="list" value={l.key} />
+                  <input name="value" type="text" required maxLength={l.spec.max} placeholder={l.spec.placeholder} aria-label={'New ' + l.spec.one} className="field !w-64 max-w-full !py-1 text-xs font-mono" />
+                  <button name="list_step" value="add" className="btn-secondary-sm">
+                    {l.spec.add}
+                  </button>
+                </form>
+              )}
+            </div>
+          ))}
           {texts.map((t) => (
             <div key={t.key} className="mt-2 space-y-1">
               <div className="text-[11px] text-slate-400">{t.label}: the words the check looks for. The check compares the model with these.</div>
@@ -235,10 +280,10 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               {!roles.length && <div className="text-[11px] text-amber-400/80">The list has no readable role: the check cannot be run.</div>}
             </div>
           )}
-          {(r.params_at || numbers.some((n) => n.value !== null) || (palette && palette.length > 0) || (folders && folders.length > 0) || texts.length > 0 || (roles && roles.length > 0)) && (
+          {(r.params_at || numbers.some((n) => n.value !== null) || (palette && palette.length > 0) || (folders && folders.length > 0) || listed || texts.length > 0 || (roles && roles.length > 0)) && (
             <div className="text-[11px] text-slate-600 break-words">
               {r.params_at
-                ? (palette ? 'colour set by ' : folders ? 'folder list changed by ' : roles ? 'role changed by ' : texts.length ? 'words changed by ' : 'number set by ') +
+                ? (palette ? 'colour set by ' : folders ? 'folder list changed by ' : listed ? 'list changed by ' : roles ? 'role changed by ' : texts.length ? 'words changed by ' : 'number set by ') +
                   who(r.params_by) +
                   ' · ' +
                   fmtDate(r.params_at, tz)
@@ -246,7 +291,9 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
                   ? 'starting palette; nobody has changed a colour'
                   : folders
                     ? 'starting list; nobody has changed a folder'
-                    : roles
+                    : listed
+                      ? 'starting list; nobody has changed an entry'
+                      : roles
                       ? 'starting roles; nobody has changed a role'
                       : texts.length
                         ? 'starting words; nobody has changed them'
@@ -334,7 +381,8 @@ export default async function ModelChecksPage({ searchParams }: { searchParams: 
           <p className="text-xs text-slate-500">
             Where a check carries a number, such as a tolerance, {isApprover ? 'you can change it here' : names + ' can change it here'}. Blueprint is
             told, and a work order compiled with the old number has to be compiled again. The same goes for the room colours on the palette
-            check, the texture folders and the material roles on the material checks, and the words of the site plan note.
+            check, the texture folders and the material roles on the material checks, and the words of the site plan note. It also goes for
+            the sheet list and the tag families on the sheet checks.
             {waitingForNumber > 0 &&
               ' ' +
                 waitingForNumber +

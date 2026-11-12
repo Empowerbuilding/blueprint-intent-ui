@@ -141,6 +141,80 @@ export function addedFolderSource(who: string, day: string): string {
   return 'Added on this page by ' + who + ' on ' + day + '. No standard document names this folder: it is on the check on their word.'
 }
 
+// A LIST OF TEXTS ON A CHECK. A check may carry a list of short texts under a name this table knows (sheet.set_matches_stage:
+// params.sheet_list, the sheet numbers a set of the draft stage is made of; sheet.tags_text_only: params.tag_families, the tag
+// families that count as text only), exactly as the checker (automation/checks_sheets.py) reads it from GET /api/model-rules;
+// the checker carries no entry of its own. params.<name>_source says, per entry, where it comes from. A note that starts
+// with UNREVIEWED marks an entry that is Blueprint's reading of a standard and not its literal words; the marking is kept
+// as for the roles below. An approver can change an entry, add one or remove one on the page; the last one cannot be
+// removed, because a check with no entry cannot be run. The texture folders keep their own rules above (a full Windows path).
+export type ListSpec = { title: string; one: string; save: string; add: string; placeholder: string; help: string; max: number }
+export const CHECK_LISTS: Record<string, ListSpec> = {
+  sheet_list: {
+    title:
+      'Sheet list: the sheet numbers a set of this draft stage is made of. A * at the end takes every number that starts the same way (A107.* takes A107.1 and A107.12). A ? at the end means the sheet may be missing. The check compares the model with this list.',
+    one: 'sheet',
+    save: 'Save sheet',
+    add: 'Add sheet',
+    placeholder: 'another sheet number, such as A108 or A108.*',
+    help: 'A sheet entry is a sheet number, with * at the end for every number that starts the same way and ? at the end when the sheet may be missing: A100, A107.* or A100.3?, up to 40 characters.',
+    max: 40,
+  },
+  tag_families: {
+    title: 'Tag families: the door and window tag families that count as text only. The check compares the tags in the model with this list.',
+    one: 'tag family',
+    save: 'Save family',
+    add: 'Add family',
+    placeholder: 'another tag family, by its name in Revit',
+    help: 'A tag family is its name as Revit shows it, 1 to 120 characters.',
+    max: 120,
+  },
+}
+export type ListRow = { value: string; source: string | null }
+export type CheckList = { key: string; spec: ListSpec; rows: ListRow[] }
+/** the lists of texts a check carries, each with its rows in the order the check lists them. [] = the check carries none */
+export function ruleLists(params: Record<string, unknown> | null | undefined): CheckList[] {
+  const p = params || {}
+  const out: CheckList[] = []
+  for (const key of Object.keys(CHECK_LISTS)) {
+    const v = p[key]
+    if (!Array.isArray(v)) continue
+    const src = p[key + '_source']
+    const sources = src && typeof src === 'object' && !Array.isArray(src) ? (src as Record<string, unknown>) : {}
+    out.push({
+      key,
+      spec: CHECK_LISTS[key],
+      rows: v
+        .filter((s): s is string => typeof s === 'string' && !!s.trim())
+        .map((value) => ({ value, source: typeof sources[value] === 'string' && (sources[value] as string).trim() ? (sources[value] as string) : null })),
+    })
+  }
+  return out
+}
+/** what a person typed -> one entry of that list, single spaces; anything the checker could not read -> null */
+export function listEntry(list: string, raw: string): string | null {
+  const spec = CHECK_LISTS[list]
+  if (!spec || /[\u0000-\u001f]/.test(raw)) return null
+  const t = raw.replace(/\s+/g, ' ').trim()
+  if (!t || t.length > spec.max) return null
+  if (list === 'sheet_list') {
+    // as the checker reads it: ? comes last, * before it, neither anywhere else, and a sheet number is left
+    let stem = t.endsWith('?') ? t.slice(0, -1).trim() : t
+    stem = stem.endsWith('*') ? stem.slice(0, -1).trim() : stem
+    if (!stem || /[*?]/.test(stem)) return null
+  }
+  return t
+}
+/** two entries the checker reads as the same text (it does not tell upper case from lower case, or one space from two) */
+export function sameEntry(a: string, b: string): boolean {
+  const n = (s: string) => s.replace(/\s+/g, ' ').trim().toUpperCase()
+  return n(a) === n(b)
+}
+/** the note an entry added on the page carries: no document named it, a person did */
+export function addedEntrySource(who: string, day: string, one: string): string {
+  return 'Added on this page by ' + who + ' on ' + day + '. No standard document names this ' + one + ': it is on the check on their word.'
+}
+
 // A TEXT ON A CHECK. A check may carry words in params under a name that ends in _text (site.conceptual_note_present:
 // params.note_text, the words the checker looks for on the site sheet). params.<name>_source says where the words come from
 // (the document, the section and its date). The checker reads the words from GET /api/model-rules and carries none of its
@@ -238,6 +312,36 @@ export function adoptRoles(params: Record<string, unknown> | null | undefined, w
     next[role] = after
   }
   return changed ? { ...params, roles_source: next } : null
+}
+/** params after an acceptance, for every kind of note a check carries (the roles, a list of texts, the words): every row still
+ *  marked as not reviewed says who adopted it as shown; the marking itself is never dropped. null = nothing to write */
+export function adoptUnreviewed(params: Record<string, unknown> | null | undefined, who: string, day: string): Record<string, unknown> | null {
+  if (!params) return null
+  let changed = false
+  const next: Record<string, unknown> = { ...params }
+  for (const [key, src] of Object.entries(params)) {
+    if (!key.endsWith('_source')) continue
+    if (typeof src === 'string') {
+      const after = adoptedRoleSource(src, who, day)
+      if (after !== src) {
+        next[key] = after
+        changed = true
+      }
+    } else if (src && typeof src === 'object' && !Array.isArray(src)) {
+      const rows: Record<string, unknown> = {}
+      let any = false
+      for (const [row, note] of Object.entries(src as Record<string, unknown>)) {
+        const after = typeof note === 'string' ? adoptedRoleSource(note, who, day) : note
+        if (after !== note) any = true
+        rows[row] = after
+      }
+      if (any) {
+        next[key] = rows
+        changed = true
+      }
+    }
+  }
+  return changed ? next : null
 }
 
 // the two Supabase clients (user session, service role) have different generics; only .from() is used
