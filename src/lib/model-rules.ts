@@ -141,6 +141,105 @@ export function addedFolderSource(who: string, day: string): string {
   return 'Added on this page by ' + who + ' on ' + day + '. No standard document names this folder: it is on the check on their word.'
 }
 
+// A TEXT ON A CHECK. A check may carry words in params under a name that ends in _text (site.conceptual_note_present:
+// params.note_text, the words the checker looks for on the site sheet). params.<name>_source says where the words come from
+// (the document, the section and its date). The checker reads the words from GET /api/model-rules and carries none of its
+// own. An approver can change the words on the page; no text is added or removed there.
+export type TextRow = { key: string; value: string; label: string; source: string | null }
+export function ruleTexts(params: Record<string, unknown> | null | undefined): TextRow[] {
+  const p = params || {}
+  return Object.entries(p)
+    .filter(([k, v]) => k.endsWith('_text') && typeof v === 'string' && !!v.trim())
+    .map(([key, v]) => {
+      const src = p[key + '_source']
+      return { key, value: v as string, label: numberLabel(key).label, source: typeof src === 'string' && src.trim() ? src : null }
+    })
+    .sort((a, b) => a.key.localeCompare(b.key))
+}
+/** what a person typed -> the words, single spaces, 1 to 200 characters; anything else -> null */
+export function checkText(raw: string): string | null {
+  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(raw)) return null
+  const t = raw.replace(/\s+/g, ' ').trim()
+  return t && t.length <= 200 ? t : null
+}
+/** the note changed words carry: who changed them and from what, and still where the first words came from */
+export function changedTextSource(prev: string | null, who: string, day: string, from: string, to: string): string {
+  const before = prev || 'no source was recorded'
+  const origin = before.includes(PALETTE_ORIGIN) ? before.slice(before.indexOf(PALETTE_ORIGIN) + PALETTE_ORIGIN.length) : before
+  return 'Changed on this page by ' + who + ' on ' + day + ', from "' + from + '" to "' + to + '". ' + PALETTE_ORIGIN + origin
+}
+
+// ROLES ON A CHECK. material.one_per_role carries the material roles in params.roles, exactly as the checker
+// (automation/checks_materials.py) reads it from GET /api/model-rules:
+//   { "<role>": { "parameters": ["<family parameter>", ...], "material": "<the one material>", "accents": ["<allowed accent>", ...] } }
+// params.roles_source says, per role, which line of the standard it comes from and what in it is Blueprint's reading. A row
+// that starts with UNREVIEWED holds values nobody has reviewed. The marking is never dropped: a row an approver changes says
+// who changed it and from what and keeps its first source; a row accepted as shown says who adopted it and when (Tony,
+// 2026-11-12 02:12Z). An approver can change a row on the page; no role is added or removed there.
+export const UNREVIEWED = "Blueprint's reading, not reviewed"
+export const ADOPTED = 'Accepted as shown by '
+export type RoleRow = { role: string; parameters: string[]; material: string; accents: string[]; source: string | null }
+const names = (x: unknown): string[] | null => (Array.isArray(x) && x.every((s) => typeof s === 'string' && !!s.trim()) ? (x as string[]).map((s) => s.trim()) : null)
+/** the role rows of a check, by role. null = the check carries no roles. A role the checker could not read is left out. */
+export function ruleRoles(params: Record<string, unknown> | null | undefined): RoleRow[] | null {
+  const p = (params || {}).roles
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return null
+  const src = (params || {}).roles_source
+  const sources = src && typeof src === 'object' && !Array.isArray(src) ? (src as Record<string, unknown>) : {}
+  const rows: RoleRow[] = []
+  for (const [role, d] of Object.entries(p as Record<string, unknown>)) {
+    if (!d || typeof d !== 'object' || Array.isArray(d)) continue
+    const o = d as Record<string, unknown>
+    const parameters = names(o.parameters)
+    const accents = o.accents === undefined || o.accents === null ? [] : names(o.accents)
+    if (!parameters || !parameters.length || !accents || typeof o.material !== 'string' || !o.material.trim()) continue
+    rows.push({ role, parameters, material: o.material.trim(), accents, source: typeof sources[role] === 'string' && (sources[role] as string).trim() ? (sources[role] as string) : null })
+  }
+  return rows.sort((a, b) => a.role.localeCompare(b.role))
+}
+/** what a person typed -> one name (a material or a family parameter), single spaces, 1 to 120 characters, no comma; anything else -> null */
+export function roleName(raw: string): string | null {
+  if (/[\u0000-\u001f,]/.test(raw)) return null
+  const t = raw.replace(/\s+/g, ' ').trim()
+  return t && t.length <= 120 ? t : null
+}
+/** "Cabinet Material, Door/Drawer Material" -> the names, in order, each once; a name that cannot be read -> null. Blank -> [] */
+export function roleNames(raw: string): string[] | null {
+  if (/[\u0000-\u001f]/.test(raw)) return null
+  const out: string[] = []
+  for (const part of raw.split(',')) {
+    if (!part.trim()) continue
+    const n = roleName(part)
+    if (!n) return null
+    if (!out.includes(n)) out.push(n)
+  }
+  return out
+}
+/** the note a changed role carries: who changed it and what, and still where its first values came from (with their marking) */
+export function changedRoleSource(prev: string | null, who: string, day: string, changes: string[]): string {
+  const before = prev || 'no source was recorded'
+  const origin = before.includes(PALETTE_ORIGIN) ? before.slice(before.indexOf(PALETTE_ORIGIN) + PALETTE_ORIGIN.length) : before
+  return 'Changed on this page by ' + who + ' on ' + day + ': ' + changes.join('; ') + '. ' + PALETTE_ORIGIN + origin
+}
+/** the note of a row nobody reviewed, once the check is accepted without a change to it: the marking stays, and says who adopted it */
+export function adoptedRoleSource(prev: string, who: string, day: string): string {
+  if (!prev.startsWith(UNREVIEWED) || prev.includes(ADOPTED)) return prev
+  return prev.replace(/\s+$/, '') + ' ' + ADOPTED + who + ' on ' + day + ', without a change to this row.'
+}
+/** params after an acceptance: every role row still marked as not reviewed says who adopted it. null = nothing to write */
+export function adoptRoles(params: Record<string, unknown> | null | undefined, who: string, day: string): Record<string, unknown> | null {
+  const src = (params || {}).roles_source
+  if (!params || !src || typeof src !== 'object' || Array.isArray(src)) return null
+  let changed = false
+  const next: Record<string, unknown> = {}
+  for (const [role, note] of Object.entries(src as Record<string, unknown>)) {
+    const after = typeof note === 'string' ? adoptedRoleSource(note, who, day) : note
+    if (after !== note) changed = true
+    next[role] = after
+  }
+  return changed ? { ...params, roles_source: next } : null
+}
+
 // the two Supabase clients (user session, service role) have different generics; only .from() is used
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = { from: (t: string) => any }

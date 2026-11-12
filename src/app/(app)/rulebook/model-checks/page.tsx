@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { decideModelRule, proposeModelRule, setModelRuleFolder, setModelRuleNumber, setModelRulePalette } from '@/app/model-rules-actions'
-import { CHECKER_LABEL, loadModelRules, missingNumbers, ruleFolders, ruleNumbers, rulePalette, type ModelRule } from '@/lib/model-rules'
+import { decideModelRule, proposeModelRule, setModelRuleFolder, setModelRuleNumber, setModelRulePalette, setModelRuleRole, setModelRuleText } from '@/app/model-rules-actions'
+import { CHECKER_LABEL, UNREVIEWED, loadModelRules, missingNumbers, ruleFolders, ruleNumbers, rulePalette, ruleRoles, ruleTexts, type ModelRule } from '@/lib/model-rules'
 import { approverNames, loadApprovers, whoLabel } from '@/lib/lessons'
 import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -23,6 +23,10 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
   const palette = rulePalette(r.params)
   // the texture folders the check carries (the shared library folders): one row per folder, each with a note that names where it comes from
   const folders = ruleFolders(r.params)
+  // the words the check carries (the words of a note the checker looks for), with a note that names where they come from
+  const texts = ruleTexts(r.params)
+  // the material roles the check carries: one row per role, each with a note that names its source and what in it nobody has reviewed
+  const roles = ruleRoles(r.params)
   return (
     <div id={'r-' + r.rule_key} className="px-4 py-3 scroll-mt-32">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
@@ -170,15 +174,83 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               )}
             </div>
           )}
-          {(r.params_at || numbers.some((n) => n.value !== null) || (palette && palette.length > 0) || (folders && folders.length > 0)) && (
+          {texts.map((t) => (
+            <div key={t.key} className="mt-2 space-y-1">
+              <div className="text-[11px] text-slate-400">{t.label}: the words the check looks for. The check compares the model with these.</div>
+              <div className="pl-2 border-l border-slate-800">
+                {canEdit ? (
+                  <form action={setModelRuleText} className="flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="rule_id" value={r.id} />
+                    <input type="hidden" name="param" value={t.key} />
+                    <input name="value" type="text" required maxLength={200} defaultValue={t.value} aria-label={t.label} className="field !w-[28rem] max-w-full !py-1 text-xs" />
+                    <button className="btn-secondary-sm">Save words</button>
+                  </form>
+                ) : (
+                  <div className="text-[11px] text-slate-300 break-words">“{t.value}”</div>
+                )}
+                <div className={'text-[11px] break-words ' + (t.source ? 'text-slate-500' : 'text-amber-400/80')}>
+                  {t.source || 'No source is recorded for these words.'}
+                </div>
+              </div>
+            </div>
+          ))}
+          {roles && (
+            <div className="mt-2 space-y-2">
+              <div className="text-[11px] text-slate-400">
+                Roles: for each role, the family parameters that carry it, its one material, and the accents allowed beside it. Several names are
+                separated by commas. The check compares the model with these.
+              </div>
+              {roles.map((x) => (
+                <div key={x.role} className="pl-2 border-l border-slate-800">
+                  {canEdit ? (
+                    <form action={setModelRuleRole} className="grid gap-1 sm:grid-cols-[7rem_1fr] items-center">
+                      <input type="hidden" name="rule_id" value={r.id} />
+                      <input type="hidden" name="role" value={x.role} />
+                      <span className="text-[11px] text-slate-300 sm:col-span-2">{x.role}</span>
+                      <label htmlFor={'rm-' + r.id + '-' + x.role} className="text-[11px] text-slate-400">
+                        Material
+                      </label>
+                      <input id={'rm-' + r.id + '-' + x.role} name="material" type="text" required defaultValue={x.material} className="field max-w-full !py-1 text-xs" />
+                      <label htmlFor={'rp-' + r.id + '-' + x.role} className="text-[11px] text-slate-400">
+                        Parameters
+                      </label>
+                      <input id={'rp-' + r.id + '-' + x.role} name="parameters" type="text" required defaultValue={x.parameters.join(', ')} className="field max-w-full !py-1 text-xs" />
+                      <label htmlFor={'ra-' + r.id + '-' + x.role} className="text-[11px] text-slate-400">
+                        Accents
+                      </label>
+                      <input id={'ra-' + r.id + '-' + x.role} name="accents" type="text" defaultValue={x.accents.join(', ')} placeholder="none" className="field max-w-full !py-1 text-xs" />
+                      <button className="btn-secondary-sm justify-self-start sm:col-start-2">Save role</button>
+                    </form>
+                  ) : (
+                    <div className="text-[11px] text-slate-300 break-words">
+                      {x.role}: {x.material} in {x.parameters.join(', ')}
+                      {x.accents.length ? ' · accents allowed: ' + x.accents.join(', ') : ' · no accent allowed'}
+                    </div>
+                  )}
+                  <div className={'text-[11px] break-words ' + (x.source && !x.source.startsWith(UNREVIEWED) ? 'text-slate-500' : 'text-amber-400/80')}>
+                    {x.source || 'No source is recorded for this role.'}
+                  </div>
+                </div>
+              ))}
+              {!roles.length && <div className="text-[11px] text-amber-400/80">The list has no readable role: the check cannot be run.</div>}
+            </div>
+          )}
+          {(r.params_at || numbers.some((n) => n.value !== null) || (palette && palette.length > 0) || (folders && folders.length > 0) || texts.length > 0 || (roles && roles.length > 0)) && (
             <div className="text-[11px] text-slate-600 break-words">
               {r.params_at
-                ? (palette ? 'colour set by ' : folders ? 'folder list changed by ' : 'number set by ') + who(r.params_by) + ' · ' + fmtDate(r.params_at, tz)
+                ? (palette ? 'colour set by ' : folders ? 'folder list changed by ' : roles ? 'role changed by ' : texts.length ? 'words changed by ' : 'number set by ') +
+                  who(r.params_by) +
+                  ' · ' +
+                  fmtDate(r.params_at, tz)
                 : palette
                   ? 'starting palette; nobody has changed a colour'
                   : folders
                     ? 'starting list; nobody has changed a folder'
-                    : 'starting value; nobody has changed the number'}
+                    : roles
+                      ? 'starting roles; nobody has changed a role'
+                      : texts.length
+                        ? 'starting words; nobody has changed them'
+                        : 'starting value; nobody has changed the number'}
             </div>
           )}
           {r.decided_at && (
@@ -262,7 +334,7 @@ export default async function ModelChecksPage({ searchParams }: { searchParams: 
           <p className="text-xs text-slate-500">
             Where a check carries a number, such as a tolerance, {isApprover ? 'you can change it here' : names + ' can change it here'}. Blueprint is
             told, and a work order compiled with the old number has to be compiled again. The same goes for the room colours on the palette
-            check and the texture folders on the material check.
+            check, the texture folders and the material roles on the material checks, and the words of the site plan note.
             {waitingForNumber > 0 &&
               ' ' +
                 waitingForNumber +

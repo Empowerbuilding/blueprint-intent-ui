@@ -3,7 +3,26 @@
 import { createClient } from '@/lib/supabase/server'
 import { approverNames, loadApprovers } from '@/lib/lessons'
 import { notifyBlueprint } from '@/lib/notify'
-import { addedFolderSource, changedFolderSource, changedPaletteSource, colourChannel, folderPath, missingNumbers, numberLabel, ruleFolders, rulePalette, sameFolder } from '@/lib/model-rules'
+import {
+  addedFolderSource,
+  adoptRoles,
+  changedFolderSource,
+  changedPaletteSource,
+  changedRoleSource,
+  changedTextSource,
+  checkText,
+  colourChannel,
+  folderPath,
+  missingNumbers,
+  numberLabel,
+  roleName,
+  roleNames,
+  ruleFolders,
+  rulePalette,
+  ruleRoles,
+  ruleTexts,
+  sameFolder,
+} from '@/lib/model-rules'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -76,11 +95,23 @@ export async function decideModelRule(formData: FormData) {
     )
   }
   const now = new Date().toISOString()
+  // a row of roles that is still marked as not reviewed keeps its marking through an acceptance and says who adopted it as shown
+  const adopted = step.to === 'accepted' ? adoptRoles(row.params as Record<string, unknown> | null, user.email || user.id, now.slice(0, 10)) : null
   const { data: changed, error } = await supabase
     .from('intent_model_rules')
-    .update({ status: step.to, version: (row.version || 1) + 1, decided_by: user.id, decided_by_email: user.email || null, decided_at: now, decision_note: note || null, updated_at: now })
+    .update({
+      status: step.to,
+      version: (row.version || 1) + 1,
+      decided_by: user.id,
+      decided_by_email: user.email || null,
+      decided_at: now,
+      decision_note: note || null,
+      updated_at: now,
+      ...(adopted ? { params: adopted } : {}),
+    })
     .eq('id', id)
     .eq('status', row.status)
+    .eq('version', row.version)
     .select('id')
   if (error || !changed || changed.length === 0) {
     redirect(back({ err: 'The change was not saved' + (error ? ': ' + error.message : ' (the database refused it).'), anchor }))
@@ -294,4 +325,121 @@ export async function setModelRuleFolder(formData: FormData) {
   revalidatePath(PAGE)
   revalidatePath('/blueprint')
   redirect(back({ saved: row.rule_key + ': folder ' + (step === 'change' ? 'changed to ' + value : step === 'add' ? 'added, ' + value : 'removed, ' + (old as { folder: string }).folder), anchor }))
+}
+
+// The words on a check (params.<name>_text: what the checker looks for, such as the words of the site plan note). Only an
+// approver changes them, on a check that is proposed or accepted; an accepted check stays accepted, the version goes up. No
+// text is added here: only one the check already carries can be changed. Its note (params.<name>_text_source) then says who
+// changed it and from what, and keeps naming where the first words came from.
+export async function setModelRuleText(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const approvers = await loadApprovers(supabase)
+  if (!approvers.some((a) => a.user_id === user.id)) {
+    redirect(back({ err: 'Only ' + approverNames(approvers) + ' can change the words on a check. Nothing was changed.' }))
+  }
+  const id = String(formData.get('rule_id') || '')
+  const key = String(formData.get('param') || '')
+  if (!id || !key) redirect(back({ err: 'Nothing was changed.' }))
+  const { data: row } = await supabase.from('intent_model_rules').select('id, rule_key, description, status, version, params').eq('id', id).single()
+  if (!row) redirect(back({ err: 'That check no longer exists. Nothing was changed.' }))
+  const anchor = 'r-' + row.rule_key
+  if (row.status === 'retired') redirect(back({ err: '"' + row.rule_key + '" is retired. Put it back as proposed first. Nothing was changed.', anchor }))
+  const params = (row.params || {}) as Record<string, unknown>
+  const old = ruleTexts(params).find((t) => t.key === key)
+  if (!old) redirect(back({ err: '"' + row.rule_key + '" carries no words called "' + key + '". Nothing was changed.', anchor }))
+  const value = checkText(String(formData.get('value') ?? ''))
+  if (!value) redirect(back({ err: 'Type the words, 200 characters at most. Nothing was changed.', anchor }))
+  if (value === old.value) redirect(back({ err: '"' + row.rule_key + '" already says "' + value + '". Nothing was changed.', anchor }))
+  const now = new Date().toISOString()
+  const who = user.email || user.id
+  const next: Record<string, unknown> = { ...params, [key]: value, [key + '_source']: changedTextSource(old.source, who, now.slice(0, 10), old.value, value) }
+  if ('initial' in next) next.initial = false // they are no longer the starting words
+  const { data: changed, error } = await supabase
+    .from('intent_model_rules')
+    .update({ params: next, version: (row.version || 1) + 1, params_by: who, params_at: now, updated_at: now })
+    .eq('id', id)
+    .eq('version', row.version)
+    .select('id')
+  if (error || !changed || changed.length === 0) {
+    redirect(back({ err: 'The words were not saved' + (error ? ': ' + error.message : ' (the check changed in the meantime, or the database refused it).'), anchor }))
+  }
+  await notifyBlueprint(
+    '🧪 **Model check words changed: `' + row.rule_key + '`** — ' + old.label.toLowerCase() + ' "' + old.value + '" → "' + value + '" (the check is ' + row.status + '). By ' + who +
+      '.\nThe checker now looks for the new words: GET /api/model-rules. A work order compiled with the old version is stale. This is a notice, not a go.',
+  )
+  revalidatePath(PAGE)
+  revalidatePath('/blueprint')
+  redirect(back({ saved: row.rule_key + ': ' + old.label.toLowerCase() + ' "' + value + '"', anchor }))
+}
+
+// A role on a check (params.roles: the family parameters that carry the role, its one material, the accents allowed beside
+// it). Only an approver changes one, on a check that is proposed or accepted; the check keeps its status, the version goes
+// up. No role is added or removed here. The role's note (params.roles_source) then says who changed it and what, and keeps
+// its first source with its marking: a value that was Blueprint's reading stays named as such (Tony, 2026-11-12 02:12Z).
+export async function setModelRuleRole(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const approvers = await loadApprovers(supabase)
+  if (!approvers.some((a) => a.user_id === user.id)) {
+    redirect(back({ err: 'Only ' + approverNames(approvers) + ' can change a role on a check. Nothing was changed.' }))
+  }
+  const id = String(formData.get('rule_id') || '')
+  const role = String(formData.get('role') || '')
+  if (!id || !role) redirect(back({ err: 'Nothing was changed.' }))
+  const { data: row } = await supabase.from('intent_model_rules').select('id, rule_key, description, status, version, params').eq('id', id).single()
+  if (!row) redirect(back({ err: 'That check no longer exists. Nothing was changed.' }))
+  const anchor = 'r-' + row.rule_key
+  if (row.status === 'retired') redirect(back({ err: '"' + row.rule_key + '" is retired. Put it back as proposed first. Nothing was changed.', anchor }))
+  const params = (row.params || {}) as Record<string, unknown>
+  const rows = ruleRoles(params)
+  if (!rows) redirect(back({ err: '"' + row.rule_key + '" carries no roles. Nothing was changed.', anchor }))
+  const old = rows.find((x) => x.role === role)
+  if (!old) redirect(back({ err: '"' + row.rule_key + '" carries no role called "' + role + '". Nothing was changed.', anchor }))
+  const material = roleName(String(formData.get('material') ?? ''))
+  const parameters = roleNames(String(formData.get('parameters') ?? ''))
+  const accents = roleNames(String(formData.get('accents') ?? ''))
+  if (!material) redirect(back({ err: 'A role has one material: type its name as it is written in Revit, without a comma. Nothing was changed.', anchor }))
+  if (!parameters || !parameters.length) {
+    redirect(back({ err: 'A role needs at least one family parameter, and several are separated by commas. Nothing was changed.', anchor }))
+  }
+  if (!accents) redirect(back({ err: 'The accents are material names separated by commas, or nothing. Nothing was changed.', anchor }))
+  if (accents.includes(material)) redirect(back({ err: '"' + material + '" is the material of the role and cannot also be one of its accents. Nothing was changed.', anchor }))
+  const list = (a: string[]) => (a.length ? a.join(', ') : 'none')
+  const changes: string[] = []
+  if (material !== old.material) changes.push('material from "' + old.material + '" to "' + material + '"')
+  if (list(parameters) !== list(old.parameters)) changes.push('parameters from ' + list(old.parameters) + ' to ' + list(parameters))
+  if (list(accents) !== list(old.accents)) changes.push('accents from ' + list(old.accents) + ' to ' + list(accents))
+  if (!changes.length) redirect(back({ err: '"' + row.rule_key + '" already says that for ' + role + '. Nothing was changed.', anchor }))
+  const now = new Date().toISOString()
+  const who = user.email || user.id
+  const sources = params.roles_source && typeof params.roles_source === 'object' && !Array.isArray(params.roles_source) ? (params.roles_source as Record<string, unknown>) : {}
+  const next: Record<string, unknown> = {
+    ...params,
+    roles: { ...(params.roles as Record<string, unknown>), [role]: { parameters, material, accents } },
+    roles_source: { ...sources, [role]: changedRoleSource(old.source, who, now.slice(0, 10), changes) },
+  }
+  if ('initial' in next) next.initial = false // it is no longer the starting list
+  const { data: changed, error } = await supabase
+    .from('intent_model_rules')
+    .update({ params: next, version: (row.version || 1) + 1, params_by: who, params_at: now, updated_at: now })
+    .eq('id', id)
+    .eq('version', row.version)
+    .select('id')
+  if (error || !changed || changed.length === 0) {
+    redirect(back({ err: 'The role was not saved' + (error ? ': ' + error.message : ' (the check changed in the meantime, or the database refused it).'), anchor }))
+  }
+  await notifyBlueprint(
+    '🧪 **Model check role changed: `' + row.rule_key + '`** — ' + role + ': ' + changes.join('; ') + ' (the check is ' + row.status + '). By ' + who +
+      '.\nThe material check now compares with the new role: GET /api/model-rules. A work order compiled with the old version is stale. This is a notice, not a go.',
+  )
+  revalidatePath(PAGE)
+  revalidatePath('/blueprint')
+  redirect(back({ saved: row.rule_key + ': ' + role + ', ' + changes.join('; '), anchor }))
 }

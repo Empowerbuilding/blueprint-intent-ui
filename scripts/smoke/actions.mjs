@@ -835,6 +835,76 @@ ok('number with no value: (the check is retired again for the rest of the run)',
 r = await post(MC, { ...sinkNum, param: 'rim_gap_max_in', rule_id: ruleOf(await getDb(), 'casework.no_opening_intersection').id }, { value: '2' })
 ok('number with no value: a number the check does not carry at all still cannot be added', r.location.includes('carries no number called'), JSON.stringify(r))
 
+// the words on a check (flag 80, A95): the words the site note check looks for, with a note naming the graphic standard; only Mitch or
+// Michael change them, the check keeps its status, the note then says who changed them and from what
+const noteRule = ruleOf(await getDb(), 'site.conceptual_note_present')
+html = await pageAs(MC, asBlueprint)
+ok('words, non-approver: sees the words and their source, has no field', seen(html).includes('“CONCEPTUAL SITE PLAN ONLY”') && seen(html).includes('Graphic standard: standards/D2_GRAPHIC_STANDARD.md, section') && !html.includes('Save words'), '')
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const noteForm = form(html, (f) => f.includes('name="param"') && f.includes('value="note_text"') && f.includes('value="' + noteRule.id + '"'), 'words form (site note)')
+ok('words, approver: one field holding the words', /name="value"[^>]*value="CONCEPTUAL SITE PLAN ONLY"|value="CONCEPTUAL SITE PLAN ONLY"[^>]*name="value"/.test(html) && html.includes('starting words; nobody has changed them'), JSON.stringify(noteForm))
+before = await getDb()
+r = await postAs(MC, noteForm, { value: 'CONCEPT ONLY' }, asBlueprint)
+ok('words, non-approver posts words: refused, nothing changed', r.location.includes('Only Mitch or Michael can change the words on a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+r = await post(MC, noteForm, { value: '   ' })
+r2 = await post(MC, noteForm, { value: 'x'.repeat(201) })
+ok('words: blank and over-long words are refused, nothing changed', r.location.includes('Type the words, 200 characters at most') && r2.location.includes('Type the words, 200 characters at most') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2]))
+r = await post(MC, noteForm, { value: ' CONCEPTUAL  SITE PLAN ONLY ' })
+r2 = await post(MC, { ...noteForm, param: 'tolerance_text' }, { value: 'x' })
+ok('words: the same words change nothing; words the check does not carry cannot be added', r.location.includes('already says "CONCEPTUAL SITE PLAN ONLY"') && r2.location.includes('carries no words called "tolerance_text"') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2]))
+r = await post(MC, noteForm, { value: 'CONCEPTUAL SITE PLAN' })
+db = await getDb()
+row = ruleOf(db, 'site.conceptual_note_present')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('words, approver changes them: saved, version up, status kept, the note says who and from what and still names the standard, Blueprint told', r.location.includes('saved=site.conceptual_note_present: note text "CONCEPTUAL SITE PLAN"') && row.params.note_text === 'CONCEPTUAL SITE PLAN' && row.params.initial === false && row.version === noteRule.version + 1 && row.status === noteRule.status && row.params_by === 'mitch@barnhaus.test' && row.params.note_text_source.startsWith('Changed on this page by mitch@barnhaus.test on ') && row.params.note_text_source.includes('from "CONCEPTUAL SITE PLAN ONLY" to "CONCEPTUAL SITE PLAN". Source of the first value: Graphic standard: standards/D2_GRAPHIC_STANDARD.md') && lastMsg.includes('Model check words changed: \`site.conceptual_note_present\`') && lastMsg.includes('not a go'), JSON.stringify([r, row, lastMsg]))
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+mr = (await res.json()).rules.find((x) => x.rule_key === 'site.conceptual_note_present')
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('api model-rules + page: the words are what the checker reads, and the page says who changed them', mr.params.note_text === 'CONCEPTUAL SITE PLAN' && mr.version === row.version && html.includes('words changed by Mitch'), JSON.stringify(mr))
+
+// the material roles on a check (Mitch 02:08Z, A96): Blueprint's reading of the standard, every row marked as not reviewed; the check is
+// proposed. Only Mitch or Michael change a row; a changed row says who and what and keeps its first source with the marking; a row
+// accepted as shown keeps the marking and says who adopted it
+const roleRule = ruleOf(await getDb(), 'material.one_per_role')
+const marks = (h) => (seen(h).match(/Blueprint&#x27;s reading, not reviewed|Blueprint's reading, not reviewed/g) || []).length
+html = await pageAs(MC, asBlueprint)
+ok('roles, non-approver: sees the three roles with their marking and why the check is proposed, has no field', seen(html).includes('Casework wood: Cabinets in Cabinet Material, Door/Drawer Material') && seen(html).includes('accents allowed: Cabinets - White Oak, Cabinets - Navy') && seen(html).includes('Hardware: Metal - Black Matte in Handle Material') && seen(html).includes('no accent allowed') && marks(html) >= 3 && seen(html).includes('Back to proposed on 2026-11-12 (Mitch at 02:08Z)') && !html.includes('Save role'), String(marks(html)))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const roleForm = form(html, (f) => f.includes('name="role"') && f.includes('value="Casework wood"') && f.includes('value="' + roleRule.id + '"'), 'role form (Casework wood)')
+const hardForm = form(html, (f) => f.includes('name="role"') && f.includes('value="Hardware"') && f.includes('value="' + roleRule.id + '"'), 'role form (Hardware)')
+const roleDecide = form(html, (f) => f.includes('name="decision"') && f.includes('value="' + roleRule.id + '"'), 'decide form (material.one_per_role)')
+ok('roles, approver: one form per role with its material, parameters and accents', (html.match(/name="role"/g) || []).length === 3 && roleForm.role === 'Casework wood' && hardForm.role === 'Hardware' && html.includes('starting roles; nobody has changed a role'), JSON.stringify([roleForm, hardForm]))
+const CW = { material: 'Cabinets', parameters: 'Cabinet Material, Door/Drawer Material', accents: 'Cabinets - White Oak, Cabinets - Navy' }
+before = await getDb()
+r = await postAs(MC, roleForm, { ...CW, material: 'Oak' }, asBlueprint)
+ok('roles, non-approver posts a role: refused, nothing changed', r.location.includes('Only Mitch or Michael can change a role on a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+let badRoles = []
+for (const [bad, want] of [[{ material: '' }, 'A role has one material'], [{ material: 'Oak, Walnut' }, 'A role has one material'], [{ parameters: ' , ' }, 'A role needs at least one family parameter'], [{ accents: 'Cabinets' }, 'cannot also be one of its accents']]) {
+  r = await post(MC, roleForm, { ...CW, ...bad })
+  if (!r.location.includes(want)) badRoles.push([bad, r.location])
+}
+ok('roles: no material, two materials, no parameter and the material among its own accents are refused, nothing changed', badRoles.length === 0 && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(badRoles))
+r = await post(MC, roleForm, { ...CW, parameters: ' Cabinet Material ,Door/Drawer Material,' })
+r2 = await post(MC, { ...roleForm, role: 'Frames' }, CW)
+const r3r = await post(MC, { ...roleForm, rule_id: noteRule.id }, CW)
+ok('roles: the same values change nothing; a role the check does not carry cannot be added; a check without roles refuses one', r.location.includes('already says that for Casework wood') && r2.location.includes('carries no role called "Frames"') && r3r.location.includes('carries no roles') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2, r3r]))
+r = await post(MC, roleForm, { ...CW, material: 'Cabinets - White Oak', accents: 'Cabinets - Navy' })
+db = await getDb()
+row = ruleOf(db, 'material.one_per_role')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('roles, approver changes a role: saved, version up, still proposed, the other rows untouched, the note says who and what and keeps the marking of the first value, Blueprint told', r.location.includes('saved=material.one_per_role: Casework wood, material from "Cabinets" to "Cabinets - White Oak"; accents from Cabinets - White Oak, Cabinets - Navy to Cabinets - Navy') && same(row.params.roles['Casework wood'], { parameters: ['Cabinet Material', 'Door/Drawer Material'], material: 'Cabinets - White Oak', accents: ['Cabinets - Navy'] }) && same(row.params.roles.Hardware, roleRule.params.roles.Hardware) && same(row.params.roles.Countertops, roleRule.params.roles.Countertops) && row.params.roles_source.Hardware === roleRule.params.roles_source.Hardware && row.params.roles_source['Casework wood'].startsWith('Changed on this page by mitch@barnhaus.test on ') && row.params.roles_source['Casework wood'].includes("Source of the first value: Blueprint's reading, not reviewed. From standards/DESIGN_BUILD_STANDARD.md") && row.params.initial === false && row.version === roleRule.version + 1 && row.status === 'proposed' && !row.decided_at && row.params_by === 'mitch@barnhaus.test' && lastMsg.includes('Model check role changed: \`material.one_per_role\`') && lastMsg.includes('not a go'), JSON.stringify([r, row, lastMsg]))
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+mr = (await res.json()).rules.find((x) => x.rule_key === 'material.one_per_role')
+ok('api model-rules: the roles are what the checker reads, with the note of each role', same(mr.params.roles, row.params.roles) && same(Object.keys(mr.params.roles_source).sort(), ['Casework wood', 'Countertops', 'Hardware']) && mr.version === row.version && mr.status === 'proposed', JSON.stringify(mr))
+r = await post(MC, roleDecide, { decision: 'accept', note: 'Roles as shown' })
+row = ruleOf(await getDb(), 'material.one_per_role')
+ok('roles, approver accepts the check: the two rows nobody changed keep their marking and say who adopted them; the changed row is left as it was', r.location.includes('saved=material.one_per_role accepted') && row.status === 'accepted' && row.decided_by_email === 'mitch@barnhaus.test' && row.params.roles_source.Hardware.startsWith("Blueprint's reading, not reviewed.") && row.params.roles_source.Hardware.includes('Accepted as shown by mitch@barnhaus.test on ') && row.params.roles_source.Countertops.includes('Accepted as shown by mitch@barnhaus.test on ') && row.params.roles_source['Casework wood'].startsWith('Changed on this page by ') && !row.params.roles_source['Casework wood'].includes('Accepted as shown') && same(row.params.roles, mr.params.roles), JSON.stringify([r, row]))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('roles: the page shows the adoption and who changed a role', seen(html).includes('Accepted as shown by mitch@barnhaus.test on ') && html.includes('role changed by Mitch'), '')
+// put it away again so the contract checks further down see the same accepted checks as before
+r = await post(MC, roleDecide, { decision: 'retire', note: 'smoke: put away' })
+ok('roles: (the check is retired again for the rest of the run)', ruleOf(await getDb(), 'material.one_per_role').status === 'retired', JSON.stringify(r))
+
 // kinds of work: what a kind must be pinned to before it is built. Only Mitch or Michael change it; Blueprint reads it.
 const KP = '/rulebook/kinds'
 html = await pageAs(KP, asBlueprint)
