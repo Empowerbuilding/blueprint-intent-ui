@@ -829,6 +829,12 @@
    "description": "A tall or upper cabinet is one element, never two boxes stacked.",
    "source": "Mitch 2026-11-07 07:33Z in blueprint-mitch; runbook section 3 gate 4; proposed 2026-11-12 (pre-pilot build, spec A114)",
    "kinds": []
+  },
+  {
+   "rule_key": "wall.no_exterior_finish_inside",
+   "description": "No wall shows an exterior finish to a room inside the house.",
+   "source": "Mitch 2026-11-09 04:48Z in blueprint-mitch; design-build standard section 8; proposed 2026-11-12 (pre-pilot build, spec A117)",
+   "kinds": []
   }
  ]
 }

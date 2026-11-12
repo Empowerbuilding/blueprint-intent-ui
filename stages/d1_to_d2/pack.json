@@ -430,11 +430,13 @@
     "floor.no_uncovered_slab",
     "ceiling.edge_z_measured",
     "model.warnings_not_up",
-    "soffit.outdoor_roofs_covered"
+    "soffit.outdoor_roofs_covered",
+    "wall.no_exterior_finish_inside"
    ],
    "qa_scripts": [
     "checks_floors",
     "checks_soffits",
+    "checks_walls",
     "qa-model"
    ],
    "library_refs": [],

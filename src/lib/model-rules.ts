@@ -148,6 +148,8 @@ export function addedFolderSource(who: string, day: string): string {
   return 'Added on this page by ' + who + ' on ' + day + '. No standard document names this folder: it is on the check on their word.'
 }
 
+// (2026-11-12, spec A117: wall.no_exterior_finish_inside carries params.exterior_finish_words and params.outside_departments,
+// read by automation/checks_walls.py.)
 // A LIST OF TEXTS ON A CHECK. A check may carry a list of short texts under a name this table knows (sheet.set_matches_stage:
 // params.sheet_list, the sheet numbers a set of the draft stage is made of; sheet.tags_text_only: params.tag_families, the tag
 // families that count as text only), exactly as the checker (automation/checks_sheets.py) reads it from GET /api/model-rules;
@@ -175,6 +177,26 @@ export const CHECK_LISTS: Record<string, ListSpec> = {
     add: 'Add name',
     placeholder: 'another word or words found in the name of a countertop',
     help: 'A countertop name is a word or a few words found in the name of the family, the type or the element, 2 to 60 characters.',
+    max: 60,
+  },
+  exterior_finish_words: {
+    title:
+      'Exterior finish words: words that mark an exterior finish. A wall type whose name holds one of them as a whole word, or that has a layer outside its core whose material name holds one, shows an exterior finish for this check, whatever the case of the letters.',
+    one: 'word',
+    save: 'Save word',
+    add: 'Add word',
+    placeholder: 'another word found in the name of an exterior wall type or of an exterior finish material',
+    help: 'An exterior finish word is a word or a few words found in the name of a wall type or of a material, 2 to 60 characters.',
+    max: 60,
+  },
+  outside_departments: {
+    title:
+      'Outside Departments: the Departments of the rooms an exterior finish may face (outdoor rooms, the garage). A room of any other Department is inside the house for this check.',
+    one: 'Department',
+    save: 'Save Department',
+    add: 'Add Department',
+    placeholder: 'another Department, as it is written on the rooms in Revit',
+    help: 'A Department is its name as the rooms in Revit carry it, 1 to 60 characters.',
     max: 60,
   },
   tag_families: {
@@ -221,7 +243,7 @@ export function listEntry(list: string, raw: string): string | null {
     if (!stem || /[*?]/.test(stem)) return null
   }
   // one letter would be found in nearly every name: a countertop name is at least two characters
-  if (list === 'counter_names' && t.length < 2) return null
+  if ((list === 'counter_names' || list === 'exterior_finish_words') && t.length < 2) return null
   return t
 }
 /** two entries the checker reads as the same text (it does not tell upper case from lower case, or one space from two) */
