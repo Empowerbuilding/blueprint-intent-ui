@@ -132,13 +132,18 @@ export async function POST(request: NextRequest) {
     .eq('outline_type', outlineType)
     .eq('label', label)
     .in('status', ['pushed', 'approved', 'rejected'])
+  // what this push could NOT store. The outline row itself failing is a 500 below; these are the
+  // writes around it, which used to fail without a word (Tony 2026-11-12: same guard as the board push)
+  const notStored: { what: string; reason: string }[] = []
+  const said = (e: { message?: string } | null | undefined) => (e && e.message ? e.message : 'the database gave no reason')
   let replacedId: string | null = null
   if (previous?.length) {
     replacedId = previous[0]!.id
-    await supabase
+    const { error: supErr } = await supabase
       .from('intent_outlines')
       .update({ status: 'superseded' })
       .in('id', previous.map((o: { id: string }) => o.id))
+    if (supErr) notStored.push({ what: 'earlier outlines not superseded', reason: said(supErr) })
   }
 
   // ---- insert ----
@@ -161,7 +166,8 @@ export async function POST(request: NextRequest) {
 
   // ---- new 2D invalidates a prior 2d_approved room state ----
   if (room.review_state === '2d_approved') {
-    await supabase.from('intent_rooms').update({ review_state: 'confirmed' }).eq('id', room.id)
+    const { error: resetErr } = await supabase.from('intent_rooms').update({ review_state: 'confirmed' }).eq('id', room.id)
+    if (resetErr) notStored.push({ what: 'room not set back from 2D approved', reason: said(resetErr) })
   }
 
   // ---- MATH GATE (rulebook) ----
@@ -185,7 +191,24 @@ export async function POST(request: NextRequest) {
     checks.vision = { ran_at: new Date().toISOString(), model: 'glm-4.6v', status: 'running' }
     visionNote = 'running (background — lands on the outline card when done; poll GET /api/outlines or re-run via /api/verify-outline)'
   }
-  await supabase.from('intent_outlines').update({ checks }).eq('id', outline.id)
+  const { error: checksErr } = await supabase.from('intent_outlines').update({ checks }).eq('id', outline.id)
+  if (checksErr) notStored.push({ what: 'math result on the outline', reason: said(checksErr) })
+
+  // ---- read the row back: what the app holds, for the sender to compare with what it sent ----
+  const sentElements = Array.isArray((geometry as { elements?: unknown }).elements) ? ((geometry as { elements: unknown[] }).elements).length : 0
+  const { data: kept, error: keptErr } = await supabase
+    .from('intent_outlines')
+    .select('id, status, outline_type, label, geometry, checks')
+    .eq('id', outline.id)
+    .maybeSingle()
+  const keptGeometry = (kept?.geometry || {}) as { elements?: unknown }
+  const keptElements = Array.isArray(keptGeometry.elements) ? keptGeometry.elements.length : 0
+  const mathSaved = !!(kept?.checks && (kept.checks as { math?: unknown }).math)
+  if (keptErr || !kept) notStored.push({ what: 'outline could not be read back', reason: said(keptErr) })
+  else {
+    if (keptElements !== sentElements) notStored.push({ what: 'elements', reason: 'the outline holds ' + keptElements + ' elements, ' + sentElements + ' were sent' })
+    if (!mathSaved && !checksErr) notStored.push({ what: 'math result on the outline', reason: 'the saved outline carries no math result' })
+  }
 
   // ---- VISION GATE (GLM-4.6v vs confirmed decisions) — background ----
   // ---- large images take 1-2+ min; push returns fast with math results ----
@@ -205,8 +228,13 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     outline_id: outline.id,
+    project_id: projectId,
     room: `${room.section_code} ${room.name}`,
     superseded: previous?.length || 0,
+    // complete: false when something this push should have written is not in the app; not_stored says what and why
+    complete: notStored.length === 0,
+    not_stored: notStored,
+    stored: { elements: keptElements, sent_elements: sentElements, math_saved: mathSaved, status: kept?.status || null },
     math: { passed: math.passed, fails: mathFails, results: math.results },
     vision: visionNote,
     storage_path: storagePath,

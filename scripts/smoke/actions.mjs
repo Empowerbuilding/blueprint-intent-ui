@@ -1227,6 +1227,18 @@ await setMode({ refuseInsert: '' })
 db = await getDb()
 ok('push: a refused open question, a refused redline note and a refused room are each reported with what the database said; a refused room takes its lines with it', g.body.complete === false && g.body.not_inserted.open_questions === 1 && g.body.not_inserted.first[0].what === 'open question' && g.body.not_inserted.first[0].row === 'Second sink?' && g.body.not_inserted.first[0].reason.includes('check constraint') && g2.body.complete === false && g2.body.not_inserted.redline_notes === 1 && same(g2.body.not_inserted.redline_notes_failed, [{ room: '301', index: 0 }]) && g3.body.ok === true && g3.body.rooms === 0 && same([g3.body.not_inserted.rooms, g3.body.not_inserted.decisions, g3.body.not_inserted.open_questions, g3.body.not_inserted.redline_notes], [1, 1, 1, 1]) && g3.body.not_inserted.first.length === 1 && g3.body.not_inserted.first[0].reason.startsWith('the room was not stored: ') && ofG('intent_rooms').length === 1 && ofG('intent_open_questions').length === 1 && ofG('intent_redline_notes').length === 1, JSON.stringify([g.body, g2.body, g3.body]))
 
+// 2D push: the reply says what the app holds after the push (Tony 2026-11-12: the guard the board push got). The picture is
+// named by its storage path, so nothing is uploaded; the vision check runs in the background and is not judged here.
+const oGeom = { units: 'in', extent: { w: 120, h: 96 }, elements: [{ id: 'a', kind: 'counter', x: 0, y: 0, w: 60, h: 24 }, { id: 'b', kind: 'walkway', x: 0, y: 30, w: 60, h: 40 }] }
+const oPush = async () => { const x = await fetch(app + '/api/push-outline', { method: 'POST', headers: SECRET, body: JSON.stringify({ project_id: SP, room: '201', outline: { type: 'plan', label: 'Guard test', storage_path: 'smoke/guard.png', geometry: oGeom, pushed_by: 'blueprint' } }) }); return { status: x.status, j: await x.json().catch(() => null) } }
+const o1 = await oPush()
+db = await getDb()
+ok('2D push: the reply says complete, how many elements the app holds and that the math result is saved', o1.status === 200 && o1.j.complete === true && same(o1.j.not_stored, []) && o1.j.stored.elements === 2 && o1.j.stored.sent_elements === 2 && o1.j.stored.math_saved === true && o1.j.stored.status === 'pushed' && o1.j.project_id === SP && db.intent_outlines.find((x) => x.id === o1.j.outline_id).geometry.elements.length === 2, JSON.stringify(o1.j).slice(0, 500))
+const o2 = await oPush()
+db = await getDb()
+ok('2D push again with the same label: the earlier drawing is superseded and the reply is still complete', o2.status === 200 && o2.j.complete === true && o2.j.superseded === 1 && db.intent_outlines.find((x) => x.id === o1.j.outline_id).status === 'superseded' && db.intent_outlines.find((x) => x.id === o2.j.outline_id).status === 'pushed', JSON.stringify(o2.j).slice(0, 400))
+await new Promise((r) => setTimeout(r, 1500)) // let the background vision attempt finish before the mock is asked what it did not understand
+
 const unknown = await (await fetch(mock + '/__unknown')).json()
 ok('mock understood every request', unknown.length === 0, unknown.join(' ; '))
 console.log(fails ? 'ACTIONS FAILED: ' + fails : 'ACTIONS PASS')
