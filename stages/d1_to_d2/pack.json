@@ -405,16 +405,35 @@
       "model.warnings_not_up"
      ],
      "evidence": "RB stage 8"
+    },
+    {
+     "id": "si-soffits",
+     "order": "last",
+     "kind": "surface.soffit",
+     "summary": "Roof soffit under every overhang and every outdoor roof; outdoor areas get a soffit, never a ceiling",
+     "params": {
+      "category": "Roof Soffits",
+      "type_default": "Soffit - T&G Wood",
+      "type_default_source": "Blueprint's reading, not reviewed (the Whitaker build of 2026-11-09)",
+      "cut_around_posts": false,
+      "needs_seed_soffit": true
+     },
+     "acceptance": [
+      "soffit.outdoor_roofs_covered"
+     ],
+     "evidence": "Mitch 2026-11-09 06:40Z, 16:28Z, 16:56Z, 17:46Z (Whitaker: outdoors is a soffit, never a ceiling; every overhang; find all of them); shape: Mitch 2026-11-12 18:54Z (a plain shape, posts pass through). Recipe and what it needs from a person: p8.md, flag 92"
     }
    ],
    "acceptance": [
     "floor.threshold_both_sides",
     "floor.no_uncovered_slab",
     "ceiling.edge_z_measured",
-    "model.warnings_not_up"
+    "model.warnings_not_up",
+    "soffit.outdoor_roofs_covered"
    ],
    "qa_scripts": [
     "checks_floors",
+    "checks_soffits",
     "qa-model"
    ],
    "library_refs": [],
@@ -446,7 +465,7 @@
    "open": [
     "surface.wall is claimed by P2S (wall layout). The walls-to-ceiling pass sits here as a standard item. If a wall-HEIGHT decision is typed surface.wall it would route to P2S; not decided."
    ],
-   "_soffit": "soffit_max_18 left this exit on 2026-11-12 (M3 prep A6A7). It is a rule of the outline rulebook in the app, measured on the 2D drawing by the math gate (the 2d section of this pack), and it was never one of the model checks. Nothing measures a built soffit in the model; P8 builds what the approved drawing shows."
+   "_soffit": "soffit_max_18 left this exit on 2026-11-12 (M3 prep A6A7). It is a rule of the outline rulebook in the app, measured on the 2D drawing by the math gate (the 2d section of this pack), and it was never one of the model checks. Since 2026-11-12 (pre-pilot SOFFITS) a built soffit IS measured: soffit.outdoor_roofs_covered (automation/checks_soffits.py, proposed in the app, not accepted) judges every roof against the roof soffits at its own underside and fails a ceiling over an outdoor room; the standard item si-soffits builds them after every level part. It needs a seed soffit drawn by a person (flag 92)."
   },
   {
    "id": "P9",
@@ -914,7 +933,7 @@
      "math": "app math gate pass",
      "vision": "no conflict",
      "coverage": "every work item drawn or declared not drawable",
-    "inspo": "every layout detail of the room's pictures listed as used, or as not used with a reason (geometry.meta.inspo)",
+     "inspo": "every layout detail of the room's pictures listed as used, or as not used with a reason (geometry.meta.inspo)",
      "d1_lines": "every dashed shape of the D1 plan in the room listed as followed, or as not followed with a reason (geometry.meta.d1_lines)"
     }
    },
