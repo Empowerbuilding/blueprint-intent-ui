@@ -897,9 +897,9 @@
     "section": "D0",
     "title": "Shell scan (read-only)",
     "est_minutes": 15,
-    "brief": "OUTLINE_EXPECT_DOC=\"{doc}\" bridge.py script automation/outline_scan.py -> projects/<slug>/outlines/shell.json. Read-only.",
+    "brief": "OUTLINE_EXPECT_DOC=\"{doc}\" bridge.py script automation/outline_scan.py -> projects/<slug>/outlines/shell.json, with the dashed lines and notes of the D1 simple plan per room (d1_lines). Read-only.",
     "verify": {
-     "readback": "shell.json room count == rooms the contract marks needs_2d; solids_complete true"
+     "readback": "shell.json room count == rooms the contract marks needs_2d; solids_complete true; d1.status ok and every needs_2d room carries d1_lines"
     }
    },
    {
@@ -908,12 +908,13 @@
     "section": "D-batch",
     "title": "2D outlines: {rooms}",
     "est_minutes_per_room": 12,
-    "brief": "Per room: draw every work item listed (tag each drawn element with \"work_item\": \"<id>\"; list the items that have no place on a drawing). A room marked shell_changed is drawn on the PROPOSED shape and its geometry.meta says \"shell\": \"proposed\". Context lines constrain the layout and are not drawn as work. Inspiration pictures: fetch the room's pictures (inspo_fetch.py) and LOOK at each one yourself, beside the details the app read from it. Use a detail where the typed work items and the context leave the layout open; a typed decision ALWAYS wins over a picture. The layout's \"inspo\" block lists every detail as used, or as not used with a reason; it goes into geometry.meta.inspo. Then outline_draft.py -> local gate -> outline_push.py --from-report --wait-vision.",
+    "brief": "Per room: draw every work item listed (tag each drawn element with \"work_item\": \"<id>\"; list the items that have no place on a drawing). A room marked shell_changed is drawn on the PROPOSED shape and its geometry.meta says \"shell\": \"proposed\". Context lines constrain the layout and are not drawn as work. Dashed lines of the D1 plan: list the room's shapes (outline_draft.py --room <code> --d1-lines); a dashed line is the face or the footprint of casework, NEVER a reason to draw a wall; the layout's \"d1_lines\" block lists every shape as followed (with the element that follows it), or as not followed with a reason; it goes into geometry.meta.d1_lines. Inspiration pictures: fetch the room's pictures (inspo_fetch.py) and LOOK at each one yourself, beside the details the app read from it. Use a detail where the typed work items and the context leave the layout open; a typed decision ALWAYS wins over a picture. The layout's \"inspo\" block lists every detail as used, or as not used with a reason; it goes into geometry.meta.inspo. Then outline_draft.py -> local gate -> outline_push.py --from-report --wait-vision.",
     "verify": {
      "math": "app math gate pass",
      "vision": "no conflict",
      "coverage": "every work item drawn or declared not drawable",
-    "inspo": "every layout detail of the room's pictures listed as used, or as not used with a reason (geometry.meta.inspo)"
+    "inspo": "every layout detail of the room's pictures listed as used, or as not used with a reason (geometry.meta.inspo)",
+     "d1_lines": "every dashed shape of the D1 plan in the room listed as followed, or as not followed with a reason (geometry.meta.d1_lines)"
     }
    },
    {
