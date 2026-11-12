@@ -821,6 +821,7 @@
     "sheet.schedules_on_dimension_plan",
     "sheet.scope_boxes_hidden",
     "sheet.stair_treads_annotated",
+    "sheet.elevation_heights_shown",
     "opening.marks_clean"
    ],
    "qa_scripts": [

@@ -841,6 +841,12 @@
    "description": "A section or elevation on a sheet that shows a stair carries its tread count.",
    "source": "Michael 2026-11-10 06:10Z, 17:01Z and 2026-11-11 in blueprint-michael; proposed 2026-11-12 (pre-pilot build, spec A120)",
    "kinds": []
+  },
+  {
+   "rule_key": "sheet.elevation_heights_shown",
+   "description": "Every exterior elevation shows the eave height and the heights from grade.",
+   "source": "Michael 2026-11-10 06:10Z in blueprint-michael; d2-graphic-standard A105 / A106; proposed 2026-11-12 (pre-pilot build, spec A121)",
+   "kinds": []
   }
  ]
 }

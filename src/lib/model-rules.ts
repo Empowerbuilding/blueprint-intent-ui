@@ -148,6 +148,8 @@ export function addedFolderSource(who: string, day: string): string {
   return 'Added on this page by ' + who + ' on ' + day + '. No standard document names this folder: it is on the check on their word.'
 }
 
+// (2026-11-12, spec A121: sheet.elevation_heights_shown carries params.eave_words and params.grade_words, read by
+// automation/checks_sheets.py.)
 // (2026-11-12, spec A120: sheet.stair_treads_annotated carries params.riser_words and params.tread_words, read by
 // automation/checks_sheets.py.)
 // (2026-11-12, spec A117: wall.no_exterior_finish_inside carries params.exterior_finish_words and params.outside_departments,
@@ -200,6 +202,26 @@ export const CHECK_LISTS: Record<string, ListSpec> = {
     placeholder: 'another Department, as it is written on the rooms in Revit',
     help: 'A Department is its name as the rooms in Revit carry it, 1 to 60 characters.',
     max: 60,
+  },
+  eave_words: {
+    title:
+      'Eave words: the words an eave height is written with in a note on an exterior elevation. A note that holds one of them, as a whole word, and a height with a foot mark or an inch mark states the eave height for this check, whatever the case of the letters.',
+    one: 'word',
+    save: 'Save word',
+    add: 'Add word',
+    placeholder: 'another word an eave height is written with',
+    help: 'An eave word is a word or a few words as the notes on the drawings write them, 2 to 40 characters.',
+    max: 40,
+  },
+  grade_words: {
+    title:
+      'Grade words: the words a height from grade is written with in a note on an exterior elevation. A note that holds one of them, as a whole word, and a height with a foot mark or an inch mark states a height from grade for this check, whatever the case of the letters.',
+    one: 'word',
+    save: 'Save word',
+    add: 'Add word',
+    placeholder: 'another word a height from grade is written with',
+    help: 'A grade word is a word or a few words as the notes on the drawings write them, 2 to 40 characters.',
+    max: 40,
   },
   riser_words: {
     title:
@@ -265,7 +287,7 @@ export function listEntry(list: string, raw: string): string | null {
     if (!stem || /[*?]/.test(stem)) return null
   }
   // one letter would be found in nearly every name: a countertop name is at least two characters
-  if ((list === 'counter_names' || list === 'exterior_finish_words' || list === 'riser_words' || list === 'tread_words') && t.length < 2) return null
+  if ((list === 'counter_names' || list === 'exterior_finish_words' || list === 'riser_words' || list === 'tread_words' || list === 'eave_words' || list === 'grade_words') && t.length < 2) return null
   return t
 }
 /** two entries the checker reads as the same text (it does not tell upper case from lower case, or one space from two) */
