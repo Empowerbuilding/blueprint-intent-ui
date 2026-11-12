@@ -6,7 +6,7 @@ import { roomNameMatches, runMathGate } from '../src/lib/rules.ts'
 import { deterministicDimensionCheck } from '../src/lib/dimension-check.ts'
 import { normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGroup } from '../src/lib/vocab.ts'
 import { buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
-import { changedPaletteSource, colourChannel, missingNumbers, ruleNumbers, rulePalette } from '../src/lib/model-rules.ts'
+import { addedFolderSource, changedFolderSource, changedPaletteSource, colourChannel, folderPath, missingNumbers, ruleFolders, ruleNumbers, rulePalette, sameFolder } from '../src/lib/model-rules.ts'
 import fs from 'node:fs'
 let fails = 0
 const canon = (v) => Array.isArray(v) ? v.map(canon) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v
@@ -208,5 +208,20 @@ const ch1 = changedPaletteSource('Graphic standard: doc, 2026-11-08.', 'mitch@x'
 eq('check palette: a changed row says who, when, from what, and still names its first source', ch1, 'Changed on this page by mitch@x on 2026-11-12, from 252/246/214 to 250/240/200. Source of the first value: Graphic standard: doc, 2026-11-08.')
 eq('check palette: a second change keeps the first source, not the chain', changedPaletteSource(ch1, 'michael@x', '2026-11-13', [250, 240, 200], [1, 2, 3]), 'Changed on this page by michael@x on 2026-11-13, from 250/240/200 to 1/2/3. Source of the first value: Graphic standard: doc, 2026-11-08.')
 eq('check palette: a row that had no source says so', changedPaletteSource(null, 'm', '2026-11-12', [1, 1, 1], [2, 2, 2]), 'Changed on this page by m on 2026-11-12, from 1/1/1 to 2/2/2. Source of the first value: no source was recorded')
+// ---- the texture folders on a model check: one row per folder, in the order of the check, each with its source ----
+const FA = 'H:\\Shared drives\\Barnhaus\\Revit\\Revit\\Blueprint Families\\09_Patterns & Images'
+const FB = 'H:\\Shared drives\\Barnhaus\\Revit\\Revit\\Library\\Patterns & Images'
+const FOL = { texture_folders: [FB, FA], texture_folders_source: { [FA]: 'Runbook: doc, section 8 (b), 2026-11-08.' }, initial: true }
+eq('check folders: rows in the order the check lists them, with the source of each; a row without one says so with null', ruleFolders(FOL), [{ folder: FB, source: null }, { folder: FA, source: 'Runbook: doc, section 8 (b), 2026-11-08.' }])
+eq('check folders: no list on the check = null, not an empty list', [ruleFolders(null), ruleFolders({}), ruleFolders({ tolerance_in: 1 }), ruleFolders({ texture_folders: null }), ruleFolders({ texture_folders: { a: 1 } }), ruleFolders({ texture_folders: 'H:\\x' })], [null, null, null, null, null, null])
+eq('check folders: an entry that is not text is not shown as a folder', ruleFolders({ texture_folders: [FA, 3, '', '  ', null, ['x']] }).map((f) => f.folder), [FA])
+eq('check folders: the list and its notes are not numbers, so nothing waits for a value; they are not a palette either', [ruleNumbers(FOL), missingNumbers(FOL), rulePalette(FOL)], [[], [], null])
+eq('check folders: a typed folder is a full Windows path, tidied', ['H:\\Shared drives\\Lib\\', ' h:/Shared drives/Lib ', 'H:\\\\a\\\\\\b', '\\\\server\\share\\Textures\\', 'C:\\Program Files (x86)\\Common Files\\Autodesk Shared\\Materials\\Textures'].map(folderPath), ['H:\\Shared drives\\Lib', 'h:\\Shared drives\\Lib', 'H:\\a\\b', '\\\\server\\share\\Textures', 'C:\\Program Files (x86)\\Common Files\\Autodesk Shared\\Materials\\Textures'])
+eq('check folders: a relative path, a bare drive, a bare server, forbidden characters, blank and an over-long path are refused', ['Library\\Patterns', 'H:', 'H:\\', '\\\\server', 'H:\\a*b', 'H:\\a|b', 'H:\\a\\b:c', '', '   ', '..\\x', 'H:\\' + 'a'.repeat(300)].map(folderPath), [null, null, null, null, null, null, null, null, null, null, null])
+eq('check folders: the same folder in another case or with other slashes is the same folder', [sameFolder(FA, FA.toUpperCase()), sameFolder(FA, FA.replace(/\\/g, '/') + '/'), sameFolder(FA, FB)], [true, true, false])
+const fc1 = changedFolderSource('Runbook: doc, section 8 (b), 2026-11-08.', 'mitch@x', '2026-11-12', FA, 'H:\\New')
+eq('check folders: a changed folder says who, when, from what, and still names its first source', fc1, 'Changed on this page by mitch@x on 2026-11-12, from ' + FA + ' to H:\\New. Source of the first value: Runbook: doc, section 8 (b), 2026-11-08.')
+eq('check folders: a second change keeps the first source, not the chain', changedFolderSource(fc1, 'michael@x', '2026-11-13', 'H:\\New', 'H:\\Newer'), 'Changed on this page by michael@x on 2026-11-13, from H:\\New to H:\\Newer. Source of the first value: Runbook: doc, section 8 (b), 2026-11-08.')
+eq('check folders: a folder added on the page says a person added it and that no standard names it', addedFolderSource('mitch@x', '2026-11-12'), 'Added on this page by mitch@x on 2026-11-12. No standard document names this folder: it is on the check on their word.')
 console.log(fails ? 'FAILED ' + fails : 'ALL PASS')
 process.exit(fails ? 1 : 0)

@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { approverNames, loadApprovers } from '@/lib/lessons'
 import { notifyBlueprint } from '@/lib/notify'
-import { changedPaletteSource, colourChannel, missingNumbers, numberLabel, rulePalette } from '@/lib/model-rules'
+import { addedFolderSource, changedFolderSource, changedPaletteSource, colourChannel, folderPath, missingNumbers, numberLabel, ruleFolders, rulePalette, sameFolder } from '@/lib/model-rules'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -208,4 +208,90 @@ export async function setModelRulePalette(formData: FormData) {
   revalidatePath(PAGE)
   revalidatePath('/blueprint')
   redirect(back({ saved: row.rule_key + ': ' + department + ' ' + next3.join('/'), anchor }))
+}
+
+// A texture folder on a check (params.texture_folders: the shared library folders the material check compares with). Only an
+// approver changes one, adds one or removes one, on a check that is proposed or accepted; an accepted check stays accepted,
+// the version goes up. Only a check that already carries the list can be edited here. The folder's note
+// (params.texture_folders_source) then says who changed or added it; a changed folder keeps naming where its first value came
+// from. The last folder cannot be removed: with none the check cannot be run.
+const FOLDER_STEPS = ['change', 'add', 'remove']
+export async function setModelRuleFolder(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const approvers = await loadApprovers(supabase)
+  if (!approvers.some((a) => a.user_id === user.id)) {
+    redirect(back({ err: 'Only ' + approverNames(approvers) + ' can change a folder on a check. Nothing was changed.' }))
+  }
+  const id = String(formData.get('rule_id') || '')
+  const step = String(formData.get('step') || '')
+  const folder = String(formData.get('folder') || '')
+  if (!id || !FOLDER_STEPS.includes(step)) redirect(back({ err: 'Nothing was changed.' }))
+  const { data: row } = await supabase.from('intent_model_rules').select('id, rule_key, description, status, version, params').eq('id', id).single()
+  if (!row) redirect(back({ err: 'That check no longer exists. Nothing was changed.' }))
+  const anchor = 'r-' + row.rule_key
+  if (row.status === 'retired') redirect(back({ err: '"' + row.rule_key + '" is retired. Put it back as proposed first. Nothing was changed.', anchor }))
+  const params = (row.params || {}) as Record<string, unknown>
+  const rows = ruleFolders(params)
+  if (!rows) redirect(back({ err: '"' + row.rule_key + '" carries no list of folders. Nothing was changed.', anchor }))
+  const old = step === 'add' ? null : rows.find((f) => f.folder === folder) || null
+  if (step !== 'add' && !old) redirect(back({ err: '"' + row.rule_key + '" does not list the folder "' + folder + '". Nothing was changed.', anchor }))
+  let value: string | null = null
+  if (step !== 'remove') {
+    value = folderPath(String(formData.get('value') ?? ''))
+    if (!value) {
+      redirect(back({ err: 'A folder is a full path that starts with a drive letter, such as H:\\Shared drives\\..., or with a network share. Nothing was changed.', anchor }))
+    }
+    if (old && value === old.folder) redirect(back({ err: '"' + row.rule_key + '" already lists ' + value + '. Nothing was changed.', anchor }))
+    const twin = rows.find((f) => f !== old && sameFolder(f.folder, value as string))
+    if (twin) redirect(back({ err: '"' + row.rule_key + '" already lists ' + twin.folder + '. Nothing was changed.', anchor }))
+  }
+  if (step === 'remove' && rows.length === 1) {
+    redirect(back({ err: '"' + row.rule_key + '" would have no folder left and could not be run. Change the folder instead. Nothing was changed.', anchor }))
+  }
+  const now = new Date().toISOString()
+  const who = user.email || user.id
+  const day = now.slice(0, 10)
+  const sources: Record<string, unknown> = {
+    ...(params.texture_folders_source && typeof params.texture_folders_source === 'object' && !Array.isArray(params.texture_folders_source)
+      ? (params.texture_folders_source as Record<string, unknown>)
+      : {}),
+  }
+  let folders = rows.map((f) => f.folder)
+  if (step === 'change' && old && value) {
+    folders = folders.map((f) => (f === old.folder ? (value as string) : f))
+    delete sources[old.folder]
+    sources[value] = changedFolderSource(old.source, who, day, old.folder, value)
+  } else if (step === 'add' && value) {
+    folders = [...folders, value]
+    sources[value] = addedFolderSource(who, day)
+  } else if (step === 'remove' && old) {
+    folders = folders.filter((f) => f !== old.folder)
+    delete sources[old.folder]
+  }
+  const next: Record<string, unknown> = { ...params, texture_folders: folders, texture_folders_source: sources }
+  if ('initial' in next) next.initial = false // it is no longer the starting list
+  const { data: changed, error } = await supabase
+    .from('intent_model_rules')
+    .update({ params: next, version: (row.version || 1) + 1, params_by: who, params_at: now, updated_at: now })
+    .eq('id', id)
+    .eq('version', row.version)
+    .select('id')
+  if (error || !changed || changed.length === 0) {
+    redirect(back({ err: 'The folder was not saved' + (error ? ': ' + error.message : ' (the check changed in the meantime, or the database refused it).'), anchor }))
+  }
+  const what =
+    step === 'change' ? 'changed: `' + row.rule_key + '`** — ' + (old as { folder: string }).folder + ' → ' + value
+    : step === 'add' ? 'added: `' + row.rule_key + '`** — ' + value
+    : 'removed: `' + row.rule_key + '`** — ' + (old as { folder: string }).folder
+  await notifyBlueprint(
+    '🧪 **Model check folder ' + what + ' (the check is ' + row.status + '; it now lists ' + folders.length + (folders.length === 1 ? ' folder' : ' folders') + '). By ' + who +
+      '.\nThe texture check now compares with the new list: GET /api/model-rules. A work order compiled with the old version is stale. This is a notice, not a go.',
+  )
+  revalidatePath(PAGE)
+  revalidatePath('/blueprint')
+  redirect(back({ saved: row.rule_key + ': folder ' + (step === 'change' ? 'changed to ' + value : step === 'add' ? 'added, ' + value : 'removed, ' + (old as { folder: string }).folder), anchor }))
 }

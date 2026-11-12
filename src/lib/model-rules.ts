@@ -99,6 +99,48 @@ export function changedPaletteSource(prev: string | null, who: string, day: stri
   return 'Changed on this page by ' + who + ' on ' + day + ', from ' + from.join('/') + ' to ' + to.join('/') + '. ' + PALETTE_ORIGIN + origin
 }
 
+// TEXTURE FOLDERS ON A CHECK. material.appearance_paths_resolve carries the shared library folders in params.texture_folders:
+// a list of folder paths, exactly as the checker (automation/checks_materials.py) reads it from GET /api/model-rules; the
+// checker carries no folder of its own. params.texture_folders_source says, per folder path, where it comes from (the
+// document, the section and its date). An approver can change a folder, add one or remove one on the page; the last one
+// cannot be removed, because a check with no folder cannot be run.
+export type FolderRow = { folder: string; source: string | null }
+/** the folder rows of a check, in the order the check lists them. null = the check carries no list of folders */
+export function ruleFolders(params: Record<string, unknown> | null | undefined): FolderRow[] | null {
+  const p = (params || {}).texture_folders
+  if (!Array.isArray(p)) return null
+  const src = (params || {}).texture_folders_source
+  const sources = src && typeof src === 'object' && !Array.isArray(src) ? (src as Record<string, unknown>) : {}
+  return p
+    .filter((f): f is string => typeof f === 'string' && !!f.trim())
+    .map((folder) => ({ folder, source: typeof sources[folder] === 'string' && (sources[folder] as string).trim() ? (sources[folder] as string) : null }))
+}
+/** what a person typed -> a full Windows folder path (a drive letter or a network share), without a slash at the end; anything else -> null */
+export function folderPath(raw: string): string | null {
+  let t = raw.trim().replace(/\//g, '\\')
+  const share = t.startsWith('\\\\')
+  t = (share ? '\\\\' : '') + t.replace(/^\\+/, '').replace(/\\{2,}/g, '\\').replace(/\\+$/, '')
+  if (t.length > 300) return null
+  if (/[<>"|?*\u0000-\u001f]/.test(t)) return null
+  if (share) return /^\\\\[^\\:]+\\[^\\:]+(\\[^\\:]+)*$/.test(t) ? t : null
+  return /^[A-Za-z]:(\\[^\\:]+)+$/.test(t) ? t : null
+}
+/** two paths that name the same folder (Windows does not tell upper case from lower case) */
+export function sameFolder(a: string, b: string): boolean {
+  const n = (s: string) => (folderPath(s) || s.trim()).toLowerCase()
+  return n(a) === n(b)
+}
+/** the note a changed folder carries: who changed it and from what, and still where its first value came from */
+export function changedFolderSource(prev: string | null, who: string, day: string, from: string, to: string): string {
+  const before = prev || 'no source was recorded'
+  const origin = before.includes(PALETTE_ORIGIN) ? before.slice(before.indexOf(PALETTE_ORIGIN) + PALETTE_ORIGIN.length) : before
+  return 'Changed on this page by ' + who + ' on ' + day + ', from ' + from + ' to ' + to + '. ' + PALETTE_ORIGIN + origin
+}
+/** the note a folder added on the page carries: no document named it, a person did */
+export function addedFolderSource(who: string, day: string): string {
+  return 'Added on this page by ' + who + ' on ' + day + '. No standard document names this folder: it is on the check on their word.'
+}
+
 // the two Supabase clients (user session, service role) have different generics; only .from() is used
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = { from: (t: string) => any }

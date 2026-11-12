@@ -736,6 +736,69 @@ ok('api model-rules: the palette is what the checker reads, with the note of eac
 html = (await page(MC)).replace(/<!-- -->/g, '')
 ok('palette: the page shows the new colour, its note and who set it', /name="department" value="Kitchen"[\s\S]{0,900}?name="red"[^>]*value="250"/.test(html) && html.includes('Changed on this page by mitch@barnhaus.test on ') && html.includes('colour set by Mitch') && sourceNotes(html) === 5, '')
 
+// the texture folders on the material check (flag 79, A94): one row per folder, each row names its source; only Mitch or Michael change,
+// add or remove a folder, the check keeps its status, the note then says who did it; the last folder cannot be removed
+const seen = (h) => h.replace(/<script[\s\S]*?<\/script>/g, '')
+const folderNotes = (h) => (seen(h).match(/Runbook: standards\/D1_TO_D2_RUNBOOK\.md, section 8/g) || []).length
+const folRule = ruleOf(await getDb(), 'material.appearance_paths_resolve')
+const [FOL1, FOL2] = folRule.params.texture_folders
+const AUTODESK = 'C:\\Program Files\\Common Files\\Autodesk Shared\\Materials\\Textures'
+const MOVED = 'H:\\Shared drives\\Barnhaus\\Revit\\Revit\\Library\\Textures'
+html = await pageAs(MC, asBlueprint)
+ok('folders, non-approver: sees both folders with their source, has no field', seen(html).includes('Blueprint Families\\09_Patterns &amp; Images') && seen(html).includes('Revit\\Library\\Patterns &amp; Images') && folderNotes(html) === 2 && !html.includes('name="folder"') && !html.includes('Add folder'), '')
+html = (await page(MC)).replace(/<!-- -->/g, '')
+const folForm = form(html, (f) => f.includes('name="folder"') && f.includes('Blueprint Families') && f.includes('value="' + folRule.id + '"'), 'folder form (Blueprint Families)')
+const folForm2 = form(html, (f) => f.includes('name="folder"') && f.includes('Revit\\Library\\Patterns') && f.includes('value="' + folRule.id + '"'), 'folder form (Library)')
+const addForm = form(html, (f) => f.includes('value="add" class="btn-secondary-sm" name="step"') && f.includes('value="' + folRule.id + '"'), 'add-folder form')
+ok('folders, approver: two rows, each with its path in a field and a Remove button, and one field to add a folder', (html.match(/name="folder"/g) || []).length === 2 && (html.match(/value="remove" class="btn-secondary-sm" name="step"/g) || []).length === 2 && (html.match(/value="add" class="btn-secondary-sm" name="step"/g) || []).length === 1 && folForm.folder === FOL1 && folForm2.folder === FOL2 && !('folder' in addForm), JSON.stringify([folForm, folForm2, addForm]))
+before = await getDb()
+r = await postAs(MC, folForm, { step: 'change', value: MOVED }, asBlueprint)
+ok('folders, non-approver posts a folder: refused, nothing changed', r.location.includes('Only Mitch or Michael can change a folder on a check') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(r))
+let badFolders = []
+for (const bad of ['Library\\Patterns', 'H:', '', 'H:\\a*b', '..\\x']) {
+  for (const step of ['change', 'add']) {
+    r = await post(MC, step === 'add' ? addForm : folForm, { step, value: bad })
+    if (!r.location.includes('A folder is a full path that starts with a drive letter')) badFolders.push([step, bad])
+  }
+}
+ok('folders: a relative path, a bare drive, blank and a forbidden character are refused, nothing changed', badFolders.length === 0 && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify(badFolders))
+r = await post(MC, folForm, { step: 'change', value: FOL1 })
+r2 = await post(MC, folForm, { step: 'change', value: FOL2.toUpperCase().replace(/\\/g, '/') })
+r3 = await post(MC, addForm, { step: 'add', value: FOL1.toLowerCase() + '\\' })
+ok('folders: the same folder, and a folder the check already lists (in any case, with any slashes), change nothing', r.location.includes('already lists ' + FOL1) && r2.location.includes('already lists ' + FOL2) && r3.location.includes('already lists ' + FOL1) && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2, r3]))
+r = await post(MC, { ...folForm, folder: 'H:\\Nope' }, { step: 'change', value: MOVED })
+r2 = await post(MC, { ...folForm, folder: 'H:\\Nope' }, { step: 'remove' })
+ok('folders: a folder the check does not list cannot be changed or removed', r.location.includes('does not list the folder') && r2.location.includes('does not list the folder') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2]))
+r = await post(MC, { ...addForm, rule_id: shellRule.id }, { step: 'add', value: MOVED })
+r2 = await post(MC, folForm, { step: 'empty', value: MOVED })
+ok('folders: a check without a folder list refuses a posted folder; an unknown step changes nothing', r.location.includes('carries no list of folders') && r2.location.includes('Nothing was changed') && same((await getDb()).intent_model_rules, before.intent_model_rules), JSON.stringify([r, r2]))
+r = await post(MC, addForm, { step: 'add', value: AUTODESK + '\\' })
+db = await getDb()
+row = ruleOf(db, 'material.appearance_paths_resolve')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('folders, approver adds a folder: saved at the end of the list, version up, status kept, the two rows and their notes untouched, Blueprint told', r.location.includes('saved=material.appearance_paths_resolve: folder added, ' + AUTODESK) && same(row.params.texture_folders, [FOL1, FOL2, AUTODESK]) && row.params.texture_folders_source[FOL1] === folRule.params.texture_folders_source[FOL1] && row.params.texture_folders_source[FOL2] === folRule.params.texture_folders_source[FOL2] && row.params.initial === false && row.version === folRule.version + 1 && row.status === folRule.status && row.params_by === 'mitch@barnhaus.test' && !!row.params_at && lastMsg.includes('Model check folder added: `material.appearance_paths_resolve`') && lastMsg.includes(AUTODESK) && lastMsg.includes('it now lists 3 folders') && lastMsg.includes('This is a notice, not a go'), JSON.stringify([r, row.params, lastMsg]))
+ok('folders: the added folder says a person added it and that no standard names it', row.params.texture_folders_source[AUTODESK].startsWith('Added on this page by mitch@barnhaus.test on ') && row.params.texture_folders_source[AUTODESK].includes('No standard document names this folder'), JSON.stringify(row.params.texture_folders_source))
+r = await post(MC, folForm2, { step: 'change', value: MOVED })
+db = await getDb()
+row = ruleOf(db, 'material.appearance_paths_resolve')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('folders, approver changes a folder: saved in its place, version up, the old path and its note gone, the new note says who and from what and still names the runbook', r.location.includes('saved=material.appearance_paths_resolve: folder changed to ' + MOVED) && same(row.params.texture_folders, [FOL1, MOVED, AUTODESK]) && !(FOL2 in row.params.texture_folders_source) && row.params.texture_folders_source[MOVED].startsWith('Changed on this page by mitch@barnhaus.test on ') && row.params.texture_folders_source[MOVED].includes(', from ' + FOL2 + ' to ' + MOVED + '. Source of the first value: Runbook: standards/D1_TO_D2_RUNBOOK.md, section 8') && row.version === folRule.version + 2 && row.status === folRule.status && lastMsg.includes('Model check folder changed: `material.appearance_paths_resolve`') && lastMsg.includes(FOL2 + ' → ' + MOVED), JSON.stringify([r, row.params, lastMsg]))
+res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })
+mr = (await res.json()).rules.find((x) => x.rule_key === 'material.appearance_paths_resolve')
+ok('api model-rules: the folder list is what the checker reads, with the note of each folder', same(mr.params.texture_folders, [FOL1, MOVED, AUTODESK]) && same(Object.keys(mr.params.texture_folders_source).sort(), [FOL1, MOVED, AUTODESK].sort()) && mr.version === folRule.version + 2 && mr.checker_status === 'tool' && mr.params_by === 'mitch@barnhaus.test', JSON.stringify(mr))
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('folders: the page shows the three rows, the notes and who changed the list', (html.match(/name="folder"/g) || []).length === 3 && seen(html).includes('Changed on this page by mitch@barnhaus.test on ') && seen(html).includes('Added on this page by mitch@barnhaus.test on ') && seen(html).includes('folder list changed by Mitch') && folderNotes(html) === 2, '')
+r = await post(MC, { ...folForm, folder: AUTODESK }, { step: 'remove' })
+r2 = await post(MC, { ...folForm, folder: MOVED }, { step: 'remove' })
+db = await getDb()
+row = ruleOf(db, 'material.appearance_paths_resolve')
+lastMsg = db.portal_messages[db.portal_messages.length - 1].content
+ok('folders, approver removes two folders: gone from the list with their notes, Blueprint told', r.location.includes('folder removed, ' + AUTODESK) && r2.location.includes('folder removed, ' + MOVED) && same(row.params.texture_folders, [FOL1]) && same(Object.keys(row.params.texture_folders_source), [FOL1]) && row.version === folRule.version + 4 && lastMsg.includes('Model check folder removed: `material.appearance_paths_resolve`') && lastMsg.includes('it now lists 1 folder)'), JSON.stringify([r, r2, row.params, lastMsg]))
+before = await getDb()
+r = await post(MC, folForm, { step: 'remove' })
+html = (await page(MC)).replace(/<!-- -->/g, '')
+ok('folders: the last folder cannot be removed, and the page offers no Remove for it', r.location.includes('would have no folder left and could not be run') && same((await getDb()).intent_model_rules, before.intent_model_rules) && (html.match(/name="folder"/g) || []).length === 1 && !html.includes('value="remove" class="btn-secondary-sm" name="step"'), JSON.stringify(r))
+
 // a number the check carries WITHOUT a value (rule A83: the checker needs it, the sentence does not state it, nobody guessed it):
 // an approver types its first value; until then the check is not accepted
 res = await fetch(app + '/api/model-rules?status=all', { headers: SECRET })

@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { decideModelRule, proposeModelRule, setModelRuleNumber, setModelRulePalette } from '@/app/model-rules-actions'
-import { CHECKER_LABEL, loadModelRules, missingNumbers, ruleNumbers, rulePalette, type ModelRule } from '@/lib/model-rules'
+import { decideModelRule, proposeModelRule, setModelRuleFolder, setModelRuleNumber, setModelRulePalette } from '@/app/model-rules-actions'
+import { CHECKER_LABEL, loadModelRules, missingNumbers, ruleFolders, ruleNumbers, rulePalette, type ModelRule } from '@/lib/model-rules'
 import { approverNames, loadApprovers, whoLabel } from '@/lib/lessons'
 import { fmtDate, viewerTimeZone } from '@/lib/time'
 import { RulebookHeader } from '@/components/rulebook-header'
@@ -21,6 +21,8 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
   const canEdit = isApprover && r.status !== 'retired'
   // the palette the check carries (room colours): one row per Department, each with a note that names where its colour comes from
   const palette = rulePalette(r.params)
+  // the texture folders the check carries (the shared library folders): one row per folder, each with a note that names where it comes from
+  const folders = ruleFolders(r.params)
   return (
     <div id={'r-' + r.rule_key} className="px-4 py-3 scroll-mt-32">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
@@ -127,13 +129,56 @@ function Row({ r, isApprover, tz, who }: { r: ModelRule; isApprover: boolean; tz
               {!palette.length && <div className="text-[11px] text-amber-400/80">The palette has no readable row: the check cannot pass.</div>}
             </div>
           )}
-          {(r.params_at || numbers.some((n) => n.value !== null) || (palette && palette.length > 0)) && (
+          {folders && (
+            <div className="mt-2 space-y-2">
+              <div className="text-[11px] text-slate-400">
+                Texture folders: a material&apos;s texture file must sit in one of these. The check compares the model with this list.
+              </div>
+              {folders.map((f) => (
+                <div key={f.folder} className="pl-2 border-l border-slate-800">
+                  {canEdit ? (
+                    <form action={setModelRuleFolder} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="rule_id" value={r.id} />
+                      <input type="hidden" name="folder" value={f.folder} />
+                      <input name="value" type="text" required defaultValue={f.folder} aria-label="Texture folder" className="field !w-[28rem] max-w-full !py-1 text-xs font-mono" />
+                      <button name="step" value="change" className="btn-secondary-sm">
+                        Save folder
+                      </button>
+                      {folders.length > 1 && (
+                        <button name="step" value="remove" className="btn-secondary-sm">
+                          Remove
+                        </button>
+                      )}
+                    </form>
+                  ) : (
+                    <div className="text-[11px] text-slate-300 font-mono break-all">{f.folder}</div>
+                  )}
+                  <div className={'text-[11px] break-words ' + (f.source ? 'text-slate-500' : 'text-amber-400/80')}>
+                    {f.source || 'No source is recorded for this folder.'}
+                  </div>
+                </div>
+              ))}
+              {!folders.length && <div className="text-[11px] text-amber-400/80">The list has no folder: the check cannot be run.</div>}
+              {canEdit && (
+                <form action={setModelRuleFolder} className="flex flex-wrap items-center gap-2 pl-2">
+                  <input type="hidden" name="rule_id" value={r.id} />
+                  <input name="value" type="text" required placeholder="another folder, full path" aria-label="New texture folder" className="field !w-[28rem] max-w-full !py-1 text-xs font-mono" />
+                  <button name="step" value="add" className="btn-secondary-sm">
+                    Add folder
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+          {(r.params_at || numbers.some((n) => n.value !== null) || (palette && palette.length > 0) || (folders && folders.length > 0)) && (
             <div className="text-[11px] text-slate-600 break-words">
               {r.params_at
-                ? (palette ? 'colour set by ' : 'number set by ') + who(r.params_by) + ' · ' + fmtDate(r.params_at, tz)
+                ? (palette ? 'colour set by ' : folders ? 'folder list changed by ' : 'number set by ') + who(r.params_by) + ' · ' + fmtDate(r.params_at, tz)
                 : palette
                   ? 'starting palette; nobody has changed a colour'
-                  : 'starting value; nobody has changed the number'}
+                  : folders
+                    ? 'starting list; nobody has changed a folder'
+                    : 'starting value; nobody has changed the number'}
             </div>
           )}
           {r.decided_at && (
@@ -217,7 +262,7 @@ export default async function ModelChecksPage({ searchParams }: { searchParams: 
           <p className="text-xs text-slate-500">
             Where a check carries a number, such as a tolerance, {isApprover ? 'you can change it here' : names + ' can change it here'}. Blueprint is
             told, and a work order compiled with the old number has to be compiled again. The same goes for the room colours on the palette
-            check.
+            check and the texture folders on the material check.
             {waitingForNumber > 0 &&
               ' ' +
                 waitingForNumber +
