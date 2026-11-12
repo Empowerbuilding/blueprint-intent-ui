@@ -981,6 +981,65 @@ html = (await page(SE + '?emitted=2&handoff=x&v2=ok-9')).replace(/<!-- -->/g, ''
 ok('emit page after: typed contract linked in the history', html.includes('Typed contract (v2) written too: 9 work items') && html.includes('version=2&amp;schema=2') && html.includes('typed (9)'))
 ok('a session, not only the machine, can read the typed contract', (await fetch(app + '/api/contract/' + SP + '?schema=2', { headers: { cookie } })).status === 200 && (await fetch(app + '/api/contract/' + SP + '?schema=2')).status === 401)
 
+// ---------- C8. Lock & Emit: a second press writes nothing (flag 52) ----------
+// the project was emitted as v2 a moment ago and nothing has changed since
+const emCount = (d) => d.intent_emissions.filter((e) => e.project_id === SP).length
+const projOf = (d) => d.intent_projects.find((p) => p.id === SP)
+html = (await page(SE)).replace(/<!-- -->/g, '')
+ok('emit page, nothing changed: the main button is gone, the page says which version is current', html.includes('Contract v2 is current.') && html.includes('there is nothing new to emit') && !html.includes('Lock &amp; Emit contract v3') && html.includes('Emit it again anyway') && html.includes('Emit the same contract again as v3'))
+// a press of the old button (a second click, a page left open): h still holds the form of the emission above
+before = await getDb()
+r = await post(SE, h, {})
+db = await getDb()
+ok('second press, nothing changed: no new version, no second message, the project stays at v2', r.status === 303 && r.location.includes('/emit?same=2') && !r.location.includes('emitted=') && emCount(db) === emCount(before) && projOf(db).emitted_version === 2 && db.portal_messages.length === before.portal_messages.length && same(db.intent_emissions, before.intent_emissions), JSON.stringify(r))
+r2 = await post(SE, h, {})
+r2 = await post(SE, h, {})
+db = await getDb()
+ok('third and fourth press: still nothing', r2.location.includes('/emit?same=2') && emCount(db) === emCount(before) && db.portal_messages.length === before.portal_messages.length)
+html = (await page(SE + '?same=2')).replace(/<!-- -->/g, '')
+ok('emit page after a repeat: says nothing new was emitted and nobody was messaged', html.includes('Nothing new was emitted: contract v2 already holds exactly this.') && html.includes('Blueprint was not messaged a second time'))
+html = (await page(SE + '?emitted=2&handoff=portal notified (blueprint-mitch)&v2=ok-9')).replace(/<!-- -->/g, '')
+ok('emit page after an emission: says Blueprint was told once; a failed message is said as such', html.includes('Blueprint has been told, once. There is no need to press again.') && (await page(SE + '?emitted=2&handoff=portal HTTP 500&v2=ok-9')).includes('The message to Blueprint may not have gone out'))
+res = await fetch(app + '/api/emit', { method: 'POST', headers: { 'x-emit-secret': 'x', 'Content-Type': 'application/json' }, body: JSON.stringify({ project_id: SP, again: true }) })
+ok('the machine route is as closed as before (no emit secret here)', res.status === 503 || res.status === 401, String(res.status))
+
+// a person asks for it in so many words: the same contract goes out once more
+const hAgain = form(html, (f) => f.includes('Emit the same contract again'), 'emit again form')
+r = await post(SE, hAgain, {})
+db = await getDb()
+const em2 = db.intent_emissions.find((e) => e.project_id === SP && e.version === 2)
+let em3 = db.intent_emissions.find((e) => e.project_id === SP && e.version === 3)
+ok('emit again anyway: v3 is written with the content of v2, and Blueprint is messaged', hAgain.again === '1' && r.location.includes('emitted=3') && em3 && same(em3.intent_json.rooms, em2.intent_json.rooms) && em3.intent_json.project.emitted_version === 3 && em3.intent_v2_json.version === 3 && same(em3.intent_v2_json.rooms, em2.intent_v2_json.rooms) && projOf(db).emitted_version === 3 && db.portal_messages.length === before.portal_messages.length + 1 && db.portal_messages[db.portal_messages.length - 1].content.includes('Intent contract v3 for Scratch v2'), JSON.stringify(r))
+html = (await page(SE)).replace(/<!-- -->/g, '')
+ok('emit page: v3 is now the current one', html.includes('Contract v3 is current.') && html.includes('Emit the same contract again as v4') && !html.includes('Lock &amp; Emit contract v4'))
+
+// two presses in the same instant: the other press has written v4 already (planted here), the database refuses a second v4
+await fetch(mock + '/rest/v1/intent_emissions', { method: 'POST', body: JSON.stringify({ project_id: SP, version: 4, intent_json: { ...em3.intent_json, project: { ...em3.intent_json.project, emitted_version: 4 } }, brief_md: '# planted', intent_v2_json: null, v2_errors: null, v2_work_items: null }) })
+before = await getDb()
+r = await post(SE, hAgain, {})
+db = await getDb()
+ok('two presses at once, same content: the second writes no second v4 and sends no second message', r.location.includes('/emit?same=4') && db.intent_emissions.filter((e) => e.project_id === SP && e.version === 4).length === 1 && emCount(db) === emCount(before) && db.portal_messages.length === before.portal_messages.length, JSON.stringify(r))
+await fetch(mock + '/rest/v1/intent_emissions?project_id=eq.' + SP + '&version=eq.4', { method: 'PATCH', body: JSON.stringify({ intent_json: { ...em3.intent_json, parked_images: 99 } }) })
+before = await getDb()
+r = await post(SE, hAgain, {})
+db = await getDb()
+ok('two presses at once, different content: refused in words, nothing written', r.location.includes('/emit?error=') && r.location.includes('Contract v4 was written a moment ago by another press') && r.location.includes('Nothing was written by this press') && emCount(db) === emCount(before) && db.portal_messages.length === before.portal_messages.length, JSON.stringify(r))
+await fetch(mock + '/rest/v1/intent_emissions?project_id=eq.' + SP + '&version=eq.4', { method: 'DELETE' })
+
+// something changes: the main button is back, and a press emits
+const islandId = sDec(db, 'island').id
+const islandWas = sDec(db, 'island').value
+await fetch(mock + '/rest/v1/intent_decisions?id=eq.' + islandId, { method: 'PATCH', body: JSON.stringify({ value: islandWas + ' (moved 6 in)' }) })
+html = (await page(SE)).replace(/<!-- -->/g, '')
+ok('a decision changed: the Lock & Emit button is back for v4', html.includes('Lock &amp; Emit contract v4') && !html.includes('is current.') && !html.includes('Emit the same contract again'))
+h = form(html, (f) => f.includes('Lock &amp; Emit contract'), 'emit form (after a change)')
+r = await post(SE, h, {})
+db = await getDb()
+ok('emit after a change: v4 is written with the change', h.again === undefined && r.location.includes('emitted=4') && db.intent_emissions.find((e) => e.project_id === SP && e.version === 4).intent_json.rooms.find((x) => x.section_code === '201').decisions.some((d) => d.value === islandWas + ' (moved 6 in)') && projOf(db).emitted_version === 4, JSON.stringify(r))
+r = await post(SE, h, {})
+db = await getDb()
+ok('and the press after that writes nothing again', r.location.includes('/emit?same=4') && emCount(db) === 4)
+
 // ---------- D. delete ----------
 const D = '/projects/p-deubner'
 html = await page(D)

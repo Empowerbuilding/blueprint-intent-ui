@@ -10,7 +10,8 @@ const unknown = new Set()
 const calls = [] // every write, in order — the action tests assert on this
 let mode = { fk: 'cascade', loseBucket: '', denySign: false }
 const CHILD_TABLES = ['intent_outlines', 'intent_emissions', 'intent_inspo_images', 'intent_redline_notes', 'intent_open_questions', 'intent_decisions', 'intent_rooms']
-const UNIQUE = { intent_rules: 'rule_key', intent_model_rules: 'rule_key' }
+// one column, or several that are unique together (migration 20261112zd: one version of a project's contract exists once)
+const UNIQUE = { intent_rules: 'rule_key', intent_model_rules: 'rule_key', intent_emissions: ['project_id', 'version'] }
 
 const readBody = (req) =>
   new Promise((resolve) => {
@@ -153,9 +154,9 @@ http
           if (!prefer.includes('return=representation')) return send(res, 201, null)
           return send(res, 201, wantsObject ? merged[0] : merged)
         }
-        const uniq = UNIQUE[table]
-        if (uniq && list.some((r) => db[table].some((x) => x[uniq] === r[uniq]))) {
-          calls.push({ op: 'insert-rejected', table, reason: 'unique ' + uniq })
+        const uniq = UNIQUE[table] ? [].concat(UNIQUE[table]) : null
+        if (uniq && list.some((r) => db[table].some((x) => uniq.every((c) => x[c] === r[c])))) {
+          calls.push({ op: 'insert-rejected', table, reason: 'unique ' + uniq.join('+') })
           return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint', details: null, hint: null })
         }
         db[table].push(...list)

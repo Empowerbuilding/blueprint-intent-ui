@@ -16,6 +16,7 @@ The authoring + review surface for Blueprint D2 intent contracts. Humans confirm
 - **Model checks** — the checks run on the built model (Rulebook → Model checks). Blueprint proposes; only an approver accepts; only accepted checks are attached to work items (GET /api/model-rules) A check that carries a number (a tolerance in `params`) has an edit field for approvers while it is proposed or accepted; saving keeps the status, raises the version and tells Blueprint.
 - **Open questions** with blocking flag + documented defaults — resolve or accept before lock
 - **Typed redline notes** (beam / cabinet_run / delete / move / keep / note) — Michael's D1 markup becomes structured intent
+- **Lock & Emit writes a version only when something changed** — a press that would write exactly what the last emission holds writes nothing and messages nobody; the page then says which version is current and offers "Emit it again anyway" as a separate, worded step. The button is disabled while an emission is being written, and one (project, version) exists once in the database (src/lib/emit-same.ts, migration 20261112zd)
 - **Emits** `intent.json` + `BRIEF.md` for Blueprint to compile into a work order (phase 4, pending)
 
 ## Env

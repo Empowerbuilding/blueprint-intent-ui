@@ -44,10 +44,17 @@ export async function emitContract(formData: FormData) {
   const projectId = String(formData.get('project_id'))
   const { data: { user } } = await supabase.auth.getUser()
 
-  const result = await buildAndEmit(projectId, user?.id ?? null)
+  // "again" comes only from the second button of the page ("Emit the same contract again"), never from the main one
+  const again = String(formData.get('again') || '') === '1'
+
+  const result = await buildAndEmit(projectId, user?.id ?? null, { again })
 
   if (!result.ok) {
     redirect(`/projects/${projectId}/emit?error=${encodeURIComponent(result.errors.join(' · '))}`)
+  }
+  // nothing changed since the last emission: nothing was written and nobody was messaged (flag 52)
+  if (!result.written) {
+    redirect(`/projects/${projectId}/emit?same=${result.version}`)
   }
 
   revalidatePath(`/projects/${projectId}`)

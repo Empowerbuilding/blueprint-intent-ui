@@ -1,7 +1,8 @@
 import { fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
-import { buildV2 } from '@/lib/emit-core'
+import { buildAndEmit, buildV2 } from '@/lib/emit-core'
+import { EmitButton } from '@/components/emit-button'
 import { loadModelRules } from '@/lib/model-rules'
 import { PageHeader } from '@/components/page-header'
 import Link from 'next/link'
@@ -12,11 +13,11 @@ export default async function EmitPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ error?: string; emitted?: string; handoff?: string; v2?: string }>
+  searchParams: Promise<{ error?: string; emitted?: string; handoff?: string; v2?: string; same?: string }>
 }) {
   const { id } = await params
   const tz = await viewerTimeZone()
-  const { error, emitted, handoff, v2: v2Param } = await searchParams
+  const { error, emitted, handoff, v2: v2Param, same } = await searchParams
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -91,6 +92,16 @@ export default async function EmitPage({
   ]
   const allPass = gates.every((g) => g.ok)
 
+  // Would a press write anything new? A dry run builds what would be emitted now and compares it with the last
+  // emission (flag 52). When they are the same the main button is not offered: there is nothing new to emit.
+  const nextVersion = (project.emitted_version || 0) + 1
+  let current: { version: number; emitted_at: string | null } | null = null
+  if (allPass && (project.emitted_version || 0) > 0) {
+    const preview = await buildAndEmit(id, null, { dryRun: true, client: supabase })
+    current = preview.ok ? preview.unchanged : null
+  }
+  const told = (handoff || '').startsWith('portal notified')
+
   const { data: emissions } = await supabase
     .from('intent_emissions')
     .select('id, version, emitted_at, blueprint_status, v2_work_items, v2_errors')
@@ -114,6 +125,14 @@ export default async function EmitPage({
           <div className="bg-emerald-950/50 border border-emerald-900 rounded-xl p-4 text-sm text-emerald-300">
             <div className="font-semibold">✓ Intent contract v{emitted} emitted and persisted.</div>
             <div className="text-emerald-400/80 mt-1">Handoff: {handoff}</div>
+            {told ? (
+              <div className="text-emerald-400/80 mt-1">Blueprint has been told, once. There is no need to press again.</div>
+            ) : (
+              <div className="text-amber-300 mt-1">
+                The message to Blueprint may not have gone out (see the handoff line). The contract itself is saved. Tell Blueprint
+                in blueprint-mitch, or use &quot;Emit it again anyway&quot; below.
+              </div>
+            )}
             {v2Param?.startsWith('ok-') && (
               <div className="text-emerald-400/80 mt-1">Typed contract (v2) written too: {v2Param.slice(3)} work items.</div>
             )}
@@ -123,6 +142,13 @@ export default async function EmitPage({
                 contract above is complete without it.
               </div>
             )}
+          </div>
+        )}
+
+        {same && (
+          <div className="border border-bh-border rounded-xl p-4 text-sm text-slate-300">
+            <div className="font-semibold">Nothing new was emitted: contract v{same} already holds exactly this.</div>
+            <div className="text-slate-400 mt-1">No new version was written and Blueprint was not messaged a second time.</div>
           </div>
         )}
 
@@ -151,14 +177,44 @@ export default async function EmitPage({
         </section>
 
         <section className="space-y-3">
-          <form action={emitContract}>
-            <input type="hidden" name="project_id" value={id} />
-            <button disabled={!allPass} className={`w-full ${allPass ? 'btn-primary' : 'btn-secondary cursor-not-allowed opacity-50'} !py-3`}>
-              {allPass
-                ? `Lock & Emit contract v${(project.emitted_version || 0) + 1}`
-                : 'Gates not met — finish the review first'}
-            </button>
-          </form>
+          {current ? (
+            <div className="card p-4 text-sm space-y-2">
+              <div className="font-medium text-slate-100">Contract v{current.version} is current.</div>
+              <div className="text-xs text-slate-400 leading-relaxed">
+                Nothing that goes into the contract has changed since it was emitted
+                {current.emitted_at ? ' on ' + fmtDateTime(current.emitted_at, tz) : ''}, so there is nothing new to emit. Change a
+                room, a decision, a question, a note or a picture and the Lock &amp; Emit button is back.
+              </div>
+              <details className="text-xs text-slate-500">
+                <summary className="cursor-pointer hover:text-slate-300">Emit it again anyway</summary>
+                <div className="mt-2 space-y-2">
+                  <p className="leading-relaxed">
+                    Writes the same contract once more as v{nextVersion} and messages Blueprint a second time. Only needed when the
+                    message for v{current.version} did not arrive.
+                  </p>
+                  <form action={emitContract}>
+                    <input type="hidden" name="project_id" value={id} />
+                    <input type="hidden" name="again" value="1" />
+                    <EmitButton
+                      label={`Emit the same contract again as v${nextVersion}`}
+                      busy={`Emitting contract v${nextVersion}…`}
+                      className="btn-secondary"
+                    />
+                  </form>
+                </div>
+              </details>
+            </div>
+          ) : (
+            <form action={emitContract}>
+              <input type="hidden" name="project_id" value={id} />
+              <EmitButton
+                enabled={allPass}
+                label={allPass ? `Lock & Emit contract v${nextVersion}` : 'Gates not met — finish the review first'}
+                busy={`Emitting contract v${nextVersion}…`}
+                className={`w-full ${allPass ? 'btn-primary' : 'btn-secondary cursor-not-allowed opacity-50'} !py-3`}
+              />
+            </form>
+          )}
           <p className="text-xs text-slate-600 leading-relaxed">
             Emits the versioned intent contract, locks the project, and hands off to Blueprint in
             blueprint-mitch — it compiles the work order from it. Your in-thread &quot;go&quot; is still

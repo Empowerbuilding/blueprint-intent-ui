@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { buildBriefMd, type Contract, type ContractDecision, type ContractRoom } from '@/lib/emit'
 import { buildContractV2, type ContractV2, type KindRow, type ModelRuleRow } from '@/lib/emit-v2'
 import { loadDefaults } from '@/lib/defaults'
+import { sameAsBeingWritten, sameAsEmitted, type EmittedRow } from '@/lib/emit-same'
 
 // Contract v2 rides beside v1. `ok: false` is not a failed emit: v1 is emitted either way, and the
 // list says what is still missing before the typed contract can be written.
@@ -10,7 +11,18 @@ export type V2Summary = { ok: boolean; errors: string[]; warnings: string[]; wor
 
 export type EmitResult =
   | { ok: false; errors: string[] }
-  | { ok: true; version: number; handoff: string; briefMd: string; contract: Contract; v2: V2Summary }
+  | {
+      ok: true
+      version: number
+      handoff: string
+      briefMd: string
+      contract: Contract
+      v2: V2Summary
+      /** false = nothing was persisted: a dry run, or a press that would have written what the last emission already holds */
+      written: boolean
+      /** the emission that already holds exactly this content, when there is one */
+      unchanged: { version: number; emitted_at: string | null } | null
+    }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>
@@ -58,10 +70,24 @@ export async function serviceClient() {
   })
 }
 
+/** one stored emission of a project, with what is needed to compare it with a contract built now */
+async function emissionAt(supabase: Awaited<ReturnType<typeof createClient>>, projectId: string, version: number): Promise<EmittedRow | null> {
+  if (!version) return null
+  const { data } = await supabase
+    .from('intent_emissions')
+    .select('version, emitted_at, intent_json, intent_v2_json, v2_errors, brief_md')
+    .eq('project_id', projectId)
+    .eq('version', version)
+    .limit(1)
+  return ((data && data[0]) as EmittedRow | undefined) || null
+}
+
+// `again`: write a new version although nothing changed since the last one. Only a person asks for that, in so many
+// words (the second button of the emit page, or "again": true on the secret-gated route).
 export async function buildAndEmit(
   projectId: string,
   userId: string | null,
-  opts: { dryRun?: boolean; client?: Awaited<ReturnType<typeof createClient>> } = {}
+  opts: { dryRun?: boolean; again?: boolean; client?: Awaited<ReturnType<typeof createClient>> } = {}
 ): Promise<EmitResult> {
   const supabase = opts.client || (await createClient())
 
@@ -188,8 +214,26 @@ export async function buildAndEmit(
     images: images || [],
   })
 
+  // ---- REPEAT GUARD (flag 52) ----
+  // A press that would write exactly what the last emission holds writes nothing: no new version, no second message.
+  const v2Missing = v2.ok ? null : v2.errors
+  const last = await emissionAt(supabase, projectId, project.emitted_version || 0)
+  const unchanged = last && sameAsEmitted(last, contract, v2.contract, v2Missing) ? { version: last.version, emitted_at: last.emitted_at ?? null } : null
+
   if (opts.dryRun) {
-    return { ok: true, version, handoff: '(dry run — nothing persisted, no portal post)', briefMd, contract, v2 }
+    return { ok: true, written: false, unchanged, version, handoff: '(dry run — nothing persisted, no portal post)', briefMd, contract, v2 }
+  }
+  if (unchanged && !opts.again) {
+    return {
+      ok: true,
+      written: false,
+      unchanged,
+      version: unchanged.version,
+      handoff: `(nothing changed since v${unchanged.version} — no new version written, no portal post)`,
+      briefMd: last?.brief_md || briefMd,
+      contract,
+      v2: { ...v2, stored: v2.ok },
+    }
   }
 
   // ---- PERSIST ----
@@ -200,7 +244,26 @@ export async function buildAndEmit(
     brief_md: briefMd,
     emitted_by: userId,
   })
-  if (emitError) return { ok: false, errors: [emitError.message] }
+  if (emitError) {
+    // two presses in the same instant: the database refused the second row of this version (unique project + version)
+    if ((emitError as { code?: string }).code === '23505') {
+      const other = await emissionAt(supabase, projectId, version)
+      if (other && sameAsBeingWritten(other, contract, v2.contract, v2Missing)) {
+        return {
+          ok: true,
+          written: false,
+          unchanged: { version: other.version, emitted_at: other.emitted_at ?? null },
+          version: other.version,
+          handoff: `(v${other.version} was written by another press a moment ago — no second version, no second portal post)`,
+          briefMd: other.brief_md || briefMd,
+          contract,
+          v2: { ...v2, stored: v2.ok },
+        }
+      }
+      return { ok: false, errors: [`Contract v${version} was written a moment ago by another press, and it does not hold the same content. Nothing was written by this press. Reload this page and look at v${version} before emitting again.`] }
+    }
+    return { ok: false, errors: [emitError.message] }
+  }
   await supabase.from('intent_projects').update({ emitted_version: version, status: 'locked' }).eq('id', projectId)
 
   // v2 is written onto the same emission in a second step, so v1 is on record whatever happens here
@@ -251,5 +314,5 @@ export async function buildAndEmit(
     }
   }
 
-  return { ok: true, version, handoff: handoffNote, briefMd, contract, v2 }
+  return { ok: true, written: true, unchanged: null, version, handoff: handoffNote, briefMd, contract, v2 }
 }
