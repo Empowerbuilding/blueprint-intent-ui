@@ -19,7 +19,7 @@ async function askVision(imageUrl: string, mediaType: string): Promise<InspoAnal
     headers: { 'Content-Type': 'application/json', Authorization: 'Bear' + 'er ' + key },
     body: JSON.stringify({
       model: 'glm-4.6v',
-      max_tokens: 1000,
+      max_tokens: 4000,
       messages: [
         {
           role: 'user',
