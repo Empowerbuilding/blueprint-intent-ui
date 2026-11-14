@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { runMathGate, type Geometry, type RuleRow } from '@/lib/rules'
-import { fetchSlotExceptions, annotateMath, sameElements } from '@/lib/check-exceptions'
+import { fetchSlotExceptions, annotateMath, annotateVision, sameElements } from '@/lib/check-exceptions'
 import { visionGateInBackground } from '@/lib/outline-vision'
 
 // POST /api/push-outline — Blueprint pushes a drafted 2D outline (zone map /
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
   // stays on the superseded row in the DB)
   const { data: previous } = await supabase
     .from('intent_outlines')
-    .select('id, status, geometry, approved_by, approved_at')
+    .select('id, status, geometry, approved_by, approved_at, checks')
     .eq('room_id', room.id)
     .eq('outline_type', outlineType)
     .eq('label', label)
@@ -193,11 +193,24 @@ export async function POST(request: NextRequest) {
   const excMap = await fetchSlotExceptions(supabase, { projectId: projectId!, roomId: room.id, outlineType: outlineType!, label })
   const mathAnnotated = annotateMath(math.results as unknown as { rule_key: string; status: string }[], excMap)
 
-  // ---- persist checks (math + vision placeholder) BEFORE firing the background job ----
+  // ---- persist checks (math + vision) BEFORE firing any background job ----
   // (write-order matters: the background vision must never be able to clobber math)
   const checks: Record<string, unknown> = { math }
   let visionNote = 'skipped (no image)'
-  if (storagePath) {
+  let visionInherited = false
+  // A carried-over push (identical elements) inherits the previous run's vision verdict wholesale:
+  // identical geometry means the verdicts stand (re-annotated with the current exceptions). No fresh
+  // run → no fresh conflict without a ruling behind it (Blueprint's re-push concern, 2026-11-14).
+  const prevVision = (prevApproved as { checks?: { vision?: { status?: string } } } | null | undefined)?.checks?.vision as
+    | { status?: string; results?: unknown[]; [k: string]: unknown }
+    | undefined
+  if (storagePath && prevApproved && carriedOver && prevVision && prevVision.status === 'ok') {
+    const inherited = { ...prevVision, inherited_from: prevApproved.id, inherited_at: new Date().toISOString() }
+    if (Array.isArray(inherited.results)) annotateVision(inherited.results as { verdict?: string; exception?: unknown }[], excMap)
+    checks.vision = inherited
+    visionInherited = true
+    visionNote = 'inherited (identical geometry — the previous verdict stands, exceptions re-applied)'
+  } else if (storagePath) {
     checks.vision = { ran_at: new Date().toISOString(), model: 'glm-4.6v', status: 'running' }
     visionNote = 'running (background — lands on the outline card when done; poll GET /api/outlines or re-run via /api/verify-outline)'
   }
@@ -222,7 +235,7 @@ export async function POST(request: NextRequest) {
 
   // ---- VISION GATE (GLM-4.6v vs confirmed decisions) — background ----
   // ---- large images take 1-2+ min; push returns fast with math results ----
-  if (storagePath) {
+  if (storagePath && !visionInherited) {
     visionGateInBackground(supabase, {
       outlineId: outline.id,
       projectId: projectId!,
@@ -243,6 +256,7 @@ export async function POST(request: NextRequest) {
     room: `${room.section_code} ${room.name}`,
     superseded: previous?.length || 0,
     carried_over: carriedOver,
+    vision_inherited: visionInherited,
     exceptions: { math_annotated: mathAnnotated },
     // complete: false when something this push should have written is not in the app; not_stored says what and why
     complete: notStored.length === 0,

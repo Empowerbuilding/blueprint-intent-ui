@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // GET /api/check-exceptions?project_id=<uuid>[&room_id=][&outline_type=][&label=][&check=]
 //   Active slot-matched exceptions. Auth: x-prefill-secret OR logged-in session.
-// POST /api/check-exceptions — body: { project_id, room_id, outline_type, label?, check, ruled_by, ruled_at, quote?, source? }
+// POST /api/check-exceptions — body: { project_id, room_id, outline_type, label?, check, ruled_by, ruled_at, quote?, measured?, source? }
 //   Creates one exception. Secret-gated (machine port from rulings.json) or session.
 //   A duplicate active exception for the same slot+check is updated, not duplicated.
 
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     label: typeof body.label === 'string' ? body.label : '',
     check_key: body.check, ruled_by: body.ruled_by, ruled_at: body.ruled_at,
     quote: typeof body.quote === 'string' ? body.quote : '',
+    ...(typeof body.measured === 'string' ? { measured: body.measured } : {}),
     source: typeof body.source === 'string' ? body.source : 'app',
     active: true,
   }

@@ -2,7 +2,7 @@
 // drawing SLOT (room + outline type + label). Survives re-pushes of the slot, unlike an
 // outline-id-keyed ruling. Consulted by the push route (math) and the vision gate; the compiler
 // reads them via GET /api/check-exceptions (Blueprint's rulings.json is the id-exact interim form).
-export type SlotException = { check_key: string; ruled_by: string; ruled_at: string; quote: string }
+export type SlotException = { check_key: string; ruled_by: string; ruled_at: string; quote: string; measured?: string }
 
 export async function fetchSlotExceptions(
   client: { from: (t: string) => any },
@@ -10,7 +10,7 @@ export async function fetchSlotExceptions(
 ): Promise<Map<string, SlotException>> {
   const { data } = await client
     .from('intent_check_exceptions')
-    .select('check_key, ruled_by, ruled_at, quote')
+    .select('check_key, ruled_by, ruled_at, quote, measured')
     .eq('project_id', slot.projectId)
     .eq('room_id', slot.roomId)
     .eq('outline_type', slot.outlineType)
