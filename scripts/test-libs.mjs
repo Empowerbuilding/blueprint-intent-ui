@@ -359,6 +359,18 @@ eq('door-front: a vanity in the clear path fails with the measured clear depth',
   ['fail', '14'])
 eq('door-front: without the param the old nearest-distance measure is untouched (a 48 in diagonal to the beside-vanity still fails)',
   runMathGate([oldMeasure], { name: 'Bath', section_code: '115' }, 'plan', bathPlan, 1).results[0].status, 'fail')
+const facelessDoor = { elements: [
+  { id: 'd1', kind: 'door', label: '36 door', x: 0, y: 0, w: 36, h: 6 },
+  { id: 'v1', kind: 'vanity', label: 'vanity', x: 48, y: 0, w: 72, h: 22 },
+] }
+eq('door-front: a door with no face falls back to the old nearest-distance measure (conservative, never a silent pass)',
+  runMathGate([doorRule], { name: 'Bath', section_code: '115' }, 'plan', facelessDoor, 1).results[0].status, 'fail')
+const bathPlanAbove = { elements: [
+  { id: 'd1', kind: 'door', label: '36 door', x: 0, y: 0, w: 36, h: 6, face: 'N' },
+  { id: 'v1', kind: 'vanity', label: 'vanity', x: 6, y: 50, w: 72, h: 22 },
+] }
+eq('door-front: a pass carries the measured in-front depth',
+  runMathGate([doorRule], { name: 'Bath', section_code: '115' }, 'plan', bathPlanAbove, 1).results[0].measured, '44')
 eq('carry-over identity: identical elements in a different order with changed meta are the same drawing; a moved element is not',
   [sameElements({ elements: [{ id: 'a', x: 1 }, { id: 'b', x: 2 }], meta: { contract_version: 2 } }, { elements: [{ id: 'b', x: 2 }, { id: 'a', x: 1 }], meta: { contract_version: 3, view: { orientation: 'N' } } }),
    sameElements({ elements: [{ id: 'a', x: 1 }] }, { elements: [{ id: 'a', x: 5 }] })],

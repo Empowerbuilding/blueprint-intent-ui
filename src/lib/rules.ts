@@ -189,20 +189,34 @@ export function runMathGate(
           // Doors carry `face` (the wall they sit in): N → room is +y, S → −y, W → +x, E → −x.
           const dir = (f: string): [number, number] =>
             f === 'N' ? [0, 1] : f === 'S' ? [0, -1] : f === 'W' ? [1, 0] : f === 'E' ? [-1, 0] : [0, 0]
-          let measuredAny = false
           for (const a of primaries) {
             const d = dir(String(a.face || ''))
-            if (!d[0] && !d[1]) continue
+            if (!d[0] && !d[1]) {
+              // a door with no face cannot be door-front measured: fall back to the old
+              // nearest-distance measure for that door (conservative — never silently pass an
+              // unmeasured door; aligned with Blueprint's local port, 2026-11-15)
+              for (const b of references) {
+                if (a === b) continue
+                const g = gapBetween(a, b)
+                if (g < minGap) {
+                  minGap = g
+                  pair = `${a.label || a.kind} (no face — nearest-distance fallback) ↔ ${b.label || b.kind}`
+                }
+              }
+              continue
+            }
             for (const b of references) {
               if (a === b) continue
               // b must reach into the room past the door's interior edge...
               const reach = d[1] > 0 ? b.y + b.h > a.y + a.h : d[1] < 0 ? b.y < a.y : d[0] > 0 ? b.x + b.w > a.x + a.w : b.x < a.x
-              // ...and sit within the door's span across the wall
+              // ...and sit within the door's span across the wall (in-path = reach AND across —
+              // a wall-flush item inside the span that does not reach past the door's interior
+              // edge, a threshold or casing, does not count)
               const across = d[0] !== 0 ? b.y < a.y + a.h && a.y < b.y + b.h : b.x < a.x + a.w && a.x < b.x + b.w
               if (!reach || !across) continue
               const clear = d[0] > 0 ? b.x - (a.x + a.w) : d[0] < 0 ? a.x - (b.x + b.w) : d[1] > 0 ? b.y - (a.y + a.h) : a.y - (b.y + b.h)
-              if (clear >= minIn) continue
-              measuredAny = true
+              // track the nearest in-path depth even when it passes, so a pass carries the
+              // measured depth (agrees numerically with the local check port)
               if (clear < minGap) {
                 minGap = clear
                 pair = `${a.label || a.kind} in front ↔ ${b.label || b.kind}`

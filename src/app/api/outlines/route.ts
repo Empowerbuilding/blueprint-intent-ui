@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     const approved = list!.filter((o) => o.status === 'approved').length
     const rejected = list!.filter((o) => o.status === 'rejected')
     return {
+      id: r.id,
       section_code: r.section_code,
       name: r.name,
       review_state: r.review_state,
@@ -88,6 +89,7 @@ export async function GET(request: NextRequest) {
       },
       outlines: list!.map((o) => ({
         id: o.id,
+        room_id: o.room_id,
         outline_type: o.outline_type,
         label: o.label,
         status: o.status,
