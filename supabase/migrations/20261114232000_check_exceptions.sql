@@ -8,7 +8,7 @@ create table if not exists intent_check_exceptions (
   room_id uuid not null,
   outline_type text not null,
   label text not null default '',
-  check text not null,                    -- 'math:<rule_key>' or 'vision'
+  check_key text not null,                -- 'math:<rule_key>' or 'vision'
   ruled_by text not null,                 -- who accepted it (email or id)
   ruled_at timestamptz not null,          -- ISO timestamp; legacy free-text dates port as best-effort
   quote text not null default '',         -- the words the ruling was given in
@@ -17,7 +17,7 @@ create table if not exists intent_check_exceptions (
   created_at timestamptz not null default now()
 );
 create index if not exists intent_check_exceptions_slot
-  on intent_check_exceptions (project_id, room_id, outline_type, label, check)
+  on intent_check_exceptions (project_id, room_id, outline_type, label, check_key)
   where active;
 alter table intent_check_exceptions enable row level security;
 drop policy if exists "intent_check_exceptions authenticated full" on intent_check_exceptions;

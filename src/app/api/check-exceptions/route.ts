@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   const roomId = q.get('room_id'); if (roomId) sel = sel.eq('room_id', roomId)
   const outlineType = q.get('outline_type'); if (outlineType) sel = sel.eq('outline_type', outlineType)
   const label = q.get('label'); if (label) sel = sel.eq('label', label)
-  const check = q.get('check'); if (check) sel = sel.eq('check', check)
+  const check = q.get('check'); if (check) sel = sel.eq('check_key', check)
   const { data, error } = await sel.order('ruled_at')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ exceptions: data })
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   const row = {
     project_id: body.project_id, room_id: body.room_id, outline_type: body.outline_type,
     label: typeof body.label === 'string' ? body.label : '',
-    check: body.check, ruled_by: body.ruled_by, ruled_at: body.ruled_at,
+    check_key: body.check, ruled_by: body.ruled_by, ruled_at: body.ruled_at,
     quote: typeof body.quote === 'string' ? body.quote : '',
     source: typeof body.source === 'string' ? body.source : 'app',
     active: true,
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await a.client
     .from('intent_check_exceptions')
     .select('id').eq('project_id', row.project_id).eq('room_id', row.room_id)
-    .eq('outline_type', row.outline_type).eq('label', row.label).eq('check', row.check).eq('active', true).maybeSingle()
+    .eq('outline_type', row.outline_type).eq('label', row.label).eq('check_key', row.check).eq('active', true).maybeSingle()
   if (existing) {
     const { data: updated, error } = await a.client.from('intent_check_exceptions').update(row).eq('id', existing.id).select('id').single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
