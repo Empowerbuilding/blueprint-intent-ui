@@ -371,6 +371,8 @@ const bathPlanAbove = { elements: [
 ] }
 eq('door-front: a pass carries the measured in-front depth',
   runMathGate([doorRule], { name: 'Bath', section_code: '115' }, 'plan', bathPlanAbove, 1).results[0].measured, '44')
+eq('carry-over identity: jsonb-reordered keys are the same drawing (Postgres sorts keys by length then bytewise — value compare, not text)',
+  sameElements({ elements: [{ x: 0, y: 0, id: 'd1', kind: 'door', face: 'N' }] }, { elements: [{ kind: 'door', id: 'd1', face: 'N', x: 0, y: 0 }] }), true)
 eq('carry-over identity: identical elements in a different order with changed meta are the same drawing; a moved element is not',
   [sameElements({ elements: [{ id: 'a', x: 1 }, { id: 'b', x: 2 }], meta: { contract_version: 2 } }, { elements: [{ id: 'b', x: 2 }, { id: 'a', x: 1 }], meta: { contract_version: 3, view: { orientation: 'N' } } }),
    sameElements({ elements: [{ id: 'a', x: 1 }] }, { elements: [{ id: 'a', x: 5 }] })],

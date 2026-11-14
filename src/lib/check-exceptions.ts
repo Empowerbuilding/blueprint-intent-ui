@@ -42,11 +42,26 @@ export function annotateVision(results: { verdict?: string; exception?: unknown 
 }
 
 /** same drawing, different meta: elements identical (order-insensitive), ignoring geometry.meta
- *  (version stamp + view metadata change between contract versions by design) */
+ *  (version stamp + view metadata change between contract versions by design).
+ *  VALUE compare, not text: Postgres jsonb reorders object keys on storage (by length, then
+ *  bytewise), so a stored row never stringifies like the sender's draft. Both sides are
+ *  canonicalized — every object's keys sorted recursively — before stringifying. Numbers
+ *  normalize through JS parse (6.0 === 6). The Whitaker Foyer carry-over failure (2026-11-14
+ *  23:41Z) was exactly this: value-equal drawings comparing unequal on key order. */
 export function sameElements(a: unknown, b: unknown): boolean {
+  const canon = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(canon)
+    if (v && typeof v === 'object') {
+      const src = v as Record<string, unknown>
+      const out: Record<string, unknown> = {}
+      for (const k of Object.keys(src).sort()) out[k] = canon(src[k])
+      return out
+    }
+    return v
+  }
   const norm = (g: unknown) => {
     const els = (Array.isArray((g as { elements?: unknown[] })?.elements) ? (g as { elements: unknown[] }).elements : []) as { id?: unknown }[]
-    return JSON.stringify([...els].sort((x, y) => String(x?.id ?? '').localeCompare(String(y?.id ?? ''))))
+    return JSON.stringify(canon([...els].sort((x, y) => String(x?.id ?? '').localeCompare(String(y?.id ?? '')))))
   }
   return norm(a) === norm(b)
 }
