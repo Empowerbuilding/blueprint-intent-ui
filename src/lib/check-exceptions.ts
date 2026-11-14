@@ -45,8 +45,8 @@ export function annotateVision(results: { verdict?: string; exception?: unknown 
  *  (version stamp + view metadata change between contract versions by design) */
 export function sameElements(a: unknown, b: unknown): boolean {
   const norm = (g: unknown) => {
-    const els = Array.isArray((g as { elements?: unknown[] })?.elements) ? (g as { elements: unknown[] }).elements : []
-    return JSON.stringify([...els].sort((x: { id?: unknown }, y: { id?: unknown }) => String(x?.id ?? '').localeCompare(String(y?.id ?? ''))))
+    const els = (Array.isArray((g as { elements?: unknown[] })?.elements) ? (g as { elements: unknown[] }).elements : []) as { id?: unknown }[]
+    return JSON.stringify([...els].sort((x, y) => String(x?.id ?? '').localeCompare(String(y?.id ?? ''))))
   }
   return norm(a) === norm(b)
 }

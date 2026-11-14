@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await a.client
     .from('intent_check_exceptions')
     .select('id').eq('project_id', row.project_id).eq('room_id', row.room_id)
-    .eq('outline_type', row.outline_type).eq('label', row.label).eq('check_key', row.check).eq('active', true).maybeSingle()
+    .eq('outline_type', row.outline_type).eq('label', row.label).eq('check_key', row.check_key).eq('active', true).maybeSingle()
   if (existing) {
     const { data: updated, error } = await a.client.from('intent_check_exceptions').update(row).eq('id', existing.id).select('id').single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
