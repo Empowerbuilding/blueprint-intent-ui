@@ -1,4 +1,8 @@
-// Shared z.ai GLM-4.6v vision helper (anthropic-compatible endpoint).
+// Shared z.ai GLM-4.6v vision helper (native v4 endpoint).
+// 2026-11-14: the anthropic-compat endpoint (/api/anthropic/v1/messages) SILENTLY DROPS the image
+// content block - the model answers blind from the prompt text (replied 'NO IMAGE VISIBLE' when asked
+// directly; every inspo analysis came back a prompt-primed 'modern steel-frame great room' hallucination
+// regardless of the actual picture). The native v4 endpoint with OpenAI-style image_url sees the image.
 // Gotchas baked in (learned 11/8-11/9, don't relearn):
 //  - Bearer header must be built as scheme + space + key in ONE string
 //  - GLM-4.6v returns a thinking block first — parse ALL text blocks
@@ -13,7 +17,7 @@ export async function zaiVisionText(
   if (!key) return null
 
   const attempt = async (): Promise<string | null> => {
-    const res = await fetch('https://api.z.ai/api/anthropic/v1/messages', {
+    const res = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,7 +31,7 @@ export async function zaiVisionText(
           {
             role: 'user',
             content: [
-              { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.b64 } },
+              { type: 'image_url', image_url: { url: `data:${image.mediaType};base64,${image.b64}` } },
               { type: 'text', text: prompt },
             ],
           },
@@ -39,12 +43,12 @@ export async function zaiVisionText(
       return null
     }
     const data = await res.json()
-    const text: string = (Array.isArray(data?.content) ? data.content : [])
-      .filter((c: { type?: string }) => c?.type === 'text')
-      .map((c: { text?: string }) => c?.text || '')
-      .join('\n')
+    const msg = data?.choices?.[0]?.message
+    const text: string = typeof msg?.content === 'string'
+      ? msg.content
+      : (Array.isArray(msg?.content) ? msg.content.map((c: { text?: string }) => c?.text || '').join('\n') : '')
     if (!text) {
-      console.error('zai vision empty completion', JSON.stringify({ stop_reason: data?.stop_reason, blocks: (data?.content || []).map((c: { type?: string }) => c?.type), usage: data?.usage }).slice(0, 300))
+      console.error('zai vision empty completion', JSON.stringify({ finish_reason: data?.choices?.[0]?.finish_reason, usage: data?.usage }).slice(0, 300))
     }
     return text || null
   }

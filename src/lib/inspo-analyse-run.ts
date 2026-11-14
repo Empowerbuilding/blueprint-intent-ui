@@ -1,6 +1,7 @@
 // Runs the vision analysis of one stored inspiration picture and saves it on the picture.
 // Used by POST /api/analyze-image (upload, Blueprint) and by "Read the picture again" on the room page.
 import { FETCH_URL_TTL, INSPO_BUCKET, signedUrl, type StorageClient } from '@/lib/storage'
+import { zaiVisionText } from '@/lib/vision'
 import { ANALYSIS_PROMPT, mergeTags, parseAnalysis, type InspoAnalysis } from '@/lib/inspo-analysis'
 
 type Db = {
@@ -9,39 +10,11 @@ type Db = {
 }
 
 async function askVision(imageUrl: string, mediaType: string): Promise<InspoAnalysis | null> {
-  const key = process.env.ZAI_API_KEY
-  if (!key) return null
   const imgRes = await fetch(imageUrl)
   if (!imgRes.ok) return null
   const b64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64')
-  const res = await fetch('https://api.z.ai/api/anthropic/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bear' + 'er ' + key },
-    body: JSON.stringify({
-      model: 'glm-4.6v',
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType || 'image/jpeg', data: b64 } },
-            { type: 'text', text: ANALYSIS_PROMPT },
-          ],
-        },
-      ],
-    }),
-  })
-  if (!res.ok) {
-    console.error('zai vision error', res.status, (await res.text()).slice(0, 300))
-    return null
-  }
-  const data = await res.json()
-  // GLM-4.6v returns a thinking block first: collect ALL text blocks
-  const text: string = (Array.isArray(data?.content) ? data.content : [])
-    .filter((c: { type?: string }) => c?.type === 'text')
-    .map((c: { text?: string }) => c?.text || '')
-    .join('\n')
-  return parseAnalysis(text)
+  const text = await zaiVisionText(ANALYSIS_PROMPT, { b64, mediaType }, 4000)
+  return text ? parseAnalysis(text) : null
 }
 
 export type AnalyseResult =
