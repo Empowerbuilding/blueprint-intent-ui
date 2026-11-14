@@ -23,7 +23,7 @@ export async function zaiVisionText(
         'Content-Type': 'application/json',
         Authorization: 'Bear' + 'er ' + key,
       },
-      signal: AbortSignal.timeout(180_000),
+      signal: AbortSignal.timeout(300_000), // 16k-token reasoning runs can exceed 3 min
       body: JSON.stringify({
         model: 'glm-4.6v',
         max_tokens: maxTokens,

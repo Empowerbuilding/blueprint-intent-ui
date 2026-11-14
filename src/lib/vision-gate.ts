@@ -87,10 +87,12 @@ Verdicts:
 Return ONLY valid JSON, no markdown fences, no commentary:
 {"results": [{"topic": "<the topic exactly as given>", "verdict": "confirmed|missing|conflict|na", "note": "<one short sentence citing drawn evidence>"}]}`
 
-  // max_tokens 4000: GLM-4.6v spends a large thinking block FIRST — with a small
-  // budget it hits max_tokens inside thinking and never emits text (verified live:
-  // stop_reason=max_tokens, blocks=[thinking] only)
-  const text = await zaiVisionText(prompt, { b64, mediaType: opts.mediaType || 'image/png' }, 4000)
+  // max_tokens 16000: GLM-4.6v reasons FIRST and the gate's prompts (geometry ground
+  // truth + several decisions) ran the reasoning past 4000 on the Whitaker pilot
+  // (2026-11-14 21:2xZ: finish_reason=length, reasoning_tokens=3999, content empty —
+  // Kitchen plan + island section "returned nothing"). 4000 was enough for the
+  // simpler inspo-analysis prompt, not for this one.
+  const text = await zaiVisionText(prompt, { b64, mediaType: opts.mediaType || 'image/png' }, 16000)
   if (!text) {
     return { ran_at: ranAt, model: 'glm-4.6v', status: 'error', error: 'vision model returned nothing (key missing or API error)' }
   }
