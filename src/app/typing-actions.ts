@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { normaliseRole, tidyName } from '@/lib/vocab'
+import { isHouseSection, normaliseRole, suggestNeeds2d, tidyName } from '@/lib/vocab'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -10,6 +10,9 @@ import { redirect } from 'next/navigation'
 //   the kind of work a decision line or a redline note is.
 // Typing a line is not a change of wording: the line stays the same line (nothing is crossed out).
 // Nothing here guesses. The suggestions shown on the page are only preselected in the form.
+// A suggested 2D answer becomes the room's answer in three ways, each a person's press (Mitch 2026-11-14):
+//   Save on the room's form; marking the room confirmed / defaults accepted (setReviewState in actions.ts);
+//   "Use the suggested answer" on the emit page (acceptSuggested2d below), for every room that has none.
 
 const roomUrl = (projectId: string, roomId: string, opts: { err?: string; anchor?: string } = {}) =>
   '/projects/' + projectId + '/rooms/' + roomId + '?view=decide' + (opts.err ? '&err=' + encodeURIComponent(opts.err) : '') + (opts.anchor ? '#' + opts.anchor : '')
@@ -69,6 +72,33 @@ export async function setRoomTyping(formData: FormData) {
     redirect(roomUrl(projectId, roomId, { err: 'The room could not be saved' + (error ? ': ' + error.message : '.'), anchor: 'typing' }))
   }
   redirect(roomUrl(projectId, roomId, { anchor: 'typing' }))
+}
+
+/** Every room of the project that has no 2D yes / no gets the suggested one. A saved answer is never changed. */
+export async function acceptSuggested2d(formData: FormData) {
+  const { supabase, user } = await signedIn()
+  const projectId = String(formData.get('project_id') || '')
+  if (!projectId) return
+  const { data } = await supabase.from('intent_rooms').select('id, name, section_code, needs_2d').eq('project_id', projectId)
+  const open = ((data || []) as { id: string; name: string; section_code: string; needs_2d: boolean | null }[]).filter(
+    (r) => r.needs_2d == null && !isHouseSection(String(r.section_code || ''))
+  )
+  const at = new Date().toISOString()
+  let failed = 0
+  for (const r of open) {
+    const { data: changed, error } = await supabase
+      .from('intent_rooms')
+      .update({ needs_2d: suggestNeeds2d(String(r.name || ''), String(r.section_code || '')), typed_by: user.email || user.id, typed_at: at })
+      .eq('id', r.id)
+      .eq('project_id', projectId)
+      .is('needs_2d', null)
+      .select('id')
+    if (error || !changed || changed.length === 0) failed++
+  }
+  revalidatePath('/projects/' + projectId)
+  revalidatePath('/projects/' + projectId + '/emit')
+  const q = failed ? 'set2d=' + (open.length - failed) + '&set2dfailed=' + failed : 'set2d=' + open.length
+  redirect('/projects/' + projectId + '/emit?' + q + '#typed')
 }
 
 function parseParams(raw: string): { ok: true; params: Record<string, unknown> } | { ok: false } {

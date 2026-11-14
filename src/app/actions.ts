@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { isHouseSection, suggestNeeds2d } from '@/lib/vocab'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -78,12 +79,27 @@ export async function setReviewState(roomId: string, projectId: string, state: '
   const supabase = await createClient()
   // A 2D-approved room is never downgraded by this control — that would discard
   // the approval silently. Reopening is its own explicit action (reopenRoom).
-  const { data: room } = await supabase.from('intent_rooms').select('review_state').eq('id', roomId).single()
+  const { data: room } = await supabase.from('intent_rooms').select('review_state, name, section_code, needs_2d').eq('id', roomId).single()
   if (!room) return
   if (room.review_state === '2d_approved') {
     redirect(`/projects/${projectId}/rooms/${roomId}?err2d=${encodeURIComponent('This room is 2D approved. Use "Reopen room" to change it — that discards the 2D approval.')}`)
   }
-  await supabase.from('intent_rooms').update({ review_state: state }).eq('id', roomId)
+  // Mitch 2026-11-14 (Whitaker pilot): a person who marks a room reviewed with the suggested 2D answer on the card has
+  // given that answer. Before this, 38 confirmed rooms went into an emission with no 2D yes / no and the typed contract
+  // was not written. Only a room with NO saved answer is touched; a saved answer is never changed here.
+  //   confirmed          -> the answer the card suggests (suggestNeeds2d, the same one the form preselects)
+  //   defaults accepted  -> no: that button says the room is built from the defaults, without 2D drawings
+  const patch: Record<string, unknown> = { review_state: state }
+  if (state !== 'unreviewed' && room.needs_2d == null && !isHouseSection(String(room.section_code || ''))) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    patch.needs_2d = state === 'defaults_accepted' ? false : suggestNeeds2d(String(room.name || ''), String(room.section_code || ''))
+    patch.typed_by = user ? user.email || user.id : null
+    patch.typed_at = new Date().toISOString()
+  }
+  await supabase.from('intent_rooms').update(patch).eq('id', roomId)
+  revalidatePath('/projects/' + projectId + '/emit')
   revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
   revalidatePath(`/projects/${projectId}`)
   revalidatePath('/')

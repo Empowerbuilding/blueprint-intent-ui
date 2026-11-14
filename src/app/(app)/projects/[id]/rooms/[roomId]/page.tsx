@@ -813,7 +813,7 @@ export default async function RoomPage({
                         <span className="text-[11px] text-slate-600">
                           {roomTyped
                             ? 'Saved: ' + roleLabel(room.role || '') + ' · ' + (room.needs_2d ? '2D drawings first' : 'no 2D drawings') + (room.shell_changed ? ' · shape changes' : '') + (room.level ? ' · ' + room.level : '') + (room.sheet_group ? ' · sheet group ' + room.sheet_group : room.sheet_group === '' ? ' · no interior sheet' : '')
-                            : 'Nothing is saved until you press Save.'}
+                            : 'Nothing is saved until you press Save. Marking the room confirmed saves the 2D answer suggested here; a changed dropdown needs Save.'}
                         </span>
                       </div>
                     </form>

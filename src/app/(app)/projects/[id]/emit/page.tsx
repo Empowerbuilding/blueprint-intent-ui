@@ -1,6 +1,8 @@
 import { fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
+import { acceptSuggested2d } from '@/app/typing-actions'
+import { isHouseSection, suggestNeeds2d } from '@/lib/vocab'
 import { buildAndEmit, buildV2 } from '@/lib/emit-core'
 import { EmitButton } from '@/components/emit-button'
 import { loadModelRules } from '@/lib/model-rules'
@@ -13,11 +15,11 @@ export default async function EmitPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ error?: string; emitted?: string; handoff?: string; v2?: string; same?: string }>
+  searchParams: Promise<{ error?: string; emitted?: string; handoff?: string; v2?: string; same?: string; set2d?: string; set2dfailed?: string }>
 }) {
   const { id } = await params
   const tz = await viewerTimeZone()
-  const { error, emitted, handoff, v2: v2Param, same } = await searchParams
+  const { error, emitted, handoff, v2: v2Param, same, set2d, set2dfailed } = await searchParams
   const supabase = await createClient()
 
   const { data: project } = await supabase
@@ -53,6 +55,12 @@ export default async function EmitPage({
     redlines: v2Redlines || [],
     images: v2Images || [],
   })
+  // rooms with no 2D yes / no saved, and the answer their card suggests (one press below saves it for all of them)
+  const no2d = ((v2Rooms || []) as { id: string; name: string; section_code: string; needs_2d: boolean | null }[])
+    .filter((r) => r.needs_2d == null && !isHouseSection(String(r.section_code || '')))
+    .map((r) => ({ label: r.section_code + ' ' + r.name, yes: suggestNeeds2d(String(r.name || ''), String(r.section_code || '')) }))
+  const no2dYes = no2d.filter((r) => r.yes).map((r) => r.label)
+  const no2dNo = no2d.filter((r) => !r.yes).map((r) => r.label)
   // the queue of model checks: only accepted ones are attached to work items, so an empty accepted list means empty phase exits
   const modelRules = await loadModelRules(supabase)
   const checksAccepted = (modelRules || []).filter((m) => m.status === 'accepted').length
@@ -259,6 +267,32 @@ export default async function EmitPage({
                   {v2.errors.length > 12 && <li className="text-slate-600">…and {v2.errors.length - 12} more</li>}
                 </ul>
               </>
+            )}
+            {set2d != null && (
+              <div className={'mt-3 text-xs ' + (set2dfailed ? 'text-amber-300' : 'text-emerald-300')}>
+                Suggested 2D answer saved on {set2d} room{set2d === '1' ? '' : 's'}.
+                {set2dfailed ? ' ' + set2dfailed + ' could not be saved: open them from the list above.' : ''}
+              </div>
+            )}
+            {no2d.length > 0 && (
+              <form action={acceptSuggested2d} className="mt-3 border-t border-bh-border pt-3 space-y-2">
+                <input type="hidden" name="project_id" value={id} />
+                <div className="text-xs text-slate-300">
+                  {no2d.length} room{no2d.length === 1 ? ' has' : 's have'} no 2D yes/no saved. The answer each card suggests:
+                </div>
+                <div className="text-xs text-slate-400 break-words">
+                  <span className="text-slate-300">Yes, draw it first ({no2dYes.length}):</span> {no2dYes.join(', ') || 'none'}
+                </div>
+                <div className="text-xs text-slate-400 break-words">
+                  <span className="text-slate-300">No 2D drawings ({no2dNo.length}):</span> {no2dNo.join(', ') || 'none'}
+                </div>
+                <button className="btn-secondary-sm">
+                  Use the suggested answer for {no2d.length === 1 ? 'this room' : 'these ' + no2d.length + ' rooms'}
+                </button>
+                <div className="text-[11px] text-slate-600">
+                  A room that should get the other answer: open it, change the dropdown and press Save. A saved answer is never changed by this button.
+                </div>
+              </form>
             )}
             {v2.ok && v2.warnings.length > 0 && (
               <ul className="mt-2 space-y-1 text-xs text-slate-500">
