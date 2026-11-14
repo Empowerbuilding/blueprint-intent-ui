@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { runMathGate, type Geometry, type RuleRow } from '@/lib/rules'
+import { fetchSlotExceptions, annotateMath, sameElements } from '@/lib/check-exceptions'
 import { visionGateInBackground } from '@/lib/outline-vision'
 
 // POST /api/push-outline — Blueprint pushes a drafted 2D outline (zone map /
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
   // stays on the superseded row in the DB)
   const { data: previous } = await supabase
     .from('intent_outlines')
-    .select('id')
+    .select('id, status, geometry, approved_by, approved_at')
     .eq('room_id', room.id)
     .eq('outline_type', outlineType)
     .eq('label', label)
@@ -136,6 +137,10 @@ export async function POST(request: NextRequest) {
   // writes around it, which used to fail without a word (Tony 2026-11-12: same guard as the board push)
   const notStored: { what: string; reason: string }[] = []
   const said = (e: { message?: string } | null | undefined) => (e && e.message ? e.message : 'the database gave no reason')
+  // ---- approval carry-over: an approved drawing re-pushed with IDENTICAL elements keeps its approval ----
+  // (the geometry meta is ignored: version stamp and view metadata change between contract versions by design)
+  const prevApproved = (previous || []).find((o: { status?: string }) => o.status === 'approved')
+  const carriedOver = !!(prevApproved && sameElements(prevApproved.geometry, geometry))
   let replacedId: string | null = null
   if (previous?.length) {
     replacedId = previous[0]!.id
@@ -156,16 +161,17 @@ export async function POST(request: NextRequest) {
       label,
       storage_path: storagePath,
       geometry,
-      status: 'pushed',
+      status: carriedOver ? 'approved' : 'pushed',
       pushed_by: body.outline?.pushed_by || 'machine',
+      ...(carriedOver && prevApproved ? { approved_by: prevApproved.approved_by, approved_at: prevApproved.approved_at } : {}),
       replaces: replacedId,
     })
     .select('id')
     .single()
   if (insErr || !outline) return NextResponse.json({ error: insErr?.message || 'insert failed' }, { status: 500 })
 
-  // ---- new 2D invalidates a prior 2d_approved room state ----
-  if (room.review_state === '2d_approved') {
+  // ---- new 2D invalidates a prior 2d_approved room state (unless the approval carried over) ----
+  if (room.review_state === '2d_approved' && !carriedOver) {
     const { error: resetErr } = await supabase.from('intent_rooms').update({ review_state: 'confirmed' }).eq('id', room.id)
     if (resetErr) notStored.push({ what: 'room not set back from 2D approved', reason: said(resetErr) })
   }
@@ -182,6 +188,10 @@ export async function POST(request: NextRequest) {
     geometry,
     latestVersion?.[0]?.version ?? null
   )
+
+  // ---- accepted exceptions: a person's ruling on a failed check, slot-matched ----
+  const excMap = await fetchSlotExceptions(supabase, { projectId: projectId!, roomId: room.id, outlineType: outlineType!, label })
+  const mathAnnotated = annotateMath(math.results as unknown as { rule_key: string; status: string }[], excMap)
 
   // ---- persist checks (math + vision placeholder) BEFORE firing the background job ----
   // (write-order matters: the background vision must never be able to clobber math)
@@ -224,6 +234,7 @@ export async function POST(request: NextRequest) {
   }
 
   const mathFails = math.results.filter((r) => r.status === 'fail')
+  const mathExcepted = mathFails.filter((r) => (r as { exception?: unknown }).exception).length
 
   return NextResponse.json({
     ok: true,
@@ -231,6 +242,8 @@ export async function POST(request: NextRequest) {
     project_id: projectId,
     room: `${room.section_code} ${room.name}`,
     superseded: previous?.length || 0,
+    carried_over: carriedOver,
+    exceptions: { math_annotated: mathAnnotated },
     // complete: false when something this push should have written is not in the app; not_stored says what and why
     complete: notStored.length === 0,
     not_stored: notStored,

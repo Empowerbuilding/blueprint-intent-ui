@@ -6,6 +6,7 @@
 
 import { runVisionGate, type VisionCheck } from '@/lib/vision-gate'
 import { FETCH_URL_TTL, OUTLINES_BUCKET, signedUrl, type StorageClient } from '@/lib/storage'
+import { fetchSlotExceptions, annotateVision } from '@/lib/check-exceptions'
 
 // minimal structural type for what we use
 type AnyClient = {
@@ -74,7 +75,7 @@ export async function visionGateForOutline(
       .eq('project_id', opts.projectId)
       .is('room_id', null)
       .eq('status', 'active'),
-    client.from('intent_outlines').select('checks, geometry').eq('id', opts.outlineId).single(),
+    client.from('intent_outlines').select('checks, geometry, label').eq('id', opts.outlineId).single(),
   ])
 
   const mediaType = /\.(jpe?g|webp|gif)$/i.exec(opts.storagePath)?.[1]?.toLowerCase()
@@ -97,6 +98,11 @@ export async function visionGateForOutline(
     decisions: [...(roomDecisions || []), ...(houseDecisions || [])] as { topic: string; value: string }[],
     geometryElements: geoElements,
   })
+
+  // accepted exceptions: annotate conflicts a person has ruled on for this slot (status stays 'conflict'; the exception says who accepted it)
+  const outlineLabel = ((outline as { label?: string } | null)?.label) || ''
+  const excMap = await fetchSlotExceptions(client, { projectId: opts.projectId, roomId: opts.roomId, outlineType: opts.outlineType, label: outlineLabel })
+  if (check.results?.length) annotateVision(check.results as unknown as { verdict?: string }[], excMap)
 
   const checks = { ...((outline as { checks?: Record<string, unknown> } | null)?.checks || {}), vision: check }
   await client.from('intent_outlines').update({ checks }).eq('id', opts.outlineId)

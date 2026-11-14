@@ -38,6 +38,8 @@ export type GeoElement = {
   y: number
   w: number
   h: number
+  /** doors carry the wall they sit in (N/E/S/W) — the door-front measure needs it */
+  face?: string
 }
 
 export type Geometry = {
@@ -180,13 +182,50 @@ export function runMathGate(
         const references = elements.filter((e) => referenceKinds.includes(e.kind))
         let minGap = Infinity
         let pair = ''
-        for (const a of primaries) {
-          for (const b of references) {
-            if (a === b) continue
-            const g = gapBetween(a, b)
-            if (g < minGap) {
-              minGap = g
-              pair = `${a.label || a.kind} ↔ ${b.label || b.kind}`
+        if (p.measure === 'door_front') {
+          // door-front clearance (2026-11-14, Whitaker pilot): the required clear space is IN FRONT of
+          // the door — its span extended min_in into the room — not the nearest distance in any direction.
+          // A fixture beside the door on the same wall does not fail; one in the door's clear path does.
+          // Doors carry `face` (the wall they sit in): N → room is +y, S → −y, W → +x, E → −x.
+          const dir = (f: string): [number, number] =>
+            f === 'N' ? [0, 1] : f === 'S' ? [0, -1] : f === 'W' ? [1, 0] : f === 'E' ? [-1, 0] : [0, 0]
+          let measuredAny = false
+          for (const a of primaries) {
+            const d = dir(String(a.face || ''))
+            if (!d[0] && !d[1]) continue
+            for (const b of references) {
+              if (a === b) continue
+              // b must reach into the room past the door's interior edge...
+              const reach = d[1] > 0 ? b.y + b.h > a.y + a.h : d[1] < 0 ? b.y < a.y : d[0] > 0 ? b.x + b.w > a.x + a.w : b.x < a.x
+              // ...and sit within the door's span across the wall
+              const across = d[0] !== 0 ? b.y < a.y + a.h && a.y < b.y + b.h : b.x < a.x + a.w && a.x < b.x + b.w
+              if (!reach || !across) continue
+              const clear = d[0] > 0 ? b.x - (a.x + a.w) : d[0] < 0 ? a.x - (b.x + b.w) : d[1] > 0 ? b.y - (a.y + a.h) : a.y - (b.y + b.h)
+              if (clear >= minIn) continue
+              measuredAny = true
+              if (clear < minGap) {
+                minGap = clear
+                pair = `${a.label || a.kind} in front ↔ ${b.label || b.kind}`
+              }
+            }
+          }
+          if (minGap === Infinity) {
+            if (primaries.length) {
+              results.push({ rule_key: rule.rule_key, description: desc, status: 'pass', measured: 'clear in front of every door', required: `≥ ${fmt(minIn)}`, detail: 'door-front measure' })
+            } else {
+              results.push({ rule_key: rule.rule_key, description: desc, status: 'na', detail: `needs elements of kinds [${[...primaryKinds, ...referenceKinds].join(', ')}]` })
+            }
+            break
+          }
+        } else {
+          for (const a of primaries) {
+            for (const b of references) {
+              if (a === b) continue
+              const g = gapBetween(a, b)
+              if (g < minGap) {
+                minGap = g
+                pair = `${a.label || a.kind} ↔ ${b.label || b.kind}`
+              }
             }
           }
         }

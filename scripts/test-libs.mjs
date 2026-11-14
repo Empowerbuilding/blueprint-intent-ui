@@ -3,6 +3,7 @@ import { projectProgress } from '../src/lib/progress.ts'
 import { lineDiff, foldDiff, diffStats } from '../src/lib/diff.ts'
 import { describeRule, describeScope, ruleToFields, fieldsToRule, keyFromDescription } from '../src/lib/rule-text.ts'
 import { roomNameMatches, runMathGate } from '../src/lib/rules.ts'
+import { sameElements, annotateMath, annotateVision } from '../src/lib/check-exceptions.ts'
 import { deterministicDimensionCheck } from '../src/lib/dimension-check.ts'
 import { DECISION_SOURCES, normaliseRole, suggestKind, suggestNeeds2d, suggestRole, suggestSheetGroup } from '../src/lib/vocab.ts'
 import { SOURCE_MAP, buildContractV2, contractSha, validateContractV2 } from '../src/lib/emit-v2.ts'
@@ -338,3 +339,33 @@ eq('inspo: one detail of one picture as the drawing treated it: used, not used w
 }
 console.log(fails ? 'FAILED ' + fails : 'ALL PASS')
 process.exit(fails ? 1 : 0)
+
+// ---- accepted exceptions + door-front clearance + carry-over identity (2026-11-14 Whitaker pilot) ----
+const doorRule = { rule_key: 'door_clearance_36', rule_type: 'min_clearance', active: true, description: 'door clearance', params: { min_in: 36, between: [['door'], ['vanity', 'toilet']], measure: 'door_front' }, applies_to: { room_names: '*', outline_types: ['plan'] } }
+const bathPlan = { elements: [
+  { id: 'd1', kind: 'door', label: '36 door', x: 0, y: 0, w: 36, h: 6, face: 'N' },
+  { id: 'v1', kind: 'vanity', label: 'vanity', x: 48, y: 0, w: 72, h: 22 },   // BESIDE the door, same wall
+] }
+const bathPlanBlocked = { elements: [
+  { id: 'd1', kind: 'door', label: '36 door', x: 0, y: 0, w: 36, h: 6, face: 'N' },
+  { id: 'v1', kind: 'vanity', label: 'vanity', x: 6, y: 20, w: 72, h: 22 },   // IN FRONT: 20 in clear < 36
+] }
+const oldMeasure = { ...doorRule, params: { ...doorRule.params } }
+delete oldMeasure.params.measure
+eq('door-front: a vanity beside the door on the same wall passes (the old any-direction measure failed it)',
+  runMathGate([doorRule], { name: 'Bath', section_code: '115' }, 'plan', bathPlan, 1).results[0].status, 'pass')
+eq('door-front: a vanity in the clear path fails with the measured clear depth',
+  [runMathGate([doorRule], { name: 'Bath', section_code: '115' }, 'plan', bathPlanBlocked, 1).results[0].status, runMathGate([doorRule], { name: 'Bath', section_code: '115' }, 'plan', bathPlanBlocked, 1).results[0].measured],
+  ['fail', '14'])
+eq('door-front: without the param the old nearest-distance measure is untouched (a 48 in diagonal to the beside-vanity still fails)',
+  runMathGate([oldMeasure], { name: 'Bath', section_code: '115' }, 'plan', bathPlan, 1).results[0].status, 'fail')
+eq('carry-over identity: identical elements in a different order with changed meta are the same drawing; a moved element is not',
+  [sameElements({ elements: [{ id: 'a', x: 1 }, { id: 'b', x: 2 }], meta: { contract_version: 2 } }, { elements: [{ id: 'b', x: 2 }, { id: 'a', x: 1 }], meta: { contract_version: 3, view: { orientation: 'N' } } }),
+   sameElements({ elements: [{ id: 'a', x: 1 }] }, { elements: [{ id: 'a', x: 5 }] })],
+  [true, false])
+const exc = new Map([['math:door_clearance_36', { check: 'math:door_clearance_36', ruled_by: 'mitchell@barnhaussteelbuilders.com', ruled_at: '2026-11-14T22:52:00Z', quote: 'fine as is' }], ['vision', { check: 'vision', ruled_by: 'mitchell@barnhaussteelbuilders.com', ruled_at: '2026-11-14T22:52:00Z', quote: 'approved as drawn' }]])
+const mathRes = [{ rule_key: 'door_clearance_36', status: 'fail' }, { rule_key: 'other', status: 'fail' }, { rule_key: 'ok', status: 'pass' }]
+const visRes = [{ verdict: 'conflict' }, { verdict: 'confirmed' }]
+eq('exceptions: a ruled math fail and a ruled vision conflict carry the ruling; unruled fails and passes do not',
+  [annotateMath(mathRes, exc), annotateVision(visRes, exc), mathRes[0].exception.ruled_by, mathRes[1].exception, visRes[0].exception.quote],
+  [1, 1, 'mitchell@barnhaussteelbuilders.com', undefined, 'approved as drawn'])
