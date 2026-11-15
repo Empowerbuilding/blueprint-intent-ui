@@ -27,6 +27,40 @@ function nounsIn(text: string): Set<string> {
 
 type SB = { from: (t: string) => any }
 
+// #28 - decision freshness: active transcript-sourced lines whose meeting_date
+// predates the project's latest meeting. They stand only because no newer
+// meeting re-mentioned them (silent drift between meetings; the Master Bath
+// 12x12-window class). Read-only: flags, never blocks.
+export type Freshness = {
+  latestMeeting: string | null
+  staleByRoom: Map<string, number> // room_id -> stale count; '' = house/global
+  totalStale: number
+}
+
+export async function decisionFreshness(supabase: SB, projectId: string): Promise<Freshness> {
+  const { data } = await supabase
+    .from('intent_decisions')
+    .select('room_id, meeting_date')
+    .eq('project_id', projectId)
+    .eq('status', 'active')
+    .not('meeting_date', 'is', null)
+    .eq('source', 'transcript')
+  const rows = (data || []) as { room_id: string | null; meeting_date: string | null }[]
+  const dates = rows.map((r) => r.meeting_date).filter((d): d is string => !!d)
+  if (!dates.length) return { latestMeeting: null, staleByRoom: new Map(), totalStale: 0 }
+  const latestMeeting = dates.reduce((a, b) => (a > b ? a : b))
+  const staleByRoom = new Map<string, number>()
+  let totalStale = 0
+  for (const r of rows) {
+    if (r.meeting_date && r.meeting_date < latestMeeting) {
+      const key = r.room_id || ''
+      staleByRoom.set(key, (staleByRoom.get(key) || 0) + 1)
+      totalStale++
+    }
+  }
+  return { latestMeeting, staleByRoom, totalStale }
+}
+
 export async function decisionGaps(
   supabase: SB,
   projectId: string,

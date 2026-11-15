@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { createStandardRooms, setProjectStatus, deleteProject } from '@/app/actions'
-import { decisionGaps } from '@/lib/decision-gaps'
+import { decisionGaps, decisionFreshness } from '@/lib/decision-gaps'
 import { loadOverview } from '@/lib/overview'
 import { Pill, REVIEW_STATE_TONE } from '@/components/pill'
 import { PageHeader } from '@/components/page-header'
@@ -48,6 +48,7 @@ export default async function ProjectPage({
   }
   const gaps = await decisionGaps(supabase, id, rooms.map((r) => ({ id: r.id, section_code: r.section_code, name: r.name })))
   const gapsByRoom = new Map(gaps.map((g) => [g.roomId, g]))
+  const fresh = await decisionFreshness(supabase, id)
 
   const outlinesByRoom = new Map<string, { pending: number; approved: number; rejected: number }>()
   for (const o of outlines) {
@@ -124,6 +125,13 @@ export default async function ProjectPage({
             <span className="text-amber-400">(2026-11-14 pilot lesson: Bath 3's vanity shipped exactly this way.)</span>
           </div>
         )}
+        {fresh.totalStale > 0 && (
+          <div className="bg-sky-950/40 border border-sky-800/70 rounded-lg px-4 py-3 text-sm text-sky-200">
+            <span className="font-semibold">Decision freshness: {fresh.totalStale} line{fresh.totalStale === 1 ? '' : 's'} from before your latest meeting ({fresh.latestMeeting}) still stand.</span>{' '}
+            They carry only because no newer meeting re-mentioned them — confirm or supersede before locking.{' '}
+            <span className="text-sky-400">(2026-11-15 pilot lesson: the Master Bath 12×12 windows stood exactly this way.)</span>
+          </div>
+        )}
         {/* room board */}
         <section className="space-y-4">
           <h2 className="section-title">Rooms ({total})</h2>
@@ -151,6 +159,17 @@ export default async function ProjectPage({
                         <span className="text-slate-700">·</span>
                         <span className="text-amber-400 font-medium" title={gapsByRoom.get(r.id)!.missingPieces.join(", ")}>
                           ⚠ {gapsByRoom.get(r.id)!.noDecisions ? "no decisions, evidence exists" : "gap: " + gapsByRoom.get(r.id)!.missingPieces.join(", ")}
+                        </span>
+                      </>
+                    ) : null}
+                    {(fresh.staleByRoom.get(r.id) || 0) > 0 ? (
+                      <>
+                        <span className="text-slate-700">·</span>
+                        <span
+                          className="text-sky-400 font-medium"
+                          title={'active lines from before the latest meeting (' + fresh.latestMeeting + ') — standing unconfirmed'}
+                        >
+                          ↻ {fresh.staleByRoom.get(r.id)} older-word line{(fresh.staleByRoom.get(r.id) || 0) === 1 ? '' : 's'}
                         </span>
                       </>
                     ) : null}

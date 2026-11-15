@@ -1,5 +1,5 @@
 import { fmtDateTime, viewerTimeZone } from '@/lib/time'
-import { decisionGaps } from '@/lib/decision-gaps'
+import { decisionGaps, decisionFreshness } from '@/lib/decision-gaps'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
 import { acceptSuggested2d } from '@/app/typing-actions'
@@ -78,6 +78,7 @@ export default async function EmitPage({
   // decision covers it. Non-blocking warning at emit time — the person decides with eyes open.
   const { data: roomRowsForGaps } = await (await createClient()).from('intent_rooms').select('id, section_code, name').eq('project_id', id).order('section_code')
   const gaps = await decisionGaps(await createClient(), id, (roomRowsForGaps || []) as { id: string; section_code: string; name: string }[])
+  const fresh = await decisionFreshness(await createClient(), id)
 
   const [{ count: blockingOpen }, { count: unassignedImgs }] = await Promise.all([
     supabase
@@ -240,6 +241,31 @@ export default async function EmitPage({
                   ))}
                   {gaps.length > 8 && <div className="text-amber-500">+ {gaps.length - 8} more</div>}
                   <div className="text-amber-400">Emitting is allowed — these pieces will not be built until lines exist.</div>
+                </div>
+              )}
+              {fresh.totalStale > 0 && (
+                <div className="bg-sky-950/40 border border-sky-800/70 rounded-lg px-4 py-3 text-sm text-sky-200 space-y-1">
+                  <div className="font-semibold">
+                    ↻ Decision freshness (non-blocking): {fresh.totalStale} active line{fresh.totalStale === 1 ? '' : 's'} predate{fresh.totalStale === 1 ? 's' : ''} your latest meeting ({fresh.latestMeeting}).
+                  </div>
+                  {((roomRowsForGaps || []) as { id: string; section_code: string; name: string }[])
+                    .filter((r) => (fresh.staleByRoom.get(r.id) || 0) > 0)
+                    .slice(0, 8)
+                    .map((r) => (
+                      <div key={r.id}>
+                        <span className="font-mono text-[11px] text-sky-500">{r.section_code}</span> {r.name} —{' '}
+                        {fresh.staleByRoom.get(r.id)} older-word line{(fresh.staleByRoom.get(r.id) || 0) === 1 ? '' : 's'}
+                      </div>
+                    ))}
+                  {(fresh.staleByRoom.get('') || 0) > 0 && (
+                    <div>
+                      <span className="font-mono text-[11px] text-sky-500">HOUSE</span> house-level —{' '}
+                      {fresh.staleByRoom.get('')} older-word line{(fresh.staleByRoom.get('') || 0) === 1 ? '' : 's'}
+                    </div>
+                  )}
+                  <div className="text-sky-400">
+                    They stand only because no newer meeting re-mentioned them — confirm or supersede any that drifted before locking.
+                  </div>
                 </div>
               )}
             </>

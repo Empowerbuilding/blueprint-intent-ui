@@ -555,6 +555,18 @@ export default async function RoomPage({
     .single()
   if (!room || room.project_id !== id) notFound()
 
+  // #28: the project's latest meeting date, for the older-word markers on decision lines
+  const { data: latestMeetingRow } = await supabase
+    .from('intent_decisions')
+    .select('meeting_date')
+    .eq('project_id', id)
+    .eq('status', 'active')
+    .not('meeting_date', 'is', null)
+    .eq('source', 'transcript')
+    .order('meeting_date', { ascending: false })
+    .limit(1)
+  const latestMeeting = (latestMeetingRow?.[0] as { meeting_date?: string } | undefined)?.meeting_date || null
+
   const [projectRes, decisionsRes, opensRes, redlinesRes, imagesRes, outlinesRes, roomsRes, pendingRes] =
     await Promise.all([
       supabase.from('intent_projects').select('name, emitted_version').eq('id', id).single(),
@@ -889,6 +901,9 @@ export default async function RoomPage({
                                     {SOURCE_LABEL[d.source] || d.source}
                                     {d.source_ref ? ' · ' + d.source_ref : ''}
                                     {d.meeting_date ? ' · ' + d.meeting_date : ''}
+                                    {latestMeeting && d.source === 'transcript' && d.meeting_date && d.meeting_date < latestMeeting ? (
+                                      <span className="text-amber-400/80"> · older word (not re-confirmed since {latestMeeting})</span>
+                                    ) : null}
                                   </div>
                                   {kinds.length > 0 && (
                                     <div className={'text-[11px] break-words ' + (d.kind ? 'text-slate-500' : 'text-amber-400/80')}>
