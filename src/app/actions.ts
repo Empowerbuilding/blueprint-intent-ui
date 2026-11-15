@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { isHouseSection, suggestNeeds2d, suggestSheetGroup } from '@/lib/vocab'
+import { isHouseSection, suggestNeeds2d, suggestSheetGroup, type ScanEvidence } from '@/lib/vocab'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -79,7 +79,7 @@ export async function setReviewState(roomId: string, projectId: string, state: '
   const supabase = await createClient()
   // A 2D-approved room is never downgraded by this control — that would discard
   // the approval silently. Reopening is its own explicit action (reopenRoom).
-  const { data: room } = await supabase.from('intent_rooms').select('review_state, name, section_code, needs_2d, role, sheet_group').eq('id', roomId).single()
+  const { data: room } = await supabase.from('intent_rooms').select('review_state, name, section_code, needs_2d, role, sheet_group, model_state').eq('id', roomId).single()
   if (!room) return
   if (room.review_state === '2d_approved') {
     redirect(`/projects/${projectId}/rooms/${roomId}?err2d=${encodeURIComponent('This room is 2D approved. Use "Reopen room" to change it — that discards the 2D approval.')}`)
@@ -94,7 +94,14 @@ export async function setReviewState(roomId: string, projectId: string, state: '
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    patch.needs_2d = state === 'defaults_accepted' ? false : suggestNeeds2d(String(room.name || ''), String(room.section_code || ''))
+    patch.needs_2d =
+      state === 'defaults_accepted'
+        ? false
+        : suggestNeeds2d(
+            String(room.name || ''),
+            String(room.section_code || ''),
+            (room as { model_state?: ScanEvidence }).model_state || null
+          )
     // same ruling for the sheet group (Tony 2026-11-14, Whitaker pilot): a confirmed 2D room with no group would get no
     // interior sheet later. Only an unset group is touched; the suggestion is the room's role, same as the form preselect.
     if (patch.needs_2d === true && room.sheet_group == null) {

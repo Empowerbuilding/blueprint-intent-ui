@@ -74,7 +74,22 @@ export function suggestRole(roomName: string): RoomRole | null {
 const DESIGNED_NAME = /kitchen|pantry|bath|laundry|mud|closet|wic|bar\b|office|living|great|master|suite|safe|entry|foyer|adu|gym|garage/i
 const NO_2D = /^(house|site)|site \/|exterior/i
 /** a guess at whether the room gets 2D drawings. A suggestion only: a person says yes or no. */
-export function suggestNeeds2d(roomName: string, sectionCode: string): boolean {
+/**
+ * Scan evidence from intent_rooms.model_state. When the model already shows
+ * casework, plumbing fixtures or specialty equipment in a room, that room gets
+ * drawings — the name heuristics only cover rooms with no model presence yet.
+ * (Mitch 2026-11-15: "default to what it thinks is best based on the rule and
+ * i can manually change it if i want to" — the dropdown stays authoritative.)
+ */
+export type ScanEvidence = {
+  casework?: number
+  plumbing_fixtures?: number
+  specialty_equipment?: number
+} | null | undefined
+
+export function suggestNeeds2d(roomName: string, sectionCode: string, scan?: ScanEvidence): boolean {
+  if (scan && ((scan.casework || 0) > 0 || (scan.plumbing_fixtures || 0) > 0 || (scan.specialty_equipment || 0) > 0))
+    return true
   if (NO_2D.test(roomName) || NO_2D.test(sectionCode)) return false
   return DESIGNED_NAME.test(roomName)
 }

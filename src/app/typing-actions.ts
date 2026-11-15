@@ -79,8 +79,8 @@ export async function acceptSuggested2d(formData: FormData) {
   const { supabase, user } = await signedIn()
   const projectId = String(formData.get('project_id') || '')
   if (!projectId) return
-  const { data } = await supabase.from('intent_rooms').select('id, name, section_code, needs_2d').eq('project_id', projectId)
-  const open = ((data || []) as { id: string; name: string; section_code: string; needs_2d: boolean | null }[]).filter(
+  const { data } = await supabase.from('intent_rooms').select('id, name, section_code, needs_2d, model_state').eq('project_id', projectId)
+  const open = ((data || []) as { id: string; name: string; section_code: string; needs_2d: boolean | null; model_state?: import('@/lib/vocab').ScanEvidence }[]).filter(
     (r) => r.needs_2d == null && !isHouseSection(String(r.section_code || ''))
   )
   const at = new Date().toISOString()
@@ -88,7 +88,7 @@ export async function acceptSuggested2d(formData: FormData) {
   for (const r of open) {
     const { data: changed, error } = await supabase
       .from('intent_rooms')
-      .update({ needs_2d: suggestNeeds2d(String(r.name || ''), String(r.section_code || '')), typed_by: user.email || user.id, typed_at: at })
+      .update({ needs_2d: suggestNeeds2d(String(r.name || ''), String(r.section_code || ''), r.model_state || null), typed_by: user.email || user.id, typed_at: at })
       .eq('id', r.id)
       .eq('project_id', projectId)
       .is('needs_2d', null)

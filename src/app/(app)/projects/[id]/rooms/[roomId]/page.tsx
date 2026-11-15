@@ -18,7 +18,7 @@ import { setDecisionKind, setRedlineKind, setRoomTyping, setTopicKind } from '@/
 import { analyseImageAgain } from '@/app/emit-actions'
 import { detailState, inspoUse, tidyLayoutDetails } from '@/lib/inspo-analysis'
 import { loadKinds, type KindOption } from '@/lib/model-rules'
-import { ROOM_ROLES, isHouseSection, roleLabel, suggestKind, suggestNeeds2d, suggestRedlineKind, suggestRole, suggestSheetGroup } from '@/lib/vocab'
+import { ROOM_ROLES, isHouseSection, roleLabel, suggestKind, suggestNeeds2d, type ScanEvidence, suggestRedlineKind, suggestRole, suggestSheetGroup } from '@/lib/vocab'
 import { defaultsForRoom, loadDefaults } from '@/lib/defaults'
 import { INSPO_BUCKET, OUTLINES_BUCKET, signedUrls } from '@/lib/storage'
 import { summariseChecks, ago, type CheckSummary, type MathResult, type VisionResult } from '@/lib/outline-summary'
@@ -603,7 +603,7 @@ export default async function RoomPage({
   const typedAs = (k: string) => (kinds.find((x) => x.kind === k)?.executable === false ? 'context only — nothing is built from this line' : 'kind: ' + kindLabel(k))
   const isHouse = isHouseSection(room.section_code)
   const roleGuess = room.role ? null : suggestRole(room.name)
-  const needs2dGuess = suggestNeeds2d(room.name, room.section_code)
+  const needs2dGuess = suggestNeeds2d(room.name, room.section_code, (room as { model_state?: ScanEvidence }).model_state || null)
   // level: what a person saved, else what the model scan recorded. Sheet group: proposed from the role until a person saves one
   const scanLevel = typeof (room.model_state as Record<string, unknown> | null)?.level === 'string' ? String((room.model_state as Record<string, unknown>).level) : ''
   const sheetGroupGuess = room.sheet_group == null ? suggestSheetGroup(room.role || roleGuess) : null
