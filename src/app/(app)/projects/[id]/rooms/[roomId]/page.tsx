@@ -23,6 +23,7 @@ import { defaultsForRoom, loadDefaults } from '@/lib/defaults'
 import { INSPO_BUCKET, OUTLINES_BUCKET, signedUrls } from '@/lib/storage'
 import { summariseChecks, ago, type CheckSummary, type MathResult, type VisionResult } from '@/lib/outline-summary'
 import { Pill } from '@/components/pill'
+import { OutlineLightbox } from '@/components/outline-lightbox'
 import { PageHeader } from '@/components/page-header'
 import { VisionPoller } from '@/components/vision-poller'
 import Link from 'next/link'
@@ -287,6 +288,56 @@ function OutlineCard({ o, projectId, roomId, imageUrl, pictures, replacedApprove
     </>
   )
 
+  const actions = (
+    <div className="border-t border-bh-border pt-4 space-y-3">
+            {o.status === 'approved' && (
+              <form action={unapproveOutline}>
+                {hidden}
+                <button className="btn-secondary-sm w-full" title="Back to awaiting review. The room leaves 2D-approved if it was.">
+                  ↩ Undo approval — back to review
+                </button>
+              </form>
+            )}
+            {o.status === 'pushed' && (
+              <>
+                {c.mathFails.length === 0 ? (
+                  <form action={approveOutline}>
+                    {hidden}
+                    <button className="btn-success-sm w-full !py-2">✓ Approve this drawing</button>
+                  </form>
+                ) : (
+                  <form action={approveOutline} className="space-y-2">
+                    {hidden}
+                    <input
+                      name="override_reason"
+                      required
+                      placeholder="Why is this OK despite the failed rule?"
+                      className="field !py-1.5 !text-xs"
+                    />
+                    <button className="btn-danger-sm w-full">
+                      Approve anyway ({c.mathFails.length} failed {c.mathFails.length === 1 ? 'rule' : 'rules'})
+                    </button>
+                  </form>
+                )}
+                <form action={rejectOutline} className="space-y-2">
+                  {hidden}
+                  <input
+                    name="feedback"
+                    required
+                    placeholder="Reject — what should change? (wakes Blueprint to redraw)"
+                    className="field !py-1.5 !text-xs"
+                  />
+                  <button className="btn-secondary-sm w-full">✗ Reject and send back</button>
+                </form>
+              </>
+            )}
+            <form action={rerunOutlineChecks}>
+              {hidden}
+              <button className="text-xs text-slate-500 hover:text-white transition-colors">↻ Re-run both checks</button>
+            </form>
+    </div>
+  )
+
   return (
     <div id={'o-' + o.id} className="card scroll-mt-32 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-bh-border px-4 py-3">
@@ -315,14 +366,15 @@ function OutlineCard({ o, projectId, roomId, imageUrl, pictures, replacedApprove
         {/* drawing */}
         <div className="bg-bh-black border-b lg:border-b-0 lg:border-r border-bh-border">
           {imageUrl ? (
-            <a href={imageUrl} target="_blank" rel="noreferrer" title="Open full size in a new tab" className="block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl}
-                alt={o.outline_type + ' ' + (o.label || '')}
-                className="w-full max-h-[70vh] object-contain"
-              />
-            </a>
+            <OutlineLightbox
+              src={imageUrl}
+              alt={o.outline_type + ' ' + (o.label || '')}
+              typeLabel={o.outline_type}
+              label={o.label}
+              statusLabel={o.status === 'pushed' ? 'awaiting review' : o.status}
+              approved={o.status === 'approved'}
+              actions={actions}
+            />
           ) : (
             <div className="p-10 text-center text-sm text-slate-600">
               {o.storage_path ? 'The drawing could not be loaded. Refresh the page; if it stays missing, tell Blueprint.' : 'No image was pushed with this outline.'}
@@ -483,54 +535,7 @@ function OutlineCard({ o, projectId, roomId, imageUrl, pictures, replacedApprove
             </div>
           )}
 
-          {/* actions */}
-          <div className="border-t border-bh-border pt-4 space-y-3">
-            {o.status === 'approved' && (
-              <form action={unapproveOutline}>
-                {hidden}
-                <button className="btn-secondary-sm w-full" title="Back to awaiting review. The room leaves 2D-approved if it was.">
-                  ↩ Undo approval — back to review
-                </button>
-              </form>
-            )}
-            {o.status === 'pushed' && (
-              <>
-                {c.mathFails.length === 0 ? (
-                  <form action={approveOutline}>
-                    {hidden}
-                    <button className="btn-success-sm w-full !py-2">✓ Approve this drawing</button>
-                  </form>
-                ) : (
-                  <form action={approveOutline} className="space-y-2">
-                    {hidden}
-                    <input
-                      name="override_reason"
-                      required
-                      placeholder="Why is this OK despite the failed rule?"
-                      className="field !py-1.5 !text-xs"
-                    />
-                    <button className="btn-danger-sm w-full">
-                      Approve anyway ({c.mathFails.length} failed {c.mathFails.length === 1 ? 'rule' : 'rules'})
-                    </button>
-                  </form>
-                )}
-                <form action={rejectOutline} className="space-y-2">
-                  {hidden}
-                  <input
-                    name="feedback"
-                    required
-                    placeholder="Reject — what should change? (wakes Blueprint to redraw)"
-                    className="field !py-1.5 !text-xs"
-                  />
-                  <button className="btn-secondary-sm w-full">✗ Reject and send back</button>
-                </form>
-              </>
-            )}
-            <form action={rerunOutlineChecks}>
-              {hidden}
-              <button className="text-xs text-slate-500 hover:text-white transition-colors">↻ Re-run both checks</button>
-            </form>
-          </div>
+          {actions}
         </div>
       </div>
     </div>
