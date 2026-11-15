@@ -12,6 +12,12 @@ import { LESSON_COLUMNS, LESSON_KINDS, lessonRule, type Lesson } from '@/lib/les
 //      -> 201 { id, status: "proposed" }   (200 with duplicate:true if the same title is already on the ledger)
 //      A machine caller can only PROPOSE. There is no machine route that accepts, dismisses or
 //      retires a lesson: that is done by an approver, signed in, in the app.
+// POST { ..., learn: true, taught_by: "michael@...", source_ref: "<verbatim quote + when>" }
+//      -> 201 { id, status: "accepted" }  AUTO-LEARN (Mitch 2026-11-15 05:41Z: "we shouldn't
+//      have to click buttons for it to learn"). A lesson captured from a human correction lands
+//      directly as accepted with full provenance; humans VETO AFTER (retire) instead of gating
+//      before. learn:true requires taught_by and source_ref (the verbatim evidence). Knowledge
+//      flows automatically; decisions stay human.
 //
 // Auth: x-prefill-secret header (PREFILL_SECRET env). GET also works for a signed-in user.
 
@@ -90,7 +96,8 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 })
   }
-  // proposing is all this route does, whatever is sent
+  // proposing is all this route does, whatever is sent — the learn path sets its own
+  // acceptance fields server-side and never trusts client-sent ones
   for (const k of ['status', 'accepted_rule', 'decided_by', 'decided_by_email', 'decided_at', 'accepted_at']) {
     if (k in body && !(k === 'status' && body[k] === 'proposed')) {
       return NextResponse.json(
@@ -98,8 +105,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
-  }
-  const text = (k: string) => (typeof body[k] === 'string' ? (body[k] as string).trim() : '')
+  }  const text = (k: string) => (typeof body[k] === 'string' ? (body[k] as string).trim() : '')
   const title = text('title')
   const rule = text('proposed_rule')
   if (!title || !rule) return NextResponse.json({ error: 'title and proposed_rule are required' }, { status: 400 })
@@ -107,6 +113,16 @@ export async function POST(request: NextRequest) {
   const kind = text('kind') || 'process'
   if (!LESSON_KINDS.some((k) => k.key === kind)) {
     return NextResponse.json({ error: 'kind must be one of: ' + LESSON_KINDS.map((k) => k.key).join(', ') }, { status: 400 })
+  }
+
+  const learn = body['learn'] === true
+  const taughtBy = learn ? text('taught_by') : ''
+  const sourceRef = text('source_ref')
+  if (learn && (!taughtBy || !sourceRef)) {
+    return NextResponse.json(
+      { error: 'learn:true requires taught_by (who taught it) and source_ref (the verbatim evidence: quote + when)' },
+      { status: 400 },
+    )
   }
 
   // same title already waiting or accepted -> not added twice
@@ -131,22 +147,42 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const nowIso = new Date().toISOString()
   const { data: row, error } = await supabase
     .from('intent_lessons')
-    .insert({
-      status: 'proposed',
-      kind,
-      title,
-      what_happened: text('what_happened'),
-      proposed_rule: rule,
-      project_id: projectId,
-      project_name: projectName,
-      source: 'blueprint',
-      source_ref: text('source_ref') || null,
-      proposed_by: 'blueprint',
-    })
+    .insert(
+      learn
+        ? {
+            status: 'accepted',
+            kind,
+            title,
+            what_happened: text('what_happened'),
+            proposed_rule: rule,
+            accepted_rule: rule, // as taught — a human rewording still happens via retire+relearn if wanted
+            project_id: projectId,
+            project_name: projectName,
+            source: 'person',
+            source_ref: sourceRef,
+            proposed_by: taughtBy,
+            decided_by_email: 'auto-learned from ' + taughtBy,
+            decided_at: nowIso,
+            accepted_at: nowIso,
+          }
+        : {
+            status: 'proposed',
+            kind,
+            title,
+            what_happened: text('what_happened'),
+            proposed_rule: rule,
+            project_id: projectId,
+            project_name: projectName,
+            source: 'blueprint',
+            source_ref: text('source_ref') || null,
+            proposed_by: 'blueprint',
+          }
+    )
     .select('id, status')
     .single()
   if (error || !row) return NextResponse.json({ error: error?.message || 'insert failed' }, { status: 500 })
-  return NextResponse.json({ id: row.id, status: row.status }, { status: 201 })
+  return NextResponse.json({ id: row.id, status: row.status, learned: learn || undefined }, { status: 201 })
 }
