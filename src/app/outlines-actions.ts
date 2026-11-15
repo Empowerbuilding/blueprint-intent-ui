@@ -46,6 +46,7 @@ export async function approveOutline(formData: FormData) {
 
 export async function rejectOutline(formData: FormData) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   const projectId = String(formData.get('project_id'))
   const roomId = String(formData.get('room_id'))
   const outlineId = String(formData.get('outline_id'))
@@ -84,7 +85,7 @@ export async function rejectOutline(formData: FormData) {
           org_id: '1c466ccb-ef35-4ba4-bf00-5fcabf20edec',
           sender_type: 'user',
           sender_name: 'WorkOrderUI',
-          content: `🔴 **2D outline rejected — ${project?.name || 'project'} ${room ? `${room.section_code} ${room.name}` : ''} (${outline.outline_type}${outline.label ? ` "${outline.label}"` : ''}).** Michael's feedback: "${feedback}". Fetch the current state: GET /api/outlines?project_id=${projectId} (header x-prefill-secret). Redraft and re-push via POST /api/push-outline — same room/type/label supersedes the old one.`,
+          content: `🔴 **2D outline rejected — ${project?.name || 'project'} ${room ? `${room.section_code} ${room.name}` : ''} (${outline.outline_type}${outline.label ? ` "${outline.label}"` : ''}).** ${user?.email ? user.email.split('@')[0] + 's feedback' : 'Review feedback'}: "${feedback}". Fetch the current state: GET /api/outlines?project_id=${projectId} (header x-prefill-secret). Redraft and re-push via POST /api/push-outline — same room/type/label supersedes the old one.`,
           processed: false,
         }),
       })
@@ -249,6 +250,48 @@ export async function restoreOutline(formData: FormData) {
   if (room?.review_state === '2d_approved') {
     await supabase.from('intent_rooms').update({ review_state: 'confirmed' }).eq('id', roomId)
   }
+
+  revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
+}
+
+// Room-level bulk approve (post-pilot UX item): approve every drawing in the
+// room that is awaiting review. Gated the same way as single approvals: any
+// drawing with failed math rules stays pending for an individual,
+// reason-requiring approval. The room itself still needs its 2D-approved mark.
+export async function approveAllOutlines(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const projectId = String(formData.get('project_id'))
+  const roomId = String(formData.get('room_id'))
+
+  const { data: pendingRows } = await supabase
+    .from('intent_outlines')
+    .select('id, checks')
+    .eq('room_id', roomId)
+    .eq('status', 'pushed')
+  const rows = (pendingRows || []) as { id: string; checks: Record<string, unknown> | null }[]
+  if (!rows.length) return
+
+  const failing = rows.filter((r) => {
+    const mathResults = ((r.checks || {}).math as { results?: { status?: string }[] } | undefined)?.results || []
+    return mathResults.some((m) => m.status === 'fail')
+  })
+  if (failing.length > 0) {
+    redirect(
+      `/projects/${projectId}/rooms/${roomId}?view=2d&err2d=${encodeURIComponent(
+        failing.length + ' drawing(s) have failed rules — approve those individually with a reason. The rest were not changed.'
+      )}`
+    )
+  }
+
+  const now = new Date().toISOString()
+  await supabase
+    .from('intent_outlines')
+    .update({ status: 'approved', approved_by: user?.id ?? null, approved_at: now })
+    .eq('room_id', roomId)
+    .eq('status', 'pushed')
 
   revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
   revalidatePath(`/projects/${projectId}`)

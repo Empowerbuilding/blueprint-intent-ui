@@ -12,7 +12,7 @@ import {
   restoreDecision,
   setReviewState,
 } from '@/app/actions'
-import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved, restoreOutline, unapproveOutline } from '@/app/outlines-actions'
+import { approveOutline, approveAllOutlines, rejectOutline, rerunOutlineChecks, set2dApproved, restoreOutline, unapproveOutline } from '@/app/outlines-actions'
 import { setDecisionKind, setRedlineKind, setRoomTyping, setTopicKind } from '@/app/typing-actions'
 import { analyseImageAgain } from '@/app/emit-actions'
 import { detailState, inspoUse, tidyLayoutDetails } from '@/lib/inspo-analysis'
@@ -1242,7 +1242,21 @@ export default async function RoomPage({
               )}
 
               {pending.length > 0 && (
-                <h2 className="section-title">To review ({pending.length})</h2>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="section-title">To review ({pending.length})</h2>
+                  {pending.length > 1 && (
+                    <form action={approveAllOutlines}>
+                      <input type="hidden" name="project_id" value={id} />
+                      <input type="hidden" name="room_id" value={roomId} />
+                      <button
+                        className="btn-secondary-sm"
+                        title="Approves every awaiting-review drawing in this room. Drawings with failed rules stay for individual review."
+                      >
+                        ✓ Approve all {pending.length}
+                      </button>
+                    </form>
+                  )}
+                </div>
               )}
               {pending.map((o) => (
                 <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} pictures={pictures} replacedApprovedAt={replacedApproved.get(o.id) || null} />

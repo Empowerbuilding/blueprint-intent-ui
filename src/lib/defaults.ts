@@ -24,7 +24,7 @@ export const DEFAULTS: DefaultRule[] = [
   { topic: 'windows', value: 'secondary bedrooms casement; frames black; grilles off', scope: 'house' },
   { topic: 'rear opening', value: '3-panel slider Option A + accordion Option B (options sheet)', scope: 'house' },
   { topic: 'roof joists', value: '22" joist', scope: 'house' },
-  { topic: 'cabinet material', value: 'Cabinets - White Oak (tint per client)', scope: 'house' },
+  { topic: 'cabinet material', value: 'Cabinets - White Oak', scope: 'house' },
   { topic: 'counter material', value: 'Counter Top = Marble 05', scope: 'house' },
   { topic: 'hardware', value: 'Metal - Black Matte', scope: 'house' },
   { topic: 'accents', value: 'Navy / Charcoal / Gray / Steel Gray / Walnut', scope: 'house' },
