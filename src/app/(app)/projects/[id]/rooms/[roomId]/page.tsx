@@ -12,7 +12,7 @@ import {
   restoreDecision,
   setReviewState,
 } from '@/app/actions'
-import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved } from '@/app/outlines-actions'
+import { approveOutline, rejectOutline, rerunOutlineChecks, set2dApproved, restoreOutline, unapproveOutline } from '@/app/outlines-actions'
 import { setDecisionKind, setRedlineKind, setRoomTyping, setTopicKind } from '@/app/typing-actions'
 import { analyseImageAgain } from '@/app/emit-actions'
 import { detailState, inspoUse, tidyLayoutDetails } from '@/lib/inspo-analysis'
@@ -85,6 +85,9 @@ type Outline = {
   geometry: { elements?: unknown[]; meta?: unknown } | null
   checks: Record<string, unknown> | null
   feedback: string | null
+  replaces: string | null
+  approved_by: string | null
+  approved_at: string | null
 }
 type RoomLite = { id: string; section_code: string; name: string; review_state: string }
 
@@ -267,7 +270,7 @@ function VerdictRow({ v, tone }: { v: VisionResult; tone: 'red' | 'gold' | 'gree
 }
 
 // imageUrl is a signed link that expires (lib/storage.ts); null = the file could not be signed
-function OutlineCard({ o, projectId, roomId, imageUrl, pictures }: { o: Outline; projectId: string; roomId: string; imageUrl: string | null; pictures: Picture[] }) {
+function OutlineCard({ o, projectId, roomId, imageUrl, pictures, replacedApprovedAt }: { o: Outline; projectId: string; roomId: string; imageUrl: string | null; pictures: Picture[]; replacedApprovedAt?: string | null }) {
   const c = summariseChecks(o.checks)
   // what this drawing says it took from the room's pictures (geometry.meta.inspo, spec A97)
   const use = inspoUse(o.geometry)
@@ -294,7 +297,17 @@ function OutlineCard({ o, projectId, roomId, imageUrl, pictures }: { o: Outline;
             {o.pushed_by ? ' by ' + o.pushed_by : ''}
           </span>
         </div>
-        <Pill tone={o.status === 'approved' ? 'green' : 'gold'}>{o.status === 'pushed' ? 'awaiting review' : o.status}</Pill>
+        <div className="flex flex-wrap items-center gap-2">
+          {replacedApprovedAt && (
+            <Pill
+              tone="gold"
+              title={'The draft this one replaced was approved ' + replacedApprovedAt + ' — that approval was reset when the redraw arrived. Review this version on its own merits.'}
+            >
+              ↻ replaced an approved draft
+            </Pill>
+          )}
+          <Pill tone={o.status === 'approved' ? 'green' : 'gold'}>{o.status === 'pushed' ? 'awaiting review' : o.status}</Pill>
+        </div>
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -471,6 +484,14 @@ function OutlineCard({ o, projectId, roomId, imageUrl, pictures }: { o: Outline;
 
           {/* actions */}
           <div className="border-t border-bh-border pt-4 space-y-3">
+            {o.status === 'approved' && (
+              <form action={unapproveOutline}>
+                {hidden}
+                <button className="btn-secondary-sm w-full" title="Back to awaiting review. The room leaves 2D-approved if it was.">
+                  ↩ Undo approval — back to review
+                </button>
+              </form>
+            )}
             {o.status === 'pushed' && (
               <>
                 {c.mathFails.length === 0 ? (
@@ -579,7 +600,7 @@ export default async function RoomPage({
   const roomTyped = isHouse || (!!room.role && (room.needs_2d === true || room.needs_2d === false))
   // signed links for this render only; nothing here is a public URL
   const [outlineUrls, inspoUrls] = await Promise.all([
-    signedUrls(supabase, OUTLINES_BUCKET, outlines.filter((o) => o.status === 'pushed' || o.status === 'approved').map((o) => o.storage_path)),
+    signedUrls(supabase, OUTLINES_BUCKET, outlines.map((o) => o.storage_path)),
     signedUrls(supabase, INSPO_BUCKET, images.map((i) => i.storage_path)),
   ])
   const pendingElsewhere = ((pendingRes.data || []) as { room_id: string }[]).filter((p) => p.room_id !== roomId)
@@ -624,7 +645,16 @@ export default async function RoomPage({
   const pending = outlines.filter((o) => o.status === 'pushed')
   const approved = outlines.filter((o) => o.status === 'approved')
   const rejected = outlines.filter((o) => o.status === 'rejected')
-  const supersededCount = outlines.filter((o) => o.status === 'superseded').length
+  const superseded = outlines.filter((o) => o.status === 'superseded')
+  // a current drawing that replaced an APPROVED draft reset that approval — the card says so
+  const outlineById = new Map(outlines.map((o) => [o.id, o]))
+  const replacedApproved = new Map<string, string>()
+  for (const o of outlines) {
+    if ((o.status === 'pushed' || o.status === 'approved') && o.replaces) {
+      const old = outlineById.get(o.replaces)
+      if (old?.approved_at) replacedApproved.set(o.id, ago(old.approved_at))
+    }
+  }
   const summaries = [...pending, ...approved].map((o) => summariseChecks(o.checks))
   const visionRunning = summaries.some((s) => s.visionRunning)
 
@@ -1166,6 +1196,17 @@ export default async function RoomPage({
 
           {view === '2d' && (
             <section className="space-y-5">
+              {is2dApproved && (
+                <div className="card border-violet-500/50 p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm text-slate-200">
+                    ✓ This room is 2D approved — its drawings are in the build.
+                    <span className="block text-xs text-slate-500 mt-0.5">Reopen to change or re-review any drawing.</span>
+                  </div>
+                  <form action={reopenRoom.bind(null, roomId, id)}>
+                    <button className="btn-secondary-sm">Reopen room</button>
+                  </form>
+                </div>
+              )}
               {canApprove2d && (
                 <div className="card border-violet-500/50 p-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="text-sm text-slate-200">
@@ -1189,12 +1230,12 @@ export default async function RoomPage({
                 <h2 className="section-title">To review ({pending.length})</h2>
               )}
               {pending.map((o) => (
-                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} pictures={pictures} />
+                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} pictures={pictures} replacedApprovedAt={replacedApproved.get(o.id) || null} />
               ))}
 
               {approved.length > 0 && <h2 className="section-title pt-2">Approved ({approved.length})</h2>}
               {approved.map((o) => (
-                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} pictures={pictures} />
+                <OutlineCard key={o.id} o={o} projectId={id} roomId={roomId} imageUrl={(o.storage_path && outlineUrls.get(o.storage_path)) || null} pictures={pictures} replacedApprovedAt={replacedApproved.get(o.id) || null} />
               ))}
 
               {rejected.length > 0 && (
@@ -1217,10 +1258,48 @@ export default async function RoomPage({
                 </details>
               )}
 
-              {supersededCount > 0 && (
-                <div className="text-xs text-slate-600">
-                  {supersededCount} earlier {supersededCount === 1 ? 'version was' : 'versions were'} replaced by redraws.
-                </div>
+              {superseded.length > 0 && (
+                <details className="border border-bh-border rounded-xl">
+                  <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-300 px-4 py-3">
+                    {superseded.length} earlier {superseded.length === 1 ? 'version was' : 'versions were'} replaced by redraws — open to compare or restore
+                  </summary>
+                  <div className="space-y-3 p-3 pt-0">
+                    {superseded.map((o) => (
+                      <div key={o.id} className="bg-bh-panel/40 border border-bh-border rounded-xl p-3">
+                        <div className="flex flex-wrap items-center gap-2 mb-2 text-xs">
+                          <Pill tone="violet">{o.outline_type}</Pill>
+                          {o.label && <span className="text-slate-400">{o.label}</span>}
+                          <span className="text-slate-600">pushed {ago(o.pushed_at)}</span>
+                          {o.approved_at && <span className="text-slate-600">· was approved {ago(o.approved_at)}</span>}
+                          <form action={restoreOutline} className="ml-auto">
+                            <input type="hidden" name="project_id" value={id} />
+                            <input type="hidden" name="room_id" value={roomId} />
+                            <input type="hidden" name="outline_id" value={o.id} />
+                            <button
+                              className="btn-secondary-sm"
+                              title="Brings this version back as the one awaiting review. The redraws that replaced it go back to history. The room leaves 2D-approved if it was."
+                            >
+                              ↩ Restore this version
+                            </button>
+                          </form>
+                        </div>
+                        {o.feedback && <div className="text-red-300/90 mb-2">rejected then: &ldquo;{o.feedback}&rdquo;</div>}
+                        {o.storage_path && outlineUrls.get(o.storage_path) ? (
+                          <a href={outlineUrls.get(o.storage_path)} target="_blank" rel="noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={outlineUrls.get(o.storage_path)}
+                              alt={'superseded ' + o.outline_type + ' ' + (o.label || '')}
+                              className="max-h-64 w-full object-contain rounded-lg border border-bh-border bg-bh-black"
+                            />
+                          </a>
+                        ) : o.storage_path ? (
+                          <div className="text-xs text-slate-600">image unavailable</div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </details>
               )}
 
               {outlines.length === 0 && (

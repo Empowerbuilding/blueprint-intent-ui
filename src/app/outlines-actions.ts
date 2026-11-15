@@ -192,3 +192,95 @@ export async function set2dApproved(roomId: string, projectId: string) {
   revalidatePath(`/projects/${projectId}`)
   revalidatePath('/')
 }
+
+// Per-view revert (pilot review #7): bring a superseded drawing back. It returns
+// as 'pushed' — a human re-approves it after looking — and the chain of drawings
+// that replaced it goes to 'superseded'. A 2d_approved room drops back to
+// 'confirmed', the same reset a fresh push causes.
+export async function restoreOutline(formData: FormData) {
+  const supabase = await createClient()
+  const projectId = String(formData.get('project_id'))
+  const roomId = String(formData.get('room_id'))
+  const outlineId = String(formData.get('outline_id'))
+
+  const { data: outline } = await supabase
+    .from('intent_outlines')
+    .select('id, room_id, status')
+    .eq('id', outlineId)
+    .single()
+  if (!outline || outline.status !== 'superseded') return
+
+  // every drawing that (transitively) replaced this one
+  const { data: roomOutlines } = await supabase
+    .from('intent_outlines')
+    .select('id, replaces, status')
+    .eq('room_id', roomId)
+  const rows = (roomOutlines || []) as { id: string; replaces: string | null; status: string }[]
+  const children = new Map<string, string[]>()
+  for (const r of rows) {
+    if (r.replaces) children.set(r.replaces, [...(children.get(r.replaces) || []), r.id])
+  }
+  const toSupersede: string[] = []
+  const seen = new Set([outlineId])
+  let frontier = [outlineId]
+  while (frontier.length) {
+    const next: string[] = []
+    for (const fid of frontier) {
+      for (const child of children.get(fid) || []) {
+        if (seen.has(child)) continue
+        seen.add(child)
+        next.push(child)
+        const st = rows.find((r) => r.id === child)?.status
+        if (st === 'pushed' || st === 'approved') toSupersede.push(child)
+      }
+    }
+    frontier = next
+  }
+
+  if (toSupersede.length) {
+    await supabase.from('intent_outlines').update({ status: 'superseded' }).in('id', toSupersede)
+  }
+  await supabase
+    .from('intent_outlines')
+    .update({ status: 'pushed', approved_by: null, approved_at: null, feedback: null })
+    .eq('id', outlineId)
+
+  const { data: room } = await supabase.from('intent_rooms').select('review_state').eq('id', roomId).single()
+  if (room?.review_state === '2d_approved') {
+    await supabase.from('intent_rooms').update({ review_state: 'confirmed' }).eq('id', roomId)
+  }
+
+  revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
+}
+
+// Undo a single drawing approval (pilot review #7): back to 'pushed' for
+// re-review. Same room reset as a fresh push.
+export async function unapproveOutline(formData: FormData) {
+  const supabase = await createClient()
+  const projectId = String(formData.get('project_id'))
+  const roomId = String(formData.get('room_id'))
+  const outlineId = String(formData.get('outline_id'))
+
+  const { data: outline } = await supabase
+    .from('intent_outlines')
+    .select('id, room_id, status')
+    .eq('id', outlineId)
+    .single()
+  if (!outline || outline.status !== 'approved') return
+
+  await supabase
+    .from('intent_outlines')
+    .update({ status: 'pushed', approved_by: null, approved_at: null })
+    .eq('id', outlineId)
+
+  const { data: room } = await supabase.from('intent_rooms').select('review_state').eq('id', roomId).single()
+  if (room?.review_state === '2d_approved') {
+    await supabase.from('intent_rooms').update({ review_state: 'confirmed' }).eq('id', roomId)
+  }
+
+  revalidatePath(`/projects/${projectId}/rooms/${roomId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/')
+}
