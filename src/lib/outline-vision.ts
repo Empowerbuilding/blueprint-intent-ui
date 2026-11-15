@@ -4,7 +4,7 @@
 // 1-2+ minutes — the push API returns fast with math results; the room page
 // shows "running…" and auto-refreshes until it lands).
 
-import { runVisionGate, type VisionCheck } from '@/lib/vision-gate'
+import { runVisionGate, type VisionCheck, type ViewField } from '@/lib/vision-gate'
 import { FETCH_URL_TTL, OUTLINES_BUCKET, signedUrl, type StorageClient } from '@/lib/storage'
 import { fetchSlotExceptions, annotateVision } from '@/lib/check-exceptions'
 
@@ -90,6 +90,9 @@ export async function visionGateForOutline(
   const imageUrl =
     (await signedUrl(client as StorageClient, OUTLINES_BUCKET, opts.storagePath, FETCH_URL_TTL)) ||
     process.env.NEXT_PUBLIC_SUPABASE_URL + '/storage/v1/object/sign/' + OUTLINES_BUCKET + '/' + opts.storagePath
+  // #8: the drawing's own view field feeds the gate prompt
+  const viewField = (((outline as { geometry?: { meta?: { view?: ViewField } } } | null)?.geometry?.meta
+    ?.view) || null) as ViewField
   const check = await runVisionGate({
     imageUrl,
     mediaType: mediaType === 'jpeg' || mediaType === 'webp' || mediaType === 'gif' ? `image/${mediaType}` : 'image/png',
@@ -97,6 +100,7 @@ export async function visionGateForOutline(
     roomName: opts.roomName,
     decisions: [...(roomDecisions || []), ...(houseDecisions || [])] as { topic: string; value: string }[],
     geometryElements: geoElements,
+    view: viewField,
   })
 
   // accepted exceptions: annotate conflicts a person has ruled on for this slot (status stays 'conflict'; the exception says who accepted it)

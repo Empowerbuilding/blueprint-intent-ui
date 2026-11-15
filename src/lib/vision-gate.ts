@@ -10,6 +10,14 @@ export { deterministicDimensionCheck }
 
 export type { VisionVerdict } from '@/lib/dimension-check'
 
+// geometry.meta.view — the drawing's own statement of what it shows (#8)
+export type ViewField = {
+  orientation?: string | null
+  shows_walls?: string[] | null
+  profiles?: string[] | null
+  cut_in?: number | string | null
+} | null
+
 export type VisionCheck = {
   ran_at: string
   model: string
@@ -33,6 +41,7 @@ export async function runVisionGate(opts: {
   roomName: string
   decisions: { topic: string; value: string }[]
   geometryElements?: { kind: string; label?: string; w?: number; h?: number }[]
+  view?: ViewField
 }): Promise<VisionCheck> {
   const ranAt = new Date().toISOString()
 
@@ -62,6 +71,42 @@ export async function runVisionGate(opts: {
   const b64 = buf.toString('base64')
 
   const typeLabel = TYPE_LABEL[opts.outlineType] || `2D ${opts.outlineType} drawing`
+
+  // #8: consume the drawing's view field so the gate judges only what this
+  // view can show. No view field (legacy drawing) -> the type label alone.
+  const wallList = (ws: string[] | null | undefined) =>
+    Array.isArray(ws) && ws.length ? ws.join(', ') : null
+  let viewContext = ''
+  if (opts.view) {
+    const o = String(opts.view.orientation || '').toLowerCase()
+    const shows = wallList(opts.view.shows_walls)
+    const profiles = wallList(opts.view.profiles)
+    const cutIn = opts.view.cut_in
+    if (o === 'plan') {
+      viewContext =
+        'THIS VIEW: a floor plan (top-down). Every wall appears as a LINE, not a surface. ' +
+        'You may judge horizontal placement, footprint and adjacency. You may NOT judge heights, ' +
+        'vertical relationships, or anything above the cut plane — a decision about a height or a ' +
+        'vertical relationship is "na" here (note: heights are not readable in a plan; cite the ' +
+        'geometry list if it carries the number).'
+    } else if (o === 'elevation' || o === 'section') {
+      const facing = String(opts.view.orientation || '').toUpperCase()
+      const lines: string[] = [
+        `THIS VIEW: ${o === 'section' ? 'a cross-section' : 'an elevation'} facing ${facing}.`,
+      ]
+      if (shows) lines.push(`The only wall(s) whose face you can judge in detail: ${shows}.`)
+      if (profiles)
+        lines.push(
+          `Walls shown edge-on (thin lines only — do NOT judge their cabinets, windows or details): ${profiles}.`
+        )
+      if (cutIn !== null && cutIn !== undefined && cutIn !== '')
+        lines.push(`The cut runs ${cutIn} in from the named wall.`)
+      lines.push(
+        'A decision about a wall or surface this view does not show is "na" here — note which wall it would be visible on, not "missing".'
+      )
+      viewContext = lines.join(' ')
+    }
+  }
   const decisionLines = remaining.map((d) => `- ${d.topic}: ${d.value}`).join('\n')
   const geometryLines = (opts.geometryElements || [])
     .filter((e) => e.kind !== 'walkway' && e.kind !== 'wall')
@@ -69,7 +114,7 @@ export async function runVisionGate(opts: {
     .join('\n')
 
   const prompt = `You are checking a ${typeLabel} for the "${opts.roomName}" of a custom home against CONFIRMED design decisions.
-
+${viewContext ? '\n' + viewContext + '\n' : ''}
 GROUND TRUTH RULE: numeric dimensions are already verified by code against the pushed geometry JSON (listed below) — you must NOT judge numbers, and you must NOT read numbers off the image. Your job is everything geometry can't express: presence, placement, orientation, adjacency, and overall fidelity to the decision's intent. If a decision's note-worthy evidence would be a number, cite the GEOMETRY list, never the image pixels.
 
 PUSHED GEOMETRY (ground truth, code-verified):
@@ -82,7 +127,7 @@ Verdicts:
 - "confirmed" — the drawing visibly reflects the decision (cite what you see: placement, orientation, adjacency)
 - "conflict" — the drawing contradicts the decision (cite drawn vs decided)
 - "missing" — not visible in this drawing (may belong to another view — still "missing" here)
-- "na" — not something ANY drawing of this type could ever show: hardware, finishes/materials by name, colors, sheens, budgets, brand preferences, non-spatial requirements. Judge the TOPIC's spatialness, not the drawing.
+- "na" — not something ANY drawing of this type could ever show: hardware, finishes/materials by name, colors, sheens, budgets, brand preferences, non-spatial requirements. Judge the TOPIC's spatialness, not the drawing. ALSO "na" when THIS view structurally cannot show it — a wall it does not display, a height in a plan, a footprint in an elevation — say what the view would need to be.
 
 Return ONLY valid JSON, no markdown fences, no commentary:
 {"results": [{"topic": "<the topic exactly as given>", "verdict": "confirmed|missing|conflict|na", "note": "<one short sentence citing drawn evidence>"}]}`
