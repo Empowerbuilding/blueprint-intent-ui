@@ -26,6 +26,10 @@ export async function zaiVisionText(
       signal: AbortSignal.timeout(300_000), // 16k-token reasoning runs can exceed 3 min
       body: JSON.stringify({
         model: 'glm-4.6v',
+        // temperature 0: verdict drift run-to-run burned review time on the pilot
+        // (2026-11-14 review item: same drawing, different verdicts). First
+        // determinism knob; verified accepted by the z.ai v4 endpoint 11/15.
+        temperature: 0,
         max_tokens: maxTokens,
         messages: [
           {
