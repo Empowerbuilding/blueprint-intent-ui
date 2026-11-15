@@ -1,4 +1,5 @@
 import { fmtDateTime, viewerTimeZone } from '@/lib/time'
+import { decisionGaps } from '@/lib/decision-gaps'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
 import { acceptSuggested2d } from '@/app/typing-actions'
@@ -72,6 +73,11 @@ export default async function EmitPage({
     const roomId = m ? roomIdByCode.get(m[1]) : gap.startsWith('House-level') ? roomIdByCode.get('HOUSE') : undefined
     return roomId ? `/projects/${id}/rooms/${roomId}?view=decide#typing` : null
   }
+
+  // decision-gap audit (2026-11-14 pilot review item 2): rooms where evidence exists but no
+  // decision covers it. Non-blocking warning at emit time — the person decides with eyes open.
+  const { data: roomRowsForGaps } = await (await createClient()).from('intent_rooms').select('id, section_code, name').eq('project_id', id).order('section_code')
+  const gaps = await decisionGaps(await createClient(), id, (roomRowsForGaps || []) as { id: string; section_code: string; name: string }[])
 
   const [{ count: blockingOpen }, { count: unassignedImgs }] = await Promise.all([
     supabase
@@ -213,6 +219,7 @@ export default async function EmitPage({
               </details>
             </div>
           ) : (
+            <>
             <form action={emitContract}>
               <input type="hidden" name="project_id" value={id} />
               <EmitButton
@@ -222,6 +229,20 @@ export default async function EmitPage({
                 className={`w-full ${allPass ? 'btn-primary' : 'btn-secondary cursor-not-allowed opacity-50'} !py-3`}
               />
             </form>
+              {gaps.length > 0 && (
+                <div className="bg-amber-950/40 border border-amber-800/70 rounded-lg px-4 py-3 text-sm text-amber-200 space-y-1">
+                  <div className="font-semibold">⚠ Decision gaps (non-blocking): {gaps.length} room{gaps.length === 1 ? '' : 's'} have evidence with no covering decision.</div>
+                  {gaps.slice(0, 8).map((g) => (
+                    <div key={g.roomId}>
+                      <span className="font-mono text-[11px] text-amber-500">{g.sectionCode}</span> {g.name} —{" "}
+                      {g.noDecisions ? "no decisions (pictures/notes exist)" : "missing: " + g.missingPieces.join(", ")}
+                    </div>
+                  ))}
+                  {gaps.length > 8 && <div className="text-amber-500">+ {gaps.length - 8} more</div>}
+                  <div className="text-amber-400">Emitting is allowed — these pieces will not be built until lines exist.</div>
+                </div>
+              )}
+            </>
           )}
           <p className="text-xs text-slate-600 leading-relaxed">
             Emits the versioned intent contract, locks the project, and hands off to Blueprint in

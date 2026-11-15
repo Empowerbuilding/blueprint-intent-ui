@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { createStandardRooms, setProjectStatus, deleteProject } from '@/app/actions'
+import { decisionGaps } from '@/lib/decision-gaps'
 import { loadOverview } from '@/lib/overview'
 import { Pill, REVIEW_STATE_TONE } from '@/components/pill'
 import { PageHeader } from '@/components/page-header'
@@ -45,6 +46,9 @@ export default async function ProjectPage({
     if (q.blocking) cur.blocking++
     questionsByRoom.set(q.room_id, cur)
   }
+  const gaps = await decisionGaps(supabase, id, rooms.map((r) => ({ id: r.id, section_code: r.section_code, name: r.name })))
+  const gapsByRoom = new Map(gaps.map((g) => [g.roomId, g]))
+
   const outlinesByRoom = new Map<string, { pending: number; approved: number; rejected: number }>()
   for (const o of outlines) {
     const cur = outlinesByRoom.get(o.room_id) || { pending: 0, approved: 0, rejected: 0 }
@@ -112,6 +116,14 @@ export default async function ProjectPage({
           )}
         </section>
 
+        {gaps.length > 0 && (
+          <div className="bg-amber-950/40 border border-amber-800/70 rounded-lg px-4 py-3 text-sm text-amber-200">
+            <span className="font-semibold">Decision gaps: {gaps.length} room{gaps.length === 1 ? '' : 's'} with evidence but no covering decision.</span>{' '}
+            {gaps.filter((g) => g.noDecisions).length} have no decisions at all. These are the rooms the 3D build will
+            skip pieces in — open the room and add the lines, or leave them out on purpose.{' '}
+            <span className="text-amber-400">(2026-11-14 pilot lesson: Bath 3's vanity shipped exactly this way.)</span>
+          </div>
+        )}
         {/* room board */}
         <section className="space-y-4">
           <h2 className="section-title">Rooms ({total})</h2>
@@ -134,6 +146,14 @@ export default async function ProjectPage({
                   </div>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                     <span>{decisionsByRoom.get(r.id) || 0} decisions</span>
+                    {gapsByRoom.get(r.id) ? (
+                      <>
+                        <span className="text-slate-700">·</span>
+                        <span className="text-amber-400 font-medium" title={gapsByRoom.get(r.id)!.missingPieces.join(", ")}>
+                          ⚠ {gapsByRoom.get(r.id)!.noDecisions ? "no decisions, evidence exists" : "gap: " + gapsByRoom.get(r.id)!.missingPieces.join(", ")}
+                        </span>
+                      </>
+                    ) : null}
                     {r.area_sf ? (
                       <>
                         <span className="text-slate-700">·</span>
