@@ -19,6 +19,7 @@ export type RoomRow = {
   section_code: string
   name: string
   review_state: string
+  needs_2d: boolean | null
   area_sf: number | null
   source: string | null
 }
@@ -60,7 +61,7 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
   let projectsQ = supabase.from('intent_projects').select('id, name, client, status, emitted_version, created_at')
   let roomsQ = supabase
     .from('intent_rooms')
-    .select('id, project_id, section_code, name, review_state, area_sf, source')
+    .select('id, project_id, section_code, name, review_state, needs_2d, area_sf, source')
   let questionsQ = supabase
     .from('intent_open_questions')
     .select('id, project_id, room_id, question, default_if_unanswered, blocking')

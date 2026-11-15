@@ -5,7 +5,13 @@
 //
 // Pure: no imports, no I/O.
 
-export type ProgressRoom = { id: string; section_code: string; name: string; review_state: string }
+export type ProgressRoom = {
+  id: string
+  section_code: string
+  name: string
+  review_state: string
+  needs_2d: boolean | null
+}
 
 export type ProgressData = {
   project: { id: string; status: string | null; emitted_version: number | null }
@@ -59,17 +65,25 @@ export function projectProgress(d: ProgressData): Progress {
   const stale = emitted > 0 && d.changesSinceLock > 0
   const status = d.project.status || ''
 
-  // "designed" rooms are the ones that go through 2D: confirmed or already 2D-approved.
-  // Rooms built from defaults are not drawn.
-  const designed = d.rooms.filter((r) => r.review_state === 'confirmed' || r.review_state === '2d_approved')
-  const approved2d = designed.filter((r) => r.review_state === '2d_approved')
-
   const pendingByRoom = new Map<string, number>()
   const approvedByRoom = new Map<string, number>()
   for (const o of d.outlines) {
     if (o.status === 'pushed') pendingByRoom.set(o.room_id, (pendingByRoom.get(o.room_id) || 0) + 1)
     if (o.status === 'approved') approvedByRoom.set(o.room_id, (approvedByRoom.get(o.room_id) || 0) + 1)
   }
+
+  // "designed" rooms are the ones that go through 2D: typed needs_2d, already
+  // 2D-approved, or carrying outlines (rooms typed before the needs_2d column
+  // existed). Confirmed rooms with needs_2d=false are built from defaults —
+  // they are not drawn and must not pad the denominator.
+  const designed = d.rooms.filter(
+    (r) =>
+      r.needs_2d === true ||
+      r.review_state === '2d_approved' ||
+      (pendingByRoom.get(r.id) || 0) > 0 ||
+      (approvedByRoom.get(r.id) || 0) > 0
+  )
+  const approved2d = designed.filter((r) => r.review_state === '2d_approved')
   const pendingOutlines = [...pendingByRoom.values()].reduce((a, b) => a + b, 0)
   const firstPendingRoom = d.rooms.find((r) => (pendingByRoom.get(r.id) || 0) > 0)
   const readyFor2d = d.rooms.filter(
