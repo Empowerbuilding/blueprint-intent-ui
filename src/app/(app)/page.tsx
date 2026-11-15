@@ -131,7 +131,7 @@ export default async function InboxPage() {
 
   return (
     <main>
-      <PageHeader eyebrow="Everything waiting on a person" title="Inbox">
+      <PageHeader eyebrow="What needs a human decision" title="Decisions">
         <Link href="/projects" className="btn-secondary">
           All projects
         </Link>
