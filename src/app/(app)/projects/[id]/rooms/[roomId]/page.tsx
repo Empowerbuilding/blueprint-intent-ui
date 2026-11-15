@@ -12,6 +12,7 @@ import {
   restoreDecision,
   setReviewState,
 } from '@/app/actions'
+import { UnsavedGuard } from '@/components/unsaved-guard'
 import { approveOutline, approveAllOutlines, rejectOutline, rerunOutlineChecks, set2dApproved, restoreOutline, unapproveOutline } from '@/app/outlines-actions'
 import { setDecisionKind, setRedlineKind, setRoomTyping, setTopicKind } from '@/app/typing-actions'
 import { analyseImageAgain } from '@/app/emit-actions'
@@ -696,6 +697,7 @@ export default async function RoomPage({
   return (
     <div>
       {visionRunning && <VisionPoller />}
+      <UnsavedGuard />
       <main>
         <PageHeader
           back={'/projects/' + id}

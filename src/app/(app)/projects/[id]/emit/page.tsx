@@ -1,5 +1,6 @@
 import { fmtDateTime, viewerTimeZone } from '@/lib/time'
 import { decisionGaps, decisionFreshness } from '@/lib/decision-gaps'
+import { UnsavedGuard } from '@/components/unsaved-guard'
 import { createClient } from '@/lib/supabase/server'
 import { emitContract } from '@/app/emit-actions'
 import { acceptSuggested2d } from '@/app/typing-actions'
@@ -125,6 +126,7 @@ export default async function EmitPage({
 
   return (
     <main>
+      <UnsavedGuard />
       <PageHeader back={`/projects/${id}`} backLabel={project.name} title="Lock & Emit" />
 
       <div className="app-container py-8 max-w-3xl space-y-8">
