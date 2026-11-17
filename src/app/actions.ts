@@ -30,10 +30,14 @@ export async function createProject(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   const name = String(formData.get('name') || '').trim()
   if (!name) return
-  // the process picked at setup; anything that is not in the list falls back to the default, never stored as typed
+  // the process is picked by a person before anything starts on the project (Mitch 2026-11-17 08:05Z, 08:27Z): no process
+  // from the list = no project. Nothing is assumed, and a value that is not in the list is never stored.
   const picked = String(formData.get('process') || '').trim()
   const processes = await loadProcesses(supabase)
-  const process = processes.some((p) => p.key === picked) ? picked : DEFAULT_PROCESS
+  if (!processes.some((p) => p.key === picked)) {
+    redirect('/projects?process_error=' + encodeURIComponent('Pick the process this project follows. Nothing was created.'))
+  }
+  const process = picked
   const row: Record<string, unknown> = { name, client: String(formData.get('client') || '') || null, created_by: user?.id ?? null }
   if (process !== DEFAULT_PROCESS) row.process = process
   const { data, error } = await supabase

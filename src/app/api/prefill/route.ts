@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { DECISION_SOURCES, normaliseRole, tidyName } from '@/lib/vocab'
 
 // POST /api/prefill — design-brain pushes transcript-derived intent into the UI.
+// The project is matched by exact name and must already exist (404, code project_not_created, when it does not):
+// a person creates it in the app and picks its process first. project.client is no longer read.
 // Auth: x-prefill-secret header (PREFILL_SECRET env).
 //
 // Payload:
@@ -97,6 +99,20 @@ export async function POST(request: NextRequest) {
       })
     : await createClient()
 
+  // The project must already be in the app: a person creates it there (Projects > New project) and picks its process before
+  // anything starts on it (Mitch 2026-11-17 08:05Z; this change on his word 08:27Z). This route never creates a project.
+  // Checked first, so a push for a project that is not there writes nothing.
+  const { data: project } = await supabase.from('intent_projects').select('id, name').eq('name', body.project.name).maybeSingle()
+  if (!project) {
+    return NextResponse.json(
+      {
+        error: `no project named "${body.project.name}" in the app. A person creates it first (Projects > New project) and picks its process. Nothing was written.`,
+        code: 'project_not_created',
+      },
+      { status: 404 },
+    )
+  }
+
   // typed fields are checked against the vocabulary BEFORE anything is written
   const wantKinds = new Set<string>()
   const badRoles: string[] = []
@@ -123,21 +139,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // project upsert by name
-  let { data: project } = await supabase
-    .from('intent_projects')
-    .select('id, name')
-    .eq('name', body.project.name)
-    .maybeSingle()
-  if (!project) {
-    const { data: created, error } = await supabase
-      .from('intent_projects')
-      .insert({ name: body.project.name, client: body.project.client || null })
-      .select('id, name')
-      .single()
-    if (error || !created) return NextResponse.json({ error: error?.message }, { status: 500 })
-    project = created
-  }
   if (typeof body.project.doc === 'string' && body.project.doc.trim()) {
     await supabase.from('intent_projects').update({ doc_title: body.project.doc.trim() }).eq('id', project.id)
   }

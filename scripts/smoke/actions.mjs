@@ -40,6 +40,15 @@ async function post(path, hidden, fields = {}) {
   return { status: res.status, location: decodeURIComponent(res.headers.get('location') || '') }
 }
 
+// a person creates a project in the app (the New project form, with its process picked): the only way a project comes to exist
+// since 2026-11-17; the push route no longer creates one
+async function newProject(name, process = 'd1_to_d2') {
+  const h0 = form(await page('/projects'), (f) => f.includes('name="process"') && f.includes('name="name"'), 'new project form')
+  const r0 = await post('/projects', h0, { name, client: '', process })
+  if (r0.status !== 303 || !r0.location.startsWith('/projects/')) throw new Error('project "' + name + '" was not created: ' + JSON.stringify(r0))
+  return r0.location.split('/').pop()
+}
+
 // ---------- A. rule editor ----------
 let r2
 let html = await page('/rulebook/checks?new=min_clearance')
@@ -515,6 +524,14 @@ ok('api vocabulary: draft list of kinds, roles, the no-work kind', vocabRes.stat
 ok('api vocabulary: a kind carries its numbers; the fence number is there with no value, no other kind has one', vocabBody.kinds.find((k) => k.kind === 'site.fence').params.flat_max_in === null && Object.keys(vocabBody.kinds.find((k) => k.kind === 'site.fence').params).length === 1 && vocabBody.kinds.find((k) => k.kind === 'site.fence').params_note.includes('still count as flat') && vocabBody.kinds.filter((k) => k.params).length === 1, JSON.stringify(vocabBody.kinds.find((k) => k.kind === 'site.fence')))
 ok('api vocabulary without the secret or a session: 401', (await fetch(app + '/api/vocabulary')).status === 401)
 
+// the push route never creates a project (Mitch 2026-11-17 08:05Z / 08:27Z): a push for a project nobody created in the app is
+// refused before anything else, even when its typed fields are also wrong, and nothing is written
+before = await getDb()
+res = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body: JSON.stringify({ project: { name: 'Scratch v2', client: 'x' }, rooms: [{ section_code: '201', name: 'Kitchen', role: 'spa', decisions: [{ topic: 'island', value: '84 x 42', kind: 'casework.island' }] }] }) })
+let notThere = await res.json()
+db = await getDb()
+ok('push for a project that is not in the app: 404, says a person creates it and picks its process, NOTHING written', res.status === 404 && notThere.code === 'project_not_created' && notThere.error.includes('A person creates it first') && notThere.error.includes('picks its process') && same(db.intent_projects, before.intent_projects) && db.intent_rooms.length === before.intent_rooms.length && db.intent_decisions.length === before.intent_decisions.length, JSON.stringify(notThere))
+await newProject('Scratch v2')
 // a push with a kind or a role that is not in the vocabulary is refused whole
 before = await getDb()
 res = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body: JSON.stringify({ project: { name: 'Scratch v2' }, rooms: [{ section_code: '201', name: 'Kitchen', role: 'spa', decisions: [{ topic: 'island', value: '84 x 42', kind: 'casework.island' }, { topic: 'counter', value: 'Marble', kind: 'casework.counter' }] }] }) })
@@ -1189,6 +1206,7 @@ ok('lists: the page shows the adoption, the changed row and who changed a list',
 // ---- a push never drops a row without a word (SPEC A123; 2026-11-12: 114 of 200 lines of one push vanished) ----
 const vocabG = await (await fetch(app + '/api/vocabulary', { headers: SECRET })).json()
 ok('api vocabulary: lists the sources a pushed decision may carry', same(vocabG.decision_sources, ['transcript', 'redline', 'inspo', 'default', 'manual']), JSON.stringify(vocabG.decision_sources))
+await newProject('Guard Push')
 const pushG = async (rooms) => {
   const r0 = await fetch(app + '/api/prefill', { method: 'POST', headers: SECRET, body: JSON.stringify({ project: { name: 'Guard Push' }, rooms }) })
   return { status: r0.status, body: await r0.json() }
@@ -1292,10 +1310,18 @@ ok('emit page after: says what was saved, no room is missing a 2D answer, the bu
   ok('project on a draft process: the page names it and says no work order can be compiled yet', html.includes('Engineer set to 3D frame') && html.includes('draft playbook') && html.includes('Blueprint cannot compile a work order for it yet') && html.includes('Change process'), seen(html).slice(0, 200))
   html = (await page('/projects')).replace(/<!-- -->/g, '')
   ok('projects list: the card names the process', seen(html).includes('Frame Test') && seen(html).split('Frame Test')[1].slice(0, 600).includes('Engineer set to 3D frame'))
+  // no process picked = no project (the dropdown starts empty and is required; the action refuses as well)
+  ok('new project form: the process dropdown starts empty and must be picked', /<select[^>]*name="process"[^>]*required/.test(html) && /<option[^>]*disabled[^>]*value=""[^>]*selected|<option[^>]*value=""[^>]*disabled[^>]*selected|<option[^>]*selected[^>]*value=""/.test(html) && html.includes('Pick the process'), (html.match(/<select[^>]*name="process"[\s\S]*?<\/select>/) || [''])[0].slice(0, 400))
+  let nBefore = (await getDb()).intent_projects.length
   r = await post('/projects', h, { name: 'Typed Process', client: '', process: 'made_up' })
   db = await getDb()
-  const tp = db.intent_projects.find((p) => p.name === 'Typed Process')
-  ok('new project with a process that is not in the list: created on the default, the typed value is not stored', r.status === 303 && tp && tp.process === undefined, JSON.stringify([r, tp]))
+  ok('new project with a process that is not in the list: refused, nothing created', r.status === 303 && r.location.startsWith('/projects?process_error=') && r.location.includes('Pick the process') && !db.intent_projects.some((p) => p.name === 'Typed Process') && db.intent_projects.length === nBefore, JSON.stringify(r))
+  r = await post('/projects', h, { name: 'No Process', client: '' })
+  db = await getDb()
+  ok('new project with no process picked: refused, nothing created', r.status === 303 && r.location.startsWith('/projects?process_error=') && !db.intent_projects.some((p) => p.name === 'No Process') && db.intent_projects.length === nBefore, JSON.stringify(r))
+  r = await post('/projects', h, { name: 'Default Picked', client: '', process: 'd1_to_d2' })
+  db = await getDb()
+  ok('new project with Draft 1 to Draft 2 picked: created', r.status === 303 && r.location.startsWith('/projects/') && db.intent_projects.some((p) => p.name === 'Default Picked'), JSON.stringify(r))
   res = await fetch(app + '/api/projects?name=Frame%20Test', { headers: SECRET })
   const asRead = await res.json()
   res = await fetch(app + '/api/projects?name=Mann', { headers: SECRET })

@@ -16,9 +16,9 @@ import { WhoPill } from '@/components/progress-tracker'
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ deleted?: string; files_left?: string }>
+  searchParams: Promise<{ deleted?: string; files_left?: string; process_error?: string }>
 }) {
-  const { deleted, files_left } = await searchParams
+  const { deleted, files_left, process_error } = await searchParams
   const tz = await viewerTimeZone()
   const all = await loadOverview()
   const processes = await loadProcesses(await createClient())
@@ -36,7 +36,11 @@ export default async function ProjectsPage({
             <input name="client" placeholder="Client (optional)" className="field" />
             <label className="block text-xs text-slate-400">
               Process
-              <select name="process" defaultValue={processes[0]?.key} className="field mt-1">
+              {/* starts empty on purpose: the process is picked by a person before anything starts on the project (Mitch 2026-11-17) */}
+              <select name="process" required defaultValue="" className="field mt-1">
+                <option value="" disabled>
+                  Pick the process
+                </option>
                 {processes.map((p) => (
                   <option key={p.key} value={p.key}>
                     {p.title + (p.status === 'draft' ? ' (draft: no work order yet)' : '')}
@@ -52,6 +56,9 @@ export default async function ProjectsPage({
       </PageHeader>
 
       <div className="app-container py-8 space-y-6">
+        {process_error && (
+          <div className="bg-red-950/50 border border-red-900 rounded-xl p-4 text-sm text-red-300">{process_error}</div>
+        )}
         {deleted && (
           <div className="bg-emerald-950/40 border border-emerald-900 rounded-xl p-4 text-sm text-emerald-300">
             Project “{deleted}” was deleted.
