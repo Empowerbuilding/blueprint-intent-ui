@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { isHouseSection, suggestNeeds2d, suggestSheetGroup, type ScanEvidence } from '@/lib/vocab'
+import { DEFAULT_PROCESS, loadProcesses } from '@/lib/processes'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -29,9 +30,15 @@ export async function createProject(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   const name = String(formData.get('name') || '').trim()
   if (!name) return
+  // the process picked at setup; anything that is not in the list falls back to the default, never stored as typed
+  const picked = String(formData.get('process') || '').trim()
+  const processes = await loadProcesses(supabase)
+  const process = processes.some((p) => p.key === picked) ? picked : DEFAULT_PROCESS
+  const row: Record<string, unknown> = { name, client: String(formData.get('client') || '') || null, created_by: user?.id ?? null }
+  if (process !== DEFAULT_PROCESS) row.process = process
   const { data, error } = await supabase
     .from('intent_projects')
-    .insert({ name, client: String(formData.get('client') || '') || null, created_by: user?.id ?? null })
+    .insert(row)
     .select('id')
     .single()
   if (error || !data) return
@@ -336,6 +343,27 @@ export async function setProjectStatus(projectId: string, status: string) {
   revalidatePath(`/projects/${projectId}`)
   revalidatePath('/projects')
   revalidatePath('/')
+}
+
+// Change the process a project follows. Only before the first Lock & Emit: after that the contract and any
+// work order were made under the old process, so the change is refused and the page says why.
+export async function setProjectProcess(projectId: string, formData: FormData) {
+  const supabase = await createClient()
+  const picked = String(formData.get('process') || '').trim()
+  const processes = await loadProcesses(supabase)
+  const back = '/projects/' + projectId
+  if (!processes.some((p) => p.key === picked)) redirect(back + '?process_error=' + encodeURIComponent('That process is not in the list. Nothing was changed.'))
+  const { data: project } = await supabase.from('intent_projects').select('id, emitted_version').eq('id', projectId).maybeSingle()
+  if (!project) redirect('/projects')
+  if (((project as { emitted_version: number | null }).emitted_version || 0) > 0) {
+    redirect(back + '?process_error=' + encodeURIComponent('This project is already locked and emitted under its process. Nothing was changed.'))
+  }
+  const { error } = await supabase.from('intent_projects').update({ process: picked }).eq('id', projectId)
+  if (error) redirect(back + '?process_error=' + encodeURIComponent('The process could not be saved: ' + error.message))
+  revalidatePath(back)
+  revalidatePath('/projects')
+  revalidatePath('/')
+  redirect(back + '?process_saved=1')
 }
 
 // Delete a project and everything under it. Guarded by a typed project name.

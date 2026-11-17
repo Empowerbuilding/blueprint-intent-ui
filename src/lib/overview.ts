@@ -12,6 +12,7 @@ export type ProjectRow = {
   status: string | null
   emitted_version: number | null
   created_at: string
+  process?: string | null
 }
 export type RoomRow = {
   id: string
@@ -59,6 +60,8 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
   const supabase = await createClient()
   // each query is narrowed to one project when projectId is given
   let projectsQ = supabase.from('intent_projects').select('id, name, client, status, emitted_version, created_at')
+  // which process each project follows: read on its own, so a database that does not have the column yet still lists every project
+  let processQ = supabase.from('intent_projects').select('id, process')
   let roomsQ = supabase
     .from('intent_rooms')
     .select('id, project_id, section_code, name, review_state, needs_2d, area_sf, source')
@@ -74,6 +77,7 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
   let emissionsQ = supabase.from('intent_emissions').select('project_id, version, emitted_at')
   if (projectId) {
     projectsQ = projectsQ.eq('id', projectId)
+    processQ = processQ.eq('id', projectId)
     roomsQ = roomsQ.eq('project_id', projectId)
     questionsQ = questionsQ.eq('project_id', projectId)
     imagesQ = imagesQ.eq('project_id', projectId)
@@ -81,16 +85,19 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
     emissionsQ = emissionsQ.eq('project_id', projectId)
   }
 
-  const [projectsRes, roomsRes, questionsRes, imagesRes, outlinesRes, emissionsRes] = await Promise.all([
+  const [projectsRes, roomsRes, questionsRes, imagesRes, outlinesRes, emissionsRes, processRes] = await Promise.all([
     projectsQ.order('created_at', { ascending: false }),
     roomsQ.order('sort_order'),
     questionsQ.order('created_at'),
     imagesQ,
     outlinesQ.order('pushed_at'),
     emissionsQ.order('version', { ascending: false }),
+    processQ,
   ])
 
   const projects = (projectsRes.data || []) as ProjectRow[]
+  const processById = new Map(((processRes.data || []) as { id: string; process?: string | null }[]).map((r) => [r.id, r.process ?? null]))
+  for (const p of projects) p.process = processById.get(p.id) ?? null
   const rooms = (roomsRes.data || []) as RoomRow[]
   const questions = (questionsRes.data || []) as QuestionRow[]
   const images = (imagesRes.data || []) as {

@@ -4,6 +4,8 @@ import { fmtDate, viewerTimeZone } from '@/lib/time'
 import Link from 'next/link'
 import { createProject } from '@/app/actions'
 import { loadOverview } from '@/lib/overview'
+import { loadProcesses, processOf } from '@/lib/processes'
+import { createClient } from '@/lib/supabase/server'
 import { Pill } from '@/components/pill'
 import { PageHeader } from '@/components/page-header'
 import { WhoPill } from '@/components/progress-tracker'
@@ -19,6 +21,7 @@ export default async function ProjectsPage({
   const { deleted, files_left } = await searchParams
   const tz = await viewerTimeZone()
   const all = await loadOverview()
+  const processes = await loadProcesses(await createClient())
 
   return (
     <main>
@@ -31,6 +34,16 @@ export default async function ProjectsPage({
           >
             <input name="name" required placeholder="Project name (e.g. Whitaker)" className="field" />
             <input name="client" placeholder="Client (optional)" className="field" />
+            <label className="block text-xs text-slate-400">
+              Process
+              <select name="process" defaultValue={processes[0]?.key} className="field mt-1">
+                {processes.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.title + (p.status === 'draft' ? ' (draft: no work order yet)' : '')}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="submit" className="btn-primary w-full">
               Create
             </button>
@@ -69,7 +82,8 @@ export default async function ProjectsPage({
                 </span>
                 <Pill tone={progress.current === 'done' ? 'green' : 'outline'}>{progress.currentLabel}</Pill>
               </div>
-              <div className="text-sm text-slate-400 mb-4">{project.client || '—'}</div>
+              <div className="text-sm text-slate-400 mb-1">{project.client || '—'}</div>
+              <div className="text-xs text-slate-500 mb-4">{processOf(processes, project.process).title}</div>
 
               {/* five-dot progress */}
               <div className="flex items-center gap-1.5 mb-4" aria-label={'Stage: ' + progress.currentLabel}>

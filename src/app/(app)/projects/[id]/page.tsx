@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { createStandardRooms, setProjectStatus, deleteProject } from '@/app/actions'
+import { createStandardRooms, setProjectStatus, deleteProject, setProjectProcess } from '@/app/actions'
+import { loadProcesses, processOf } from '@/lib/processes'
 import { decisionGaps, decisionFreshness } from '@/lib/decision-gaps'
 import { loadOverview } from '@/lib/overview'
 import { Pill, REVIEW_STATE_TONE } from '@/components/pill'
@@ -18,10 +19,10 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ delete_error?: string }>
+  searchParams: Promise<{ delete_error?: string; process_error?: string; process_saved?: string }>
 }) {
   const { id } = await params
-  const { delete_error } = await searchParams
+  const { delete_error, process_error, process_saved } = await searchParams
 
   const [overview] = await loadOverview(id)
   if (!overview) notFound()
@@ -60,6 +61,8 @@ export default async function ProjectPage({
   }
 
   const emitted = project.emitted_version || 0
+  const processes = await loadProcesses(supabase)
+  const proc = processOf(processes, project.process)
   const status = project.status || ''
   const total = rooms.length
 
@@ -82,6 +85,40 @@ export default async function ProjectPage({
         {delete_error && (
           <div className="bg-red-950/50 border border-red-900 rounded-xl p-4 text-sm text-red-300">{delete_error}</div>
         )}
+
+        {/* which process this project follows (picks the playbook its work order is set up from) */}
+        <section className="card p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-500">Process</span>
+              <span className="text-sm font-semibold text-white">{proc.title}</span>
+              {proc.status === 'draft' && <Pill tone="outline">draft playbook</Pill>}
+            </div>
+            {emitted === 0 && processes.length > 1 ? (
+              <form action={setProjectProcess.bind(null, id)} className="flex items-center gap-2">
+                <select name="process" defaultValue={proc.key} className="field py-1.5 text-sm w-auto" aria-label="Process">
+                  {processes.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.title + (p.status === 'draft' ? ' (draft)' : '')}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn-secondary">Change process</button>
+              </form>
+            ) : emitted > 0 ? (
+              <span className="text-xs text-slate-500">Set at Lock &amp; Emit; it cannot be changed now.</span>
+            ) : null}
+          </div>
+          {proc.description && <p className="text-sm text-slate-400">{proc.description}</p>}
+          {process_saved && <p className="text-sm text-emerald-300">Process saved. Blueprint sets up the work order from this playbook.</p>}
+          {process_error && <p className="text-sm text-red-300">{process_error}</p>}
+          {proc.status === 'draft' && (
+            <p className="text-sm text-amber-300">
+              This playbook is a draft: Blueprint cannot compile a work order for it yet. The steps below (room board, Lock &amp; Emit, 2D, build)
+              belong to Draft 1 to Draft 2 and do not describe this process.
+            </p>
+          )}
+        </section>
 
         {/* where it stands + what is next */}
         <section className="card p-5 space-y-5">

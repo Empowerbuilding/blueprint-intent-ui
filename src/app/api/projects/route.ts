@@ -1,5 +1,6 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
+import { DEFAULT_PROCESS } from '@/lib/processes'
 
 // GET /api/projects?name=Whitaker — project lookup by name for machine clients
 // (id, status, emitted_version, room count) so push tools don't need a stored id.
@@ -33,11 +34,14 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!project) return NextResponse.json({ error: `no project named "${name}"` }, { status: 404 })
+    // the process it follows (picks the stage pack). Read on its own: a database without the column answers the default.
+    const { data: proc } = await supabase.from('intent_projects').select('id, process').eq('id', project.id).maybeSingle()
+    const process_key = (proc as { process?: string | null } | null)?.process || DEFAULT_PROCESS
     const { count: roomCount } = await supabase
       .from('intent_rooms')
       .select('id', { count: 'exact', head: true })
       .eq('project_id', project.id)
-    return NextResponse.json({ ...project, room_count: roomCount || 0 })
+    return NextResponse.json({ ...project, process: process_key, room_count: roomCount || 0 })
   }
 
   const { data: projects, error } = await supabase
@@ -45,5 +49,7 @@ export async function GET(request: NextRequest) {
     .select('id, name, client, status, emitted_version, created_at')
     .order('created_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ projects })
+  const { data: procs } = await supabase.from('intent_projects').select('id, process')
+  const byId = new Map(((procs || []) as { id: string; process?: string | null }[]).map((r) => [r.id, r.process || DEFAULT_PROCESS]))
+  return NextResponse.json({ projects: (projects || []).map((p) => ({ ...p, process: byId.get(p.id) || DEFAULT_PROCESS })) })
 }

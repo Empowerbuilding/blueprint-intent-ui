@@ -23,7 +23,7 @@ const page = async (path) => (await fetch(app + path, { headers: { cookie } })).
 function form(html, pick, label) {
   const forms = html.match(/<form[\s\S]*?<\/form>/g) || []
   const hit = forms.filter(pick)
-  if (hit.length !== 1) throw new Error(label + ': expected exactly one matching form, found ' + hit.length)
+  if (hit.length !== 1) throw new Error(label + ': expected exactly one matching form, found ' + hit.length + hit.map((f) => '\n  form: ' + f.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160)).join(''))
   const hidden = {}
   for (const tag of hit[0].match(/<input[^>]*type="hidden"[^>]*>/g) || []) {
     const name = /name="([^"]*)"/.exec(tag)
@@ -159,7 +159,8 @@ r = await post(W, unreviewedForm) // an old tab still showing the three-state co
 db = await getDb()
 ok('old "unreviewed" button on a 2D-approved room: refused, approval kept', db.intent_rooms.find((x) => x.id === 'r-wb3').review_state === '2d_approved' && r.location.includes('err2d='), JSON.stringify(r))
 html = await page(W)
-h = form(html, (f) => f.includes('Reopen room'), 'reopen form')
+// two forms reopen a 2D-approved room since 6279428 (the header control and the card on the 2D view): the header one is posted
+h = form(html, (f) => f.includes('Reopen room') && f.includes('Reopening discards'), 'reopen form')
 r = await post(W, h)
 db = await getDb()
 ok('reopen: back to confirmed', db.intent_rooms.find((x) => x.id === 'r-wb3').review_state === 'confirmed')
@@ -1272,6 +1273,55 @@ ok('use the suggested answer: saved on the rooms that had none, by the person wh
 ok('use the suggested answer: a saved answer is not changed and the house section gets none', sRoom(db, '202').needs_2d === false && sRoom(db, '202').typed_by === 'michael@barnhaus.test' && sRoom(db, 'HOUSE').needs_2d == null, JSON.stringify([sRoom(db, '202').needs_2d, sRoom(db, 'HOUSE').needs_2d]))
 html = (await page(SE + '?set2d=2')).replace(/<!-- -->/g, '')
 ok('emit page after: says what was saved, no room is missing a 2D answer, the button is gone', html.includes('Suggested 2D answer saved on 2 rooms.') && !html.includes('nobody has said whether it gets 2D drawings') && !html.includes('Use the suggested answer'), html.slice(html.indexOf('Typed contract (v2)'), html.indexOf('Typed contract (v2)') + 600))
+
+// ---------- process picker (Mitch 2026-11-17): the process a project follows is picked at setup, changed only before the first emit ----------
+{
+  res = await fetch(app + '/api/processes')
+  ok('processes route: no secret -> 401', res.status === 401)
+  res = await fetch(app + '/api/processes', { headers: SECRET })
+  const listed = (await res.json()).processes || []
+  ok('processes route: the list, in order, each live or draft', res.status === 200 && same(listed.map((p) => [p.key, p.status]), [['d1_to_d2', 'live'], ['eng_frame', 'draft']]) && listed[1].title === 'Engineer set to 3D frame', JSON.stringify(listed).slice(0, 300))
+  html = await page('/projects')
+  h = form(html, (f) => f.includes('name="process"') && f.includes('name="name"'), 'new project form')
+  r = await post('/projects', h, { name: 'Frame Test', client: '', process: 'eng_frame' })
+  db = await getDb()
+  const ft = db.intent_projects.find((p) => p.name === 'Frame Test')
+  ok('new project with a picked process: stored on the project', r.status === 303 && ft && r.location === '/projects/' + ft.id && ft.process === 'eng_frame', JSON.stringify([r, ft]))
+  const FT = '/projects/' + ft.id
+  html = (await page(FT)).replace(/<!-- -->/g, '')
+  ok('project on a draft process: the page names it and says no work order can be compiled yet', html.includes('Engineer set to 3D frame') && html.includes('draft playbook') && html.includes('Blueprint cannot compile a work order for it yet') && html.includes('Change process'), seen(html).slice(0, 200))
+  html = (await page('/projects')).replace(/<!-- -->/g, '')
+  ok('projects list: the card names the process', seen(html).includes('Frame Test') && seen(html).split('Frame Test')[1].slice(0, 600).includes('Engineer set to 3D frame'))
+  r = await post('/projects', h, { name: 'Typed Process', client: '', process: 'made_up' })
+  db = await getDb()
+  const tp = db.intent_projects.find((p) => p.name === 'Typed Process')
+  ok('new project with a process that is not in the list: created on the default, the typed value is not stored', r.status === 303 && tp && tp.process === undefined, JSON.stringify([r, tp]))
+  res = await fetch(app + '/api/projects?name=Frame%20Test', { headers: SECRET })
+  const asRead = await res.json()
+  res = await fetch(app + '/api/projects?name=Mann', { headers: SECRET })
+  const mannRead = await res.json()
+  res = await fetch(app + '/api/projects', { headers: SECRET })
+  const allRead = (await res.json()).projects || []
+  ok('projects route: answers the process, and the default where the row carries none', asRead.process === 'eng_frame' && mannRead.process === 'd1_to_d2' && allRead.find((p) => p.name === 'Frame Test').process === 'eng_frame' && allRead.every((p) => typeof p.process === 'string' && p.process), JSON.stringify([asRead, mannRead]).slice(0, 300))
+  // change it before the first emit
+  html = await page(FT)
+  h = form(html, (f) => f.includes('Change process'), 'change process form')
+  r = await post(FT, h, { process: 'nope' })
+  db = await getDb()
+  ok('change process: a value that is not in the list is refused, nothing changed', r.status === 303 && r.location.includes('process_error=') && r.location.includes('not in the list') && db.intent_projects.find((p) => p.id === ft.id).process === 'eng_frame', JSON.stringify(r))
+  r = await post(FT, h, { process: 'd1_to_d2' })
+  db = await getDb()
+  ok('change process: saved before the first emit', r.status === 303 && r.location === FT + '?process_saved=1' && db.intent_projects.find((p) => p.id === ft.id).process === 'd1_to_d2', JSON.stringify(r))
+  html = (await page(FT + '?process_saved=1')).replace(/<!-- -->/g, '')
+  ok('change process: the page says it was saved and shows the new process', html.includes('Process saved.') && !seen(html).includes('draft playbook'))
+  // a page opened before the project was emitted, posted after: refused by the action, not only hidden by the page
+  await fetch(mock + '/rest/v1/intent_projects?id=eq.' + ft.id, { method: 'PATCH', body: JSON.stringify({ emitted_version: 1 }) })
+  r = await post(FT, h, { process: 'eng_frame' })
+  db = await getDb()
+  ok('change process after the first emit: refused, nothing changed', r.status === 303 && r.location.includes('process_error=') && r.location.includes('already locked and emitted') && db.intent_projects.find((p) => p.id === ft.id).process === 'd1_to_d2', JSON.stringify(r))
+  html = (await page(FT)).replace(/<!-- -->/g, '')
+  ok('emitted project: the page offers no change and says why', !html.includes('Change process') && html.includes('it cannot be changed now'))
+}
 
 const unknown = await (await fetch(mock + '/__unknown')).json()
 ok('mock understood every request', unknown.length === 0, unknown.join(' ; '))

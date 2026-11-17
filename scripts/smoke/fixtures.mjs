@@ -54,11 +54,20 @@ const runbookV2 = [...lines.slice(0, 20), 'A line that only existed in version 2
 const db = {
   __user: { id: 'user-mitch', aud: 'authenticated', role: 'authenticated', email: 'mitch@barnhaus.test', app_metadata: {}, user_metadata: {}, created_at: t(90000) },
   intent_projects: [
-    { id: P.deu, name: 'Deubner', client: 'Deubner family', status: 'intake', emitted_version: 0, created_at: t(4000) },
-    { id: P.whi, name: 'Whitaker', client: null, status: 'locked', emitted_version: 1, created_at: t(4100) },
+    // process: the column default on the real table. Mann, Schwan and Banks carry none here, as on a database read before the
+    // column existed: the pages and the machine route must answer the default for them.
+    { id: P.deu, name: 'Deubner', client: 'Deubner family', status: 'intake', emitted_version: 0, created_at: t(4000), process: 'd1_to_d2' },
+    { id: P.whi, name: 'Whitaker', client: null, status: 'locked', emitted_version: 1, created_at: t(4100), process: 'd1_to_d2' },
     { id: P.man, name: 'Mann', client: null, status: 'intake', emitted_version: 0, created_at: t(4050) },
     { id: P.sch, name: 'Schwan', client: 'Schwan', status: 'building', emitted_version: 1, created_at: t(9000) },
     { id: P.ban, name: 'Banks', client: 'Banks', status: 'done', emitted_version: 1, created_at: t(20000) },
+  ],
+  // recorded exceptions to a check (migration 20261114232000): none in the fixtures; the room pages read the table
+  intent_check_exceptions: [],
+  // the processes a project can follow, exactly as migration 20261117000000 seeds them
+  intent_processes: [
+    { key: 'd1_to_d2', title: 'Draft 1 to Draft 2', description: "The designer's Draft 1 model to a client-ready Draft 2: room board, decisions, 2D drawings, 3D build, sheets.", status: 'live', sort: 10, created_at: t(100) },
+    { key: 'eng_frame', title: 'Engineer set to 3D frame', description: "The engineer's 2D structural set and the designer's model to a 3D frame model: foundation, steel, floor framing, stud walls, ceiling framing.", status: 'draft', sort: 20, created_at: t(100) },
   ],
   intent_rooms: [
     room('r-d101', P.deu, '101', 'Foyer', 'unreviewed', 0, { area_sf: 96.4 }),

@@ -48,6 +48,9 @@ The smoke test needs no network and no credentials. It proves pages render and a
 - **Rulebook** `/rulebook/{checks,defaults,standards}` — `/rules` and `/standards` redirect here
 - **Blueprint** `/blueprint` — dated feed of what changed
 
+## Processes (2026-11-17)
+A project follows one process (table `intent_processes`, column `intent_projects.process`, default `d1_to_d2`). The process picks the stage pack Blueprint compiles the work order from (`stages/<key>/` in Blueprint's workspace). It is picked in the New project form and can be changed on the project page until the first Lock & Emit. A new process is a row in `intent_processes` (a migration), not a code change. `status`: `live` = an accepted stage pack exists; `draft` = the playbook is written but not accepted, a project can be filed under it and no work order is compiled yet. Machine read: `GET /api/processes` (x-prefill-secret); `GET /api/projects` answers `process` per project. The pages after the picker (room board, Lock & Emit, 2D, build) are still the Draft 1 to Draft 2 steps: a project on another process is told so on its page.
+
 ## Model scan → room board (the intake flow)
 
 The room board should be born from the **actual model**, not a template. Before any intent capture, run the intake scan and push it:

@@ -42,7 +42,12 @@ function filterRows(rows, u, table) {
     else if (op === 'in') {
       const set = val.slice(1, -1).split(',').map((s) => s.replace(/^"|"$/g, ''))
       rows = rows.filter((r) => set.includes(String(r[key])))
-    } else unknown.add('filter ' + table + '.' + key + '=' + raw)
+    } else if (op === 'ilike') {
+      // case-blind match; * and % stand for any run of characters
+      const re = new RegExp('^' + val.split(/[*%]/).map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$', 'i')
+      rows = rows.filter((r) => re.test(String(r[key] ?? '')))
+    } else if (op === 'not' && val === 'is.null') rows = rows.filter((r) => r[key] != null) // .not(col, 'is', null)
+    else unknown.add('filter ' + table + '.' + key + '=' + raw)
   }
   return rows
 }

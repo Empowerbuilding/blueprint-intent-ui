@@ -7,6 +7,7 @@ import Markdown from '@/components/markdown'
 import { RulebookHeader } from '@/components/rulebook-header'
 import { Pill } from '@/components/pill'
 import { lineDiff, foldDiff, diffStats } from '@/lib/diff'
+import { loadProcesses } from '@/lib/processes'
 import Link from 'next/link'
 
 // RULEBOOK · STANDARDS — the written rules and process Blueprint works from.
@@ -21,8 +22,9 @@ const CATEGORIES: { key: string; label: string }[] = [
 ]
 
 // A document that is a part of a stage pack (spec 3.3) is listed under its stage, not under its category.
+// The short name a stage playbook is listed under. d1_to_d2 keeps the name it has always had on this page;
+// any other stage shows the title of its process (table intent_processes).
 const STAGES: Record<string, string> = { d1_to_d2: 'D1 to D2' }
-const stageLabel = (key: string) => 'Stage playbook: ' + (STAGES[key] || key)
 
 type Standard = {
   id: string
@@ -55,6 +57,8 @@ export default async function StandardsPage({
 
   const { data: standardRows } = await supabase.from('intent_standards').select('*').eq('active', true).order('title')
   const standards = (standardRows || []) as Standard[]
+  const processes = await loadProcesses(supabase)
+  const stageLabel = (key: string) => 'Stage playbook: ' + (STAGES[key] || processes.find((p) => p.key === key)?.title || key)
   const current = standards.find((s) => s.slug === doc) || standards.find((s) => !s.stage) || standards[0] || null
   const stageKeys = [...new Set(standards.map((s) => s.stage).filter((k): k is string => !!k))].sort()
   const groups = [
