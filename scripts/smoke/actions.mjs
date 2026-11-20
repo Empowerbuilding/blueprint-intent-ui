@@ -276,7 +276,7 @@ api = await (await fetch(app + '/api/outlines?project_id=p-whitaker', { headers:
 ok('/api/outlines when signing is refused: image_url is null', (api.rooms || []).flatMap((x) => x.outlines || []).every((o) => o.image_url === null))
 await setMode({ denySign: false })
 
-// ---------- C4. lessons: Blueprint proposes, only Mitch or Michael decide ----------
+// ---------- C4. lessons: they land accepted on their own (2026-11-20); only Mitch or Michael retire, or decide one that still waits ----------
 const cookieFor = (id, email) => {
   const u = { ...user, id, email }
   const t = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' })) + '.' + b64u(JSON.stringify({ sub: id, role: 'authenticated', aud: 'authenticated', exp, email })) + '.c2ln'
@@ -303,13 +303,13 @@ res = await fetch(app + '/api/lessons', { method: 'POST', headers: SECRET, body:
 let made = await res.json()
 db = await getDb()
 let row = lessonOf(db, made.id)
-ok('api propose: stored as proposed, by blueprint, project resolved', res.status === 201 && made.status === 'proposed' && row && row.status === 'proposed' && row.proposed_by === 'blueprint' && row.source === 'blueprint' && row.project_id === 'p-whitaker' && row.project_name === 'Whitaker' && row.kind === 'modeling' && !row.accepted_rule && !row.decided_at, JSON.stringify(row))
+ok('api own finding: accepted at once, marked as not reviewed, by blueprint, project resolved', res.status === 201 && made.status === 'accepted' && made.own_finding === true && row && row.status === 'accepted' && row.proposed_by === 'blueprint' && row.source === 'blueprint' && row.project_id === 'p-whitaker' && row.project_name === 'Whitaker' && row.kind === 'modeling' && row.accepted_rule === 'Save in the same script, right after verification.' && !!row.decided_at && row.accepted_at === row.decided_at && row.decided_by_email === 'Blueprint (own finding, not reviewed)' && !row.decided_by, JSON.stringify(row))
 res = await fetch(app + '/api/lessons', { method: 'POST', headers: SECRET, body: JSON.stringify({ title: 'save after every VERIFIED phase', proposed_rule: 'again' }) })
 let dup = await res.json()
 ok('api propose the same title again: not added twice', res.status === 200 && dup.duplicate === true && dup.id === made.id && (await getDb()).intent_lessons.length === db.intent_lessons.length, JSON.stringify(dup))
 for (const bad of [{ status: 'accepted' }, { accepted_rule: 'self-approved' }, { decided_by_email: 'mitch@barnhaus.test' }]) {
   res = await fetch(app + '/api/lessons', { method: 'POST', headers: SECRET, body: JSON.stringify({ title: 'Sneak ' + Object.keys(bad)[0], proposed_rule: 'r', ...bad }) })
-  ok('api cannot accept its own lesson (' + Object.keys(bad)[0] + '): refused, nothing stored', res.status === 400 && !(await getDb()).intent_lessons.some((x) => x.title.startsWith('Sneak')), String(res.status))
+  ok('api cannot send a decision field itself (' + Object.keys(bad)[0] + '): refused, nothing stored', res.status === 400 && !(await getDb()).intent_lessons.some((x) => x.title.startsWith('Sneak')), String(res.status))
 }
 res = await fetch(app + '/api/lessons', { method: 'POST', headers: SECRET, body: JSON.stringify({ title: 'No rule' }) })
 ok('api propose without a rule: refused', res.status === 400)
@@ -318,9 +318,9 @@ for (const m of ['PATCH', 'PUT', 'DELETE']) {
   ok('api has no ' + m + ' (no machine way to decide a lesson)', res.status === 405, String(res.status))
 }
 api = await (await fetch(app + '/api/lessons', { headers: SECRET })).json()
-ok('api read: accepted lessons only by default, with the accepted wording', api.lessons.length === 1 && api.lessons[0].id === 'l3' && api.lessons[0].rule.startsWith('Countertops are slab-only') && api.counts.proposed === 3 && same(api.approvers, ['Michael', 'Mitch']), JSON.stringify(api).slice(0, 400))
+ok('api read: accepted lessons only by default, with the accepted wording', api.lessons.length === 2 && api.lessons.some((x) => x.id === 'l3' && x.rule.startsWith('Countertops are slab-only')) && api.lessons.some((x) => x.title === 'Save after every verified phase' && x.decided_by === 'Blueprint (own finding, not reviewed)') && api.counts.proposed === 2 && same(api.approvers, ['Michael', 'Mitch']), JSON.stringify(api).slice(0, 400))
 api = await (await fetch(app + '/api/lessons?status=proposed', { headers: SECRET })).json()
-ok('api read ?status=proposed', api.lessons.length === 3 && api.lessons.every((x) => x.status === 'proposed'))
+ok('api read ?status=proposed: only the two older rows still wait', api.lessons.length === 2 && api.lessons.every((x) => x.status === 'proposed'))
 ok('api read without secret or login: 401', (await fetch(app + '/api/lessons')).status === 401)
 
 // a signed-in account that is not an approver (Blueprint's own login): sees the list, gets no decision forms
@@ -328,7 +328,7 @@ html = await pageAs(L, asBlueprint)
 ok('non-approver: page lists the lessons, read-only', html.includes('Read every edit back after a write batch') && html.includes('read-only for decisions') && html.includes('Waiting on Mitch or Michael'))
 ok('non-approver: no accept / dismiss / retire forms', !html.includes('name="accepted_rule"') && !html.includes('Retire this lesson') && (html.match(/name="lesson_id"/g) || []).length === 0)
 html = await pageAs('/', asBlueprint)
-ok('non-approver inbox: lessons shown as waiting on Mitch or Michael', html.includes('Lessons to accept (3)') && html.includes('They wait on Mitch or Michael') && !html.includes('Review lessons'))
+ok('non-approver inbox: lessons shown as waiting on Mitch or Michael', html.includes('Lessons to accept (2)') && html.includes('They wait on Mitch or Michael') && !html.includes('Review lessons'))
 // ...and posting the approver's own form as that account is refused
 html = await page(L)
 const acceptL1 = form(html, (f) => f.includes('value="l1"') && f.includes('name="accepted_rule"'), 'accept form l1')
@@ -366,15 +366,15 @@ r = await post(L, retireL3, { decision_note: 'Superseded by the new counter fami
 row = lessonOf(await getDb(), 'l3')
 ok('approver retires an accepted lesson: kept on record with when it was accepted', row.status === 'retired' && row.accepted_at === acceptedAt && row.decided_by_email === 'mitch@barnhaus.test' && row.accepted_rule.startsWith('Countertops are slab-only'), JSON.stringify(row))
 api = await (await fetch(app + '/api/lessons', { headers: SECRET })).json()
-ok('api read after the decisions: only the lesson accepted just now', api.lessons.length === 1 && api.lessons[0].id === 'l1' && api.lessons[0].rule.startsWith('Read back every changed element') && api.lessons[0].decided_by === 'mitch@barnhaus.test', JSON.stringify(api.lessons).slice(0, 300))
+ok('api read after the decisions: the lesson accepted just now and the own finding', api.lessons.length === 2 && api.lessons.some((x) => x.id === 'l1' && x.rule.startsWith('Read back every changed element') && x.decided_by === 'mitch@barnhaus.test') && api.lessons.some((x) => x.title === 'Save after every verified phase'), JSON.stringify(api.lessons).slice(0, 300))
 
-// a person adds a lesson: it is only proposed, even when the person is an approver
+// an approver adds a lesson: accepted at once, no second click (Mitch 2026-11-20 07:46Z)
 h = form(html, (f) => f.includes('name="proposed_rule"') && f.includes('name="title"'), 'add-lesson form')
 before = await getDb()
 r = await post(L, h, { title: 'Dimension to face of stud', what_happened: '', proposed_rule: 'Plan dimensions go to face of stud, not finish.', kind: 'construction_docs' })
 db = await getDb()
 row = db.intent_lessons.find((x) => !before.intent_lessons.some((y) => y.id === x.id))
-ok('person adds a lesson: proposed, not accepted', row && row.status === 'proposed' && row.source === 'person' && row.proposed_by === 'mitch@barnhaus.test' && row.kind === 'construction_docs' && !row.accepted_rule && !row.decided_at, JSON.stringify(row))
+ok('approver adds a lesson: accepted at once, in his name', row && row.status === 'accepted' && row.source === 'person' && row.proposed_by === 'mitch@barnhaus.test' && row.kind === 'construction_docs' && row.accepted_rule === row.proposed_rule && !!row.decided_at && row.decided_by === 'user-mitch' && row.decided_by_email === 'mitch@barnhaus.test', JSON.stringify(row))
 r = await post(L, h, { title: '', proposed_rule: '' })
 ok('add a lesson with nothing in it: refused', r.location.includes('needs a one-line title') && (await getDb()).intent_lessons.length === db.intent_lessons.length)
 ok('lessons are never deleted', !(await (await fetch(mock + '/__calls')).json()).some((c) => c.op.startsWith('delete') && c.table === 'intent_lessons'))

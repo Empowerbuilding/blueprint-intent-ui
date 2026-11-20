@@ -5,8 +5,9 @@ import { approverNames, loadApprovers, LESSON_KINDS, type Approver } from '@/lib
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-// Lessons: anyone signed in can ADD (propose) one. Accepting, dismissing and retiring are for
-// approvers only — checked here for a clear message, and enforced again by the database.
+// Lessons: anyone signed in can ADD one. An approver's own lesson is accepted at once (Mitch 2026-11-20 07:46Z:
+// nothing waits for a click). Accepting someone else's, dismissing and retiring are for approvers only — checked
+// here for a clear message, and enforced again by the database.
 
 const PAGE = '/blueprint/lessons'
 const back = (opts: { err?: string; anchor?: string } = {}) =>
@@ -29,7 +30,7 @@ async function signedIn() {
 }
 
 export async function proposeLesson(formData: FormData) {
-  const { supabase, user } = await signedIn()
+  const { supabase, user, isApprover } = await signedIn()
   const title = String(formData.get('title') || '').trim()
   const rule = String(formData.get('proposed_rule') || '').trim()
   const what = String(formData.get('what_happened') || '').trim()
@@ -51,6 +52,17 @@ export async function proposeLesson(formData: FormData) {
     .select('id')
     .single()
   if (error || !data) redirect(back({ err: 'The lesson could not be added' + (error ? ': ' + error.message : '.') }))
+  // An approver's own lesson needs no second click. Two statements, because the database lets a signed-in account add
+  // only a proposed lesson; the accept is the approver's own update. If it does not go through, the lesson stays proposed.
+  if (isApprover) {
+    const now = new Date().toISOString()
+    await supabase
+      .from('intent_lessons')
+      .update({ status: 'accepted', accepted_rule: rule, accepted_at: now, decided_by: user.id, decided_by_email: user.email || null, decided_at: now })
+      .eq('id', data.id)
+      .eq('status', 'proposed')
+      .select('id')
+  }
   refresh()
   redirect(back({ anchor: 'l-' + data.id }))
 }

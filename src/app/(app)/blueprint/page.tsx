@@ -249,8 +249,8 @@ export default async function BlueprintPage({
 
         <section className="rounded-xl border border-bh-border bg-bh-panel/40 px-4 py-4 text-sm text-slate-400 leading-relaxed">
           <div className="font-semibold text-slate-200 mb-1">Not recorded here yet</div>
-          Corrections you give Blueprint in chat appear here once Blueprint has written them up as a lesson and one of
-          you has accepted it. Blueprint&apos;s own rule files and playbooks are not in the app.
+          Corrections you give Blueprint in chat appear here once Blueprint has written them up as a lesson. Lessons are
+          accepted automatically. Blueprint&apos;s own rule files and playbooks are not in the app.
         </section>
       </div>
     </main>

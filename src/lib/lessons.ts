@@ -1,7 +1,9 @@
 // LESSONS — what Blueprint has learned and should keep doing.
-// Blueprint (or anyone signed in) proposes; only an approver (intent_approvers) accepts, dismisses
-// or retires. Blueprint works from accepted lessons only. The database enforces the split too
-// (supabase/migrations/20261111d_lessons.sql).
+// Nothing waits for a click (Mitch, blueprint-mitch 2026-11-20 07:46Z: "all this needs to be autonomous i shoudlnt
+// have to manayuly acceot anythign"): a lesson a person taught lands accepted (auto-learn, 2026-11-15), and so does
+// Blueprint's own finding, marked OWN_FINDING so it can be told from what a person taught. Only an approver
+// (intent_approvers) retires one; the database still refuses a decision from any other signed-in account
+// (supabase/migrations/20261111d_lessons.sql). Blueprint works from accepted lessons only.
 
 export type LessonStatus = 'proposed' | 'accepted' | 'dismissed' | 'retired'
 
@@ -26,6 +28,10 @@ export type Lesson = {
 }
 
 export type Approver = { user_id: string; email: string; name: string }
+
+/** who "decided" a lesson that Blueprint found itself and nobody read: it was accepted automatically */
+export const OWN_FINDING = 'Blueprint (own finding, not reviewed)'
+export const isOwnFinding = (l: Pick<Lesson, 'decided_by_email' | 'status'>) => l.status === 'accepted' && l.decided_by_email === OWN_FINDING
 
 export const LESSON_COLUMNS =
   'id, status, kind, title, what_happened, proposed_rule, accepted_rule, project_id, project_name, source, source_ref, proposed_by, decided_by_email, decided_at, accepted_at, decision_note, created_at'

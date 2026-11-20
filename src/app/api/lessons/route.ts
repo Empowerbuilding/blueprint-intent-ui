@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
-import { LESSON_COLUMNS, LESSON_KINDS, lessonRule, type Lesson } from '@/lib/lessons'
+import { LESSON_COLUMNS, LESSON_KINDS, lessonRule, type Lesson, OWN_FINDING } from '@/lib/lessons'
 
 // /api/lessons — the lessons ledger for machine clients (Blueprint).
 //
@@ -9,7 +9,8 @@ import { LESSON_COLUMNS, LESSON_KINDS, lessonRule, type Lesson } from '@/lib/les
 //      -> { lessons: [...], counts: {...}, approvers: ["Mitch", "Michael"] }
 //      Blueprint reads ACCEPTED lessons at the start of work. "rule" is the wording to follow.
 // POST { title, proposed_rule, what_happened?, kind?, project? | project_id?, source_ref? }
-//      -> 201 { id, status: "proposed" }   (200 with duplicate:true if the same title is already on the ledger)
+//      -> 201 { id, status: "accepted", own_finding: true }  Blueprint's own finding: accepted at once, marked
+//      (Mitch 2026-11-20 07:46Z: nothing waits for a click). Was "proposed" until then.   (200 with duplicate:true if the same title is already on the ledger)
 //      A machine caller can only PROPOSE. There is no machine route that accepts, dismisses or
 //      retires a lesson: that is done by an approver, signed in, in the app.
 // POST { ..., learn: true, taught_by: "michael@...", source_ref: "<verbatim quote + when>" }
@@ -169,20 +170,26 @@ export async function POST(request: NextRequest) {
             accepted_at: nowIso,
           }
         : {
-            status: 'proposed',
+            // Blueprint's own finding: accepted at once, nobody clicks (Mitch, blueprint-mitch 2026-11-20 07:46Z).
+            // decided_by_email says it was not reviewed by a person; an approver can retire it.
+            status: 'accepted',
             kind,
             title,
             what_happened: text('what_happened'),
             proposed_rule: rule,
+            accepted_rule: rule,
             project_id: projectId,
             project_name: projectName,
             source: 'blueprint',
             source_ref: text('source_ref') || null,
             proposed_by: 'blueprint',
+            decided_by_email: OWN_FINDING,
+            decided_at: nowIso,
+            accepted_at: nowIso,
           }
     )
     .select('id, status')
     .single()
   if (error || !row) return NextResponse.json({ error: error?.message || 'insert failed' }, { status: 500 })
-  return NextResponse.json({ id: row.id, status: row.status, learned: learn || undefined }, { status: 201 })
+  return NextResponse.json({ id: row.id, status: row.status, learned: learn || undefined, own_finding: !learn || undefined }, { status: 201 })
 }

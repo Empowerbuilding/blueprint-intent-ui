@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { acceptLesson, dismissLesson, proposeLesson, retireLesson } from '@/app/lessons-actions'
 import {
   approverNames,
+  isOwnFinding,
   kindLabel,
   LESSON_KINDS,
   loadApprovers,
@@ -18,8 +19,8 @@ import { BlueprintHeader } from '@/components/blueprint-header'
 import { Pill } from '@/components/pill'
 
 // BLUEPRINT · LESSONS — the ledger of what Blueprint has learned.
-// Blueprint proposes. Only an approver accepts, dismisses or retires. Blueprint works from the
-// accepted list and nothing else.
+// Lessons land accepted on their own (what a person taught; Blueprint's own findings, marked). Only an approver
+// retires one. Blueprint works from the accepted list and nothing else.
 
 function Meta({ l, approvers, tz }: { l: Lesson; approvers: Approver[]; tz: string }) {
   const day = (iso: string | null) => fmtDate(iso, tz)
@@ -59,8 +60,9 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
 
       <div className="app-container py-8 space-y-10 max-w-4xl">
         <p className="text-sm text-slate-400 leading-relaxed">
-          Blueprint proposes what it has learned. Only {names} can accept, dismiss or retire a lesson. Blueprint works
-          from the accepted list and nothing else.
+          Lessons are accepted automatically: what {names} teach, and what Blueprint finds itself (marked &ldquo;own
+          finding&rdquo;, not reviewed by a person). Nothing waits for a click. Only {names} can retire a lesson. Blueprint
+          works from the accepted list and nothing else.
           {!isApprover && <span className="block mt-1 text-slate-500">You are signed in without approval rights, so this page is read-only for decisions.</span>}
         </p>
 
@@ -68,7 +70,8 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
 
         {/* TO ACCEPT */}
         <section className="space-y-3">
-          <h2 className="section-title">To accept ({proposed.length})</h2>
+          {/* only older rows and a lesson added by someone who is not an approver can still be waiting */}
+          {proposed.length > 0 && <h2 className="section-title">To accept ({proposed.length})</h2>}
           {proposed.map((l) => (
             <div key={l.id} id={'l-' + l.id} className="card scroll-mt-24 overflow-hidden">
               <div className="p-4 space-y-3">
@@ -116,11 +119,6 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
               )}
             </div>
           ))}
-          {proposed.length === 0 && (
-            <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-6 text-center">
-              Nothing is waiting to be accepted.
-            </div>
-          )}
 
           <details>
             <summary className="btn-secondary-sm cursor-pointer">+ Add a lesson yourself</summary>
@@ -136,8 +134,10 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
                     </option>
                   ))}
                 </select>
-                <button className="btn-primary-sm">Add to the list above</button>
-                <span className="text-[11px] text-slate-600">It still has to be accepted by {names}.</span>
+                <button className="btn-primary-sm">Add the lesson</button>
+                <span className="text-[11px] text-slate-600">
+                  {isApprover ? 'It is accepted at once.' : 'It waits for ' + names + '.'}
+                </span>
               </div>
             </form>
           </details>
@@ -155,7 +155,10 @@ export default async function LessonsPage({ searchParams }: { searchParams: Prom
                 <div key={l.id} id={'l-' + l.id} className="px-4 py-3 scroll-mt-24">
                   <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                     <div className="min-w-0 text-sm text-slate-100 whitespace-pre-wrap break-words">{l.accepted_rule}</div>
-                    <Pill tone="green">accepted</Pill>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {isOwnFinding(l) && <Pill tone="outline">own finding</Pill>}
+                      <Pill tone="green">accepted</Pill>
+                    </span>
                   </div>
                   <div className="text-xs text-slate-400 mt-1 break-words">{l.title}</div>
                   <div className="text-[11px] text-slate-500 mt-1 break-words">
