@@ -1,0 +1,1113 @@
+{
+ "_history": "VERSION 1. Live 2026-11-20: Mitch, blueprint-mitch 02:37Z (\"once your done it can be live\"); Tony set the process d2_to_d3 live in the app 04:25Z; moved from stages/_draft/d2_to_d3 by Blueprint the same hour. Blueprint's working text: NOT reviewed by Michael (hold on questions since 2026-11-20 00:11Z); the assumptions are in ASSUMPTIONS.md and standards/ASSUMPTIONS_NOT_REVIEWED.md. Ships with the electrical 2D step OFF (Mitch 03:32Z and 03:34Z). NOTHING here has run on a model: the batch of SMOKE_TESTS.md on a scratch model comes before the first real run. Until then: WORKING DRAFT v0, REBUILT 2026-11-20 03:10Z by the D2D3_BUILD worker so that the v2 compiler takes it (Mitch, blueprint-mitch 02:37Z to 02:42Z). Not reviewed, not accepted, not synced, no work order compiled from it (dry runs only: automation/work_order_compile.py --dry-run-draft). Its state before: pack.json.bak-20261120-build. Fields starting with _ and the fields evidence / open are draft annotations, not schema. Built by automation/build_pack_d2_to_d3.py.",
+ "stage": "d2_to_d3",
+ "title": "Draft 2 to Draft 3",
+ "pack_version": 1,
+ "provenance": [
+  "banks",
+  "lowry"
+ ],
+ "_provenance_note": "Drawing sets: Banks and Lowry, D2 and D3 both held, every page opened. Meetings: the D2 review of each house (Banks 2026-09-18, Lowry 2026-07-20). No redlines exist. Two finished models read for electrical only, 2026-11-20 (Banks, Bastion: standards/ELECTRICAL_PLAN_STANDARD.md sections 12 and 13). Nothing here has been run on a model.",
+ "entry": {
+  "requires": [
+   "contract.locked",
+   "2d.electrical_layouts_approved",
+   "d2.set_issued",
+   "doc.is_d3_save_as"
+  ],
+  "_note": "Names only, as in PACK V1. The second holds only while 2d.enabled is true; the compiler enforces it (gate_3d). The last two have no check in the app (CHECKS_WANTED.md); T1 reads the document."
+ },
+ "phase_order": [
+  "T1",
+  "T2S",
+  "T3",
+  "T4",
+  "T5",
+  "T6",
+  "T7",
+  "T8",
+  "T9",
+  "T10",
+  "T11C",
+  "T11",
+  "T12",
+  "T13",
+  "T14",
+  "T15"
+ ],
+ "deferred_kinds": [
+  "mep.hvac",
+  "mep.gas",
+  "mep.low_voltage"
+ ],
+ "_deferred_kinds_note": "What this stage still does not do: HVAC equipment and its sheet, gas routing (drops and stubs), low voltage (data, smoke detectors, 3-way switching detail). In both houses these arrive only in Final (EVIDENCE.md 6: HVAC and gas S 2/2; low voltage S 1/2 (Lowry)). The three kind names are Blueprint's proposal, not reviewed: NONE of them is in the app's vocabulary today (35 kinds, read 2026-11-20), so no contract can carry one yet. A work item of one of them is listed on the plan as deferred and built by nothing in this stage.",
+ "phases": [
+  {
+   "id": "T1",
+   "title": "Intake: the model as it stands after the Draft 2 review",
+   "kinds": [],
+   "procedure_md": "stages/d2_to_d3/t1.md",
+   "standard_items": [
+    {
+     "id": "si-intake-scan",
+     "kind": "qa.run",
+     "summary": "Read-only scan of the model as it stands: Draft 2 plus what the designer changed live in the review meeting",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-20 02:37Z"
+    },
+    {
+     "id": "si-intake-sort",
+     "kind": "qa.run",
+     "summary": "Every work item of the list sorted done_in_model or to_do, with what was read in the model for each; nothing is redone",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-20 02:37Z; the sorting rule is BP"
+    },
+    {
+     "id": "si-intake-unexplained",
+     "kind": "qa.run",
+     "summary": "Every change found in the model that no work item explains is LISTED for a person: not undone, not adopted",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP"
+    }
+   ],
+   "acceptance": [
+    "intake.doc_title_matches",
+    "intake.rooms_match_contract",
+    "intake.fingerprint_current",
+    "room.no_zero_area",
+    "room.no_duplicate_numbers",
+    "room.numbers_match_board"
+   ],
+   "qa_scripts": [
+    "checks_intake"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "M 11-20 02:37Z: the run starts from the Draft 2 state of the model plus the changes made live in the review meeting.",
+    "S 2/2: a client meeting named D2 Review & D3 Notes opens the stage, 1 and 5 days after Draft 2.",
+    "T Banks 09-18: 21 decisions and 18 further asks. T Lowry 07-20: 24 and 6."
+   ],
+   "open": [
+    "The form the client feedback takes on a live project (INTAKE.md point 2).",
+    "What the Draft 2 state is compared with when no scan of the issued Draft 2 is on file."
+   ],
+   "carries": "every_work_item"
+  },
+  {
+   "id": "T2S",
+   "title": "Shell changes",
+   "kinds": [
+    "structure.resize",
+    "structure.modify",
+    "structure.stairs",
+    "surface.wall"
+   ],
+   "procedure_md": "stages/d2_to_d3/t2s.md",
+   "standard_items": [],
+   "acceptance": [
+    "shell.rooms_still_enclosed",
+    "room.numbers_match_board",
+    "model.warnings_not_up",
+    "shell.outline_matches_model"
+   ],
+   "qa_scripts": [
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": {
+    "by": "item",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": false,
+   "judgment_slots": [
+    "unusual_geometry"
+   ],
+   "runtime_calls": [
+    "join_condition"
+   ],
+   "evidence": [
+    "S 2/2: plan and shell changes in both houses. LAYOUT on 13 Banks sheets, 1 Lowry sheet.",
+    "T Banks 09-18: deck and porch 10 to 12 ft. T Lowry 07-20: sauna corner to safe room and a smaller gym.",
+    "V1: the procedure is stages/d1_to_d2/p2s.md."
+   ],
+   "open": [
+    "How large a shell change this stage can take."
+   ],
+   "shell_phase": true
+  },
+  {
+   "id": "T3",
+   "title": "Opening changes",
+   "kinds": [
+    "opening.place",
+    "opening.replace",
+    "opening.modify"
+   ],
+   "procedure_md": "stages/d2_to_d3/t3.md",
+   "standard_items": [],
+   "acceptance": [
+    "opening.bbox_verified",
+    "opening.marks_clean"
+   ],
+   "qa_scripts": [
+    "qa-marks",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection"
+   ],
+   "evidence": [
+    "S 2/2: doors and windows changed on 5 Banks sheets, 2 Lowry sheets.",
+    "T Banks 09-18: two overhead doors, one man door, a door removed. T Lowry 07-20: four garage windows out.",
+    "V1: the procedure is stages/d1_to_d2/p3.md."
+   ],
+   "open": [
+    "One Banks window change has no decision behind it."
+   ]
+  },
+  {
+   "id": "T4",
+   "title": "Room changes",
+   "kinds": [
+    "room.config",
+    "room.palette"
+   ],
+   "procedure_md": "stages/d2_to_d3/t4.md",
+   "standard_items": [],
+   "acceptance": [
+    "room.no_zero_area",
+    "room.numbers_match_board",
+    "room.palette_rgb"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "S 1/2 (Lowry): a room changes use.",
+    "V1: the procedure is stages/d1_to_d2/p4.md."
+   ],
+   "open": []
+  },
+  {
+   "id": "T5",
+   "title": "Casework, counters, fixtures and appliances per room",
+   "kinds": [
+    "casework.place",
+    "casework.modify",
+    "casework.rehost",
+    "appliance.place",
+    "casework.counter",
+    "plumbing.sink",
+    "plumbing.place",
+    "plumbing.niche"
+   ],
+   "procedure_md": "stages/d2_to_d3/t5.md",
+   "standard_items": [],
+   "acceptance": [
+    "casework.no_overlap",
+    "casework.no_opening_intersection",
+    "casework.faces_have_material",
+    "casework.no_stacked_boxes",
+    "counter.no_builtin_splash",
+    "counter.sits_on_boxes",
+    "sink.cutout_matches_bowl",
+    "plumbing.toilet_clearance_15_21"
+   ],
+   "qa_scripts": [
+    "checks_casework",
+    "qa-model"
+   ],
+   "library_refs": [
+    "01_Casework\\Kitchen",
+    "01_Casework\\Mud-Pantry-Laundry",
+    "01_Casework\\Bar-Media-Fireplace",
+    "01_Casework\\Closets",
+    "01_Casework\\Garage",
+    "05_Specialty Equipment"
+   ],
+   "defaults_scope": [
+    "public",
+    "master",
+    "secondary",
+    "garage",
+    "bath"
+   ],
+   "split": {
+    "by": "room",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection",
+    "unusual_geometry"
+   ],
+   "evidence": [
+    "S 2/2: CASEWORK on 8 Banks sheets, 6 Lowry sheets.",
+    "T Banks 09-18: desk, appliance wall, water heater. T Lowry 07-20: mud bench, outdoor kitchen, storage wall.",
+    "S 1/2 (Banks): a removed item keeps its label into Final.",
+    "M 11-20 02:37Z: the plumbing fixtures are in the model already; a fixture a work item asks for that is NOT there is placed here, not in the plumbing sheets phase.",
+    "V1: the procedures are stages/d1_to_d2/p5.md, p6.md, p7.md."
+   ],
+   "open": [
+    "Partial landings (Lowry mud room).",
+    "The casework checkers were written for the d1_to_d2 phases; whether they take this phase id is not proven."
+   ]
+  },
+  {
+   "id": "T6",
+   "title": "Surfaces, materials and roof changes",
+   "kinds": [
+    "surface.floor",
+    "surface.ceiling",
+    "surface.beam",
+    "surface.soffit",
+    "finish.material",
+    "roof.modify"
+   ],
+   "procedure_md": "stages/d2_to_d3/t6.md",
+   "standard_items": [],
+   "acceptance": [
+    "floor.threshold_both_sides",
+    "floor.no_uncovered_slab",
+    "ceiling.edge_z_measured",
+    "model.warnings_not_up",
+    "material.one_per_role",
+    "material.no_project_named",
+    "material.appearance_paths_resolve",
+    "roof.z_vs_walls"
+   ],
+   "qa_scripts": [
+    "checks_materials",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": null,
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "join_condition",
+    "ambiguous_provenance"
+   ],
+   "evidence": [
+    "S 1/2 (Lowry): stone changed to brick in the model and the pictures; the labels go on saying Stone (8 times in Draft 3, 11 in Final). EVIDENCE.md 4a and 5.",
+    "S 2/2: no finish call-out changed on any sheet.",
+    "V1: the procedures are stages/d1_to_d2/p8.md, p9.md, p10.md."
+   ],
+   "open": [
+    "Where finish and colour decisions are recorded in words."
+   ]
+  },
+  {
+   "id": "T7",
+   "title": "Site, and scope that Draft 2 parked",
+   "kinds": [
+    "site.modify",
+    "site.fence",
+    "site.pool"
+   ],
+   "procedure_md": "stages/d2_to_d3/t7.md",
+   "standard_items": [],
+   "acceptance": [
+    "site.driveway_is_toposolid_split"
+   ],
+   "qa_scripts": [
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "outdoor"
+   ],
+   "split": null,
+   "mandatory": false,
+   "judgment_slots": [
+    "fence_recipe"
+   ],
+   "runtime_calls": [],
+   "evidence": [
+    "S 1/2 (Banks): septic, well, service, trench, tank drawn. T Banks 09-18.",
+    "S 1/2 (Lowry): pool modelled, six sheets, three marked Conceptual Only. T Lowry 07-20.",
+    "V1: the procedure is stages/d1_to_d2/p10s.md."
+   ],
+   "open": [
+    "Which parked scope is usual.",
+    "Whether outside scope is the designer's to draw.",
+    "site.pool has no recipe in the app (unmapped)."
+   ]
+  },
+  {
+   "id": "T8",
+   "title": "Electrical: place, room by room",
+   "kinds": [
+    "mep.electrical"
+   ],
+   "procedure_md": "stages/d2_to_d3/t8.md",
+   "standard_items": [
+    {
+     "id": "si-elec-room",
+     "scope": "room",
+     "kind": "mep.electrical",
+     "summary": "The lights, fans, switches and outlets of the room placed as its approved electrical layout shows them (2D step switched off: by its work items, then ELECTRICAL_DEFAULTS.md), and read back",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-20 02:37Z; S 2/2; 2D-first is BP"
+    },
+    {
+     "id": "si-elec-house",
+     "kind": "mep.electrical",
+     "summary": "Exterior and security lights, soffit outlets and the main panel placed as approved (2D step off: by the work items, then ELECTRICAL_DEFAULTS.md), and read back",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up",
+    "bath.mirror_light_each_side"
+   ],
+   "qa_scripts": [
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house",
+    "public",
+    "master",
+    "secondary",
+    "bath",
+    "garage",
+    "adu",
+    "outdoor"
+   ],
+   "split": {
+    "by": "room",
+    "rooms": "all",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection"
+   ],
+   "evidence": [
+    "M 11-20 02:37Z: \"we defineitly need to be able to place electrical and build pages for it. maybe room byu room jsut like we do in draft 1 to 2 phase\".",
+    "S 2/2: lights, fans, outlets, switches and the panel are new at Draft 3 and show on elevations, sections and 3D.",
+    "T Banks 09-18, T Lowry 07-20: the content is decided room by room in the review.",
+    "V1: mep.electrical is a deferred kind of d1_to_d2."
+   ],
+   "open": [
+    "Real families or symbols: not readable from a PDF.",
+    "No bridge command places an outlet by name (KIND_VALIDATION); placing through family instances is unproven: SMOKE_TESTS.md.",
+    "No lighting or electrical folder is in the folder map of the shared library."
+   ]
+  },
+  {
+   "id": "T9",
+   "title": "Electrical plan sheets",
+   "kinds": [],
+   "procedure_md": "stages/d2_to_d3/t9.md",
+   "standard_items": [
+    {
+     "id": "si-elec-plan",
+     "scope": "level",
+     "kind": "sheet.view",
+     "summary": "Electrical plan of the level: the plan with every fixture and device, red dashed switch legs, labels for the special items",
+     "params": {
+      "sheet": "A108.x"
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 2/2"
+    },
+    {
+     "id": "si-elec-legend-schedules",
+     "scope": "level",
+     "kind": "sheet.annotate",
+     "summary": "Symbol legend, light fixture schedule and electrical fixture schedule (for all floors), and the consult-the-electrician note",
+     "params": {
+      "sheet": "A108.x"
+     },
+     "acceptance": [],
+     "evidence": "S 2/2"
+    }
+   ],
+   "acceptance": [
+    "sheet.bounds_edge_clean",
+    "sheet.scope_boxes_hidden"
+   ],
+   "qa_scripts": [
+    "checks_sheets",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": {
+    "by": "level",
+    "house_items": "each_part",
+    "unplaced_rooms": "own_part",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "S 2/2: one electrical plan per level (Banks 2, Lowry 1) with a 13-symbol legend, two schedules and a consult note.",
+    "M 11-20 02:37Z: \"build pages for it\".",
+    "S 1/2 (Lowry): 4 in cans agreed, the schedule row reads 6 in, in Draft 3 and in Final."
+   ],
+   "open": [
+    "No circuits or loads in either Draft 3."
+   ]
+  },
+  {
+   "id": "T10",
+   "title": "Plumbing plan sheets",
+   "kinds": [
+    "mep.plumbing"
+   ],
+   "procedure_md": "stages/d2_to_d3/t10.md",
+   "standard_items": [
+    {
+     "id": "si-plumb-plan",
+     "scope": "level",
+     "kind": "sheet.view",
+     "summary": "Plumbing plan of the level: the plan with the plumbing fixtures brought out, a dimension to each fixture, labels at drains, hose bibs, water heater and gas where the model has them",
+     "params": {
+      "sheet": "A109.x"
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "M 11-20 02:37Z; S 2/2"
+    },
+    {
+     "id": "si-plumb-schedules",
+     "scope": "level",
+     "kind": "sheet.annotate",
+     "summary": "Equipment schedule and plumbing fixture schedule on the plumbing plan",
+     "params": {
+      "sheet": "A109.x"
+     },
+     "acceptance": [],
+     "evidence": "S 2/2"
+    }
+   ],
+   "acceptance": [
+    "sheet.bounds_edge_clean",
+    "sheet.scope_boxes_hidden"
+   ],
+   "qa_scripts": [
+    "checks_sheets",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": {
+    "by": "level",
+    "house_items": "each_part",
+    "unplaced_rooms": "own_part",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "M 11-20 02:37Z: \"for plumbing all that shoudl already be int he model thats jsut dimesions on page with certian grpahics to poitn out plumbing in the house\".",
+    "S 2/2: one plumbing plan per level with an equipment schedule and a plumbing fixture schedule; no pipes, no legend.",
+    "T Banks 09-18, T Lowry 07-20: drains, hose bibs, equipment places.",
+    "V1: mep.plumbing is a deferred kind of d1_to_d2."
+   ],
+   "open": [
+    "Gas routing arrives in Final in both houses.",
+    "A point item (hose bib, floor drain) that is not in the model: who places it."
+   ]
+  },
+  {
+   "id": "T11C",
+   "title": "Column layout for the steel frame (2D, for approval)",
+   "kinds": [],
+   "procedure_md": "stages/d2_to_d3/t11c.md",
+   "standard_items": [
+    {
+     "id": "si-col-grid",
+     "kind": "qa.run",
+     "summary": "Column grid proposed from the roof form and the plan by the numbered rules of the page; every column with the rule that put it there",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-20 02:42Z; rules: standards and S 1/2 (Banks)"
+    },
+    {
+     "id": "si-col-layout-2d",
+     "kind": "sheet.view",
+     "summary": "The column layout drawn in 2D and handed to a person for approval; nothing is placed in this phase",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "M 11-20 02:42Z: \"yes your gonna have to be able to tell whwere all the columns need to be placed for the steel roof structure\".",
+    "standards/BARNHAUS_HYBRID_FRAMING_SYSTEM.md sections 1 to 3; standards/STRUCTURAL_FRAMING_STANDARD.md (columns).",
+    "S 1/2 (Banks): the only worked example."
+   ],
+   "open": [
+    "The largest bay allowed.",
+    "When an interior column is allowed.",
+    "A roof that is not one plain gable.",
+    "No tool draws a column layout; the app has no card for a house-level drawing."
+   ],
+   "when": {
+    "slot": "frame_system",
+    "equals": "steel"
+   }
+  },
+  {
+   "id": "T11",
+   "title": "Foundation sheet",
+   "kinds": [
+    "structure.foundation"
+   ],
+   "procedure_md": "stages/d2_to_d3/t11.md",
+   "standard_items": [
+    {
+     "id": "si-found-frame-system",
+     "kind": "structure.foundation",
+     "summary": "The frame system of this house, which picks the variant of the foundation sheet",
+     "params": {
+      "ask": {
+       "slot": "frame_system",
+       "question": "Is this house a wood frame or a steel frame? It picks the foundation sheet (wood: slab outline and ledge note; steel: column grid, a column layout first) and is never taken by habit.",
+       "options": [
+        "wood",
+        "steel"
+       ],
+       "default": null,
+       "from_kinds": [
+        "structure.foundation",
+        "structure.modify",
+        "structure.resize"
+       ],
+       "param": "frame_system"
+      }
+     },
+     "acceptance": [],
+     "evidence": "M 11-20 02:40Z; S 1/2 each"
+    },
+    {
+     "id": "si-found-plan",
+     "kind": "sheet.view",
+     "summary": "Sheet A104: the level 1 plan as a faint underlay, one view, title and scale",
+     "params": {
+      "sheet": "A104"
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 2/2"
+    },
+    {
+     "id": "si-found-dims",
+     "kind": "sheet.annotate",
+     "summary": "Dimensions by the variant: wood = the slab outline all round, overall and every jog; steel = the column grid, and the two sets (weld plates, forms) told apart by the key",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 1/2 (Lowry) wood; S 1/2 (Banks) steel"
+    },
+    {
+     "id": "si-found-drops",
+     "kind": "sheet.annotate",
+     "summary": "Slab drops marked at showers and wet or mechanical rooms, with the depth the work item gives",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2; T Lowry 07-20"
+    },
+    {
+     "id": "si-found-notes",
+     "kind": "sheet.annotate",
+     "summary": "The seven-point note block, the ledge note by wall finish (wood), and the red line ENGINEERED FOUNDATION REQUIRED",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2; ledge note S 1/2 (Lowry)"
+    },
+    {
+     "id": "si-found-wording",
+     "kind": "sheet.annotate",
+     "summary": "Sheet name and title-block framing note say the frame system the house has",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP; S 1/2 (Lowry): the Draft 3 sheet still said columns and steel on a wood house"
+    }
+   ],
+   "acceptance": [
+    "sheet.bounds_edge_clean",
+    "sheet.scope_boxes_hidden"
+   ],
+   "qa_scripts": [
+    "checks_sheets",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [
+    "frame_system"
+   ],
+   "runtime_calls": [],
+   "evidence": [
+    "M 11-20 02:40Z: \"we need to make the foundation sheet also if thats added after d2\".",
+    "S 2/2: sheet A104 with slab plan, drops, a seven-point note block.",
+    "S 1/2 (Banks): column grid and weld-plate key. S 1/2 (Lowry): wood frame, ledge note.",
+    "T Lowry 07-20: slab recess and frame system.",
+    "V1: structure.foundation is a deferred kind of d1_to_d2."
+   ],
+   "open": [
+    "The app has no typed field for the frame system: until it has, a person answers the slot.",
+    "Whether slab drops and column marks are modelled or drawn.",
+    "What the engineer needs from the sheet."
+   ]
+  },
+  {
+   "id": "T12",
+   "title": "Construction details sheet (only when asked)",
+   "kinds": [],
+   "procedure_md": "stages/d2_to_d3/t12.md",
+   "standard_items": [
+    {
+     "id": "si-details-sheet",
+     "kind": "sheet.view",
+     "summary": "One sheet of typical details (eave, slab edge at the siding, floor frame both ways), each with its list of layers",
+     "params": {
+      "sheet": "A106.3"
+     },
+     "acceptance": [
+      "sheet.bounds_edge_clean"
+     ],
+     "evidence": "S 1/2 (Banks); T Banks 09-18"
+    }
+   ],
+   "acceptance": [
+    "sheet.bounds_edge_clean"
+   ],
+   "qa_scripts": [
+    "checks_sheets"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "S 1/2 (Banks): four typical details. T Banks 09-18.",
+    "Lowry has no details sheet in Draft 3 or Final."
+   ],
+   "open": [
+    "Stands on one house."
+   ],
+   "when": {
+    "slot": "details_sheet",
+    "equals": "yes"
+   }
+  },
+  {
+   "id": "T13",
+   "title": "Follow-through on the Draft 2 sheets",
+   "kinds": [
+    "sheet.create",
+    "sheet.view",
+    "sheet.annotate"
+   ],
+   "procedure_md": "stages/d2_to_d3/t13.md",
+   "standard_items": [
+    {
+     "id": "si-details-ask",
+     "kind": "sheet.create",
+     "summary": "Whether this house gets a construction details sheet",
+     "params": {
+      "ask": {
+       "slot": "details_sheet",
+       "question": "Does this house get a construction details sheet at Draft 3? One house of two has one.",
+       "options": [
+        "yes",
+        "no"
+       ],
+       "default": "no",
+       "from_kinds": [
+        "sheet.create"
+       ],
+       "param": "details_sheet"
+      }
+     },
+     "acceptance": [],
+     "evidence": "S 1/2 (Banks)"
+    },
+    {
+     "id": "si-notes-answered",
+     "kind": "sheet.annotate",
+     "summary": "Notes that are answered come off (TBD lists, Draft 3 notes); the answer stays where the question stood or in the work item list",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2; the answer part is BP"
+    },
+    {
+     "id": "si-schedules-follow",
+     "kind": "sheet.annotate",
+     "summary": "Door, window and area schedules follow the model",
+     "params": {},
+     "acceptance": [
+      "sheet.schedules_on_dimension_plan"
+     ],
+     "evidence": "S 2/2"
+    },
+    {
+     "id": "si-dims-redone",
+     "kind": "sheet.annotate",
+     "summary": "Dimension strings the changes broke are redone, overall dimensions included",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2: 11 Banks sheets, 5 Lowry sheets"
+    },
+    {
+     "id": "si-fixtures-on-sheets",
+     "kind": "sheet.view",
+     "summary": "Every elevation, section, interior elevation and 3D detail that now shows lights, fans or devices is looked at: they sit right and hide no dimension or label",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2: 14 of 23 Banks sheets, 12 of 18 Lowry sheets"
+    },
+    {
+     "id": "si-label-sweep",
+     "kind": "sheet.annotate",
+     "summary": "A material changed in the model has its labels, tags and keynotes changed on every sheet",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP; S 1/2 (Lowry): Stone labels on brick walls, EVIDENCE.md 5"
+    },
+    {
+     "id": "si-views-renumbered",
+     "kind": "sheet.view",
+     "summary": "Views moved or renumbered where a room or sheet space changed; no Draft 2 sheet removed, renumbered or renamed",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2"
+    },
+    {
+     "id": "si-sheet-index",
+     "kind": "sheet.create",
+     "summary": "Cover sheet and sheet index match the set, with the new sheets in their places",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2"
+    }
+   ],
+   "acceptance": [
+    "sheet.bounds_edge_clean",
+    "sheet.scope_boxes_hidden",
+    "sheet.stair_treads_annotated",
+    "sheet.elevation_heights_shown",
+    "sheet.schedules_on_dimension_plan",
+    "opening.marks_clean"
+   ],
+   "qa_scripts": [
+    "checks_sheets",
+    "qa-marks",
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [
+    "house"
+   ],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [
+    "details_sheet"
+   ],
+   "runtime_calls": [],
+   "evidence": [
+    "S 2/2: all 23 Banks sheets and 18 of 19 Lowry sheets changed.",
+    "S 2/2: roof TBD list removed, answers on no sheet.",
+    "S 2/2: no Draft 2 sheet removed, renumbered or renamed."
+   ],
+   "open": [
+    "Where finish decisions go.",
+    "Whether the revision table is filled at Draft 3.",
+    "The sheet checks were written for the Draft 2 set; what they say about a Draft 3 set is not proven."
+   ]
+  },
+  {
+   "id": "T14",
+   "title": "Pictures and 3D pages",
+   "kinds": [
+    "export.render"
+   ],
+   "procedure_md": "stages/d2_to_d3/t14.md",
+   "standard_items": [
+    {
+     "id": "si-3d-pages",
+     "kind": "export.render",
+     "summary": "Every 3D page exported again from the same cameras: site 3D, cut-away levels, exterior views",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2"
+    },
+    {
+     "id": "si-cover-dusk",
+     "kind": "export.render",
+     "summary": "Cover and picture page rendered again at dusk with the lights on, showing the new scope",
+     "params": {
+      "needs_human": true
+     },
+     "acceptance": [],
+     "evidence": "S 2/2; no meeting asks for it (BP)"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [
+    "human_task"
+   ],
+   "runtime_calls": [],
+   "evidence": [
+    "S 2/2: every 3D page re-exported; covers re-rendered at dusk with the lights on.",
+    "INV: a walk-through video dated with each D2 and D3."
+   ],
+   "open": [
+    "Who renders, how many pictures."
+   ]
+  },
+  {
+   "id": "T15",
+   "title": "Decision trace, issue, hand-over",
+   "kinds": [
+    "qa.run",
+    "export.pdf"
+   ],
+   "procedure_md": "stages/d2_to_d3/t15.md",
+   "standard_items": [
+    {
+     "id": "si-trace",
+     "kind": "qa.run",
+     "summary": "Every work item of the list closed as: done (with its sheet) / done live in the meeting / carried to Final (with the reason) / dropped by a person (who, when)",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP; T both against both sets: of 69 decisions and asks, 48 in Draft 3"
+    },
+    {
+     "id": "si-label-sweep-final",
+     "kind": "qa.run",
+     "summary": "Label sweep: no label, tag, keynote or schedule row says the old word of a material that was changed",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP; S 1/2 (Lowry), EVIDENCE.md 5"
+    },
+    {
+     "id": "si-leftover-sweep",
+     "kind": "qa.run",
+     "summary": "Leftover sweep: labels of things decided out, notes about a draft that has passed, schedule rows that say something else than agreed, sheet names and title-block notes that no longer fit",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP; found in both houses"
+    },
+    {
+     "id": "si-final-qa",
+     "kind": "qa.run",
+     "summary": "Final QA clean",
+     "params": {},
+     "acceptance": [
+      "final.qa_clean"
+     ],
+     "evidence": "V1"
+    },
+    {
+     "id": "si-pdf",
+     "kind": "export.pdf",
+     "summary": "PDF of the full set with its plot date",
+     "params": {},
+     "acceptance": [
+      "final.pdf_exists"
+     ],
+     "evidence": "S 2/2"
+    },
+    {
+     "id": "si-list-for-final",
+     "kind": "qa.run",
+     "summary": "The list of what this Draft 3 leaves for Final, written down",
+     "params": {},
+     "acceptance": [],
+     "evidence": "S 2/2 for HVAC and gas; the rest S 1/2 each"
+    }
+   ],
+   "acceptance": [
+    "final.qa_clean",
+    "final.pdf_exists",
+    "material.appearance_paths_resolve"
+   ],
+   "qa_scripts": [
+    "qa-model",
+    "qa-marks",
+    "review_visual",
+    "checks_sheets",
+    "checks_materials",
+    "checks_final"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "T both against both sets: of 69 decisions and asks, 48 in Draft 3, 6 in part or differently, 5 only in Final, 2 nowhere, 2 already so, 6 not confirmed.",
+    "S 2/2: the Draft 3 review follows 2 and 7 days after the issue."
+   ],
+   "open": [
+    "What a Draft 3 has to contain before it may be issued.",
+    "Who accepts a Draft 3."
+   ],
+   "carries": "every_work_item"
+  }
+ ],
+ "2d": {
+  "_status": "DRAFT 2026-11-20. Shaped as the 2d section of PACK V1 (one scan, one batch template, one review). NOT RUN: no tool draws an electrical layout yet and no layout has been pushed (MISSING.md point 6).",
+  "enabled": false,
+  "_enabled_note": "THE SWITCH. true = one electrical layout per room is drawn and approved by a person before anything is placed. That this step exists is Blueprint's reading of Mitch 2026-11-20 02:37Z (\"maybe room byu room jsut like we do in draft 1 to 2 phase\"): Blueprint's assumption, not reviewed (ASSUMPTIONS.md 1). false = no 2D work order is compiled, the 3D compile waits for no drawing, and the placing phases work from the work items and ELECTRICAL_DEFAULTS.md.",
+  "subject": "electrical",
+  "rooms": "all",
+  "kinds": [
+   "mep.electrical"
+  ],
+  "_kinds_note": "The kinds of work this 2D step draws. With the switch off, a work item of one of them has no drawn position: its phase places it by the procedure of its page (t8.md step 1) and the plan says how many.",
+  "defaults_md": "stages/d2_to_d3/ELECTRICAL_DEFAULTS.md",
+  "procedure_md": "stages/d2_to_d3/2d.md",
+  "batch_rooms": 5,
+  "gate": "none measured yet: the outline rulebook of the app has no electrical rule (CHECKS_WANTED.md). A person approves each layout.",
+  "phases": [
+   {
+    "id": "E0",
+    "role": "scan",
+    "section": "E0",
+    "title": "Room scan for the electrical layouts (read-only)",
+    "est_minutes": 15,
+    "brief": "OUTLINE_EXPECT_DOC=\"{doc}\" bridge.py script automation/outline_scan.py -> projects/<slug>/outlines/shell.json: room loops, walls, doors, windows, and what stands in each room. Read-only.",
+    "verify": {
+     "readback": "shell.json room count == rooms of the contract; solids_complete true; ceiling height read for every room"
+    }
+   },
+   {
+    "id": "E{n}",
+    "role": "batch",
+    "section": "E-batch",
+    "title": "Electrical layouts: {rooms}",
+    "est_minutes_per_room": 10,
+    "brief": "Per room: one electrical layout (plan) with every light, fan, switch, outlet and special item; each mark names its work item (\"work_item\": \"<id>\") or the line of ELECTRICAL_DEFAULTS.md it comes from (\"default\": \"<line id>\"). geometry.meta.subject = \"electrical\". Then push for a person's approval.",
+    "verify": {
+     "coverage": "every mep.electrical work item of the room drawn, or declared not drawable with the reason",
+     "defaults": "every mark without a work item names its default line",
+     "clear": "no mark in a door swing, a window, a casework box or a shower"
+    }
+   },
+   {
+    "id": "EW",
+    "role": "review",
+    "section": "EW",
+    "title": "Electrical layout review (a person)",
+    "est_minutes": 0,
+    "brief": "A person approves or rejects each electrical layout. Blueprint approves nothing.",
+    "verify": {
+     "gate": "the 3D compile exits 0: every room has an approved electrical layout drawn against this contract version"
+    }
+   }
+  ]
+ },
+ "exit": {
+  "acceptance": [
+   "final.qa_clean",
+   "final.pdf_exists"
+  ],
+  "artifacts": [
+   "pdf",
+   "backup",
+   "list_for_final",
+   "closed_work_item_list"
+  ]
+ },
+ "library": {
+  "kind": "folder",
+  "root": "the shared library Blueprint Families on H:",
+  "map": "standards/BLUEPRINT_LIBRARY.md",
+  "note": "As PACK V1: library_refs of a phase are folders of the shared library. Only T5 names any. The folder map has NO folder for lighting fixtures, electrical devices or structural columns; T8 and T11 therefore name none and pick families at run time (MISSING.md point 6)."
+ },
+ "defaults": {
+  "kind": "app default group",
+  "groups": [
+   "house",
+   "public",
+   "secondary",
+   "garage",
+   "adu",
+   "bath",
+   "master",
+   "outdoor"
+  ],
+  "source": "blueprint-intent-ui src/lib/defaults.ts (the scope of a house default)",
+  "note": "As PACK V1: defaults_scope is information for whoever reviews the pack; an accepted default reaches a phase as a typed work item. The electrical defaults of this pack are NOT app defaults: they are the file ELECTRICAL_DEFAULTS.md, Blueprint's assumption, not reviewed, used only where no work item says."
+ },
+ "_kinds_note": "Every kind d1_to_d2 claims is claimed here too (a client change can be of any of them), plus its three deferred kinds. The routing is Blueprint's assumption, not reviewed.",
+ "_acceptance_note": "A phase names only checks that exist in the app today (read 2026-11-20). What each phase would need beyond them: CHECKS_WANTED.md."
+}
