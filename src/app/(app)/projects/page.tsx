@@ -72,7 +72,8 @@ export default async function ProjectsPage({
 
         {all.length === 0 && (
           <div className="text-slate-500 text-sm border border-dashed border-bh-border rounded-xl p-12 text-center">
-            No projects yet. Create one — Blueprint then pushes the room board from the model scan.
+            No projects yet. Create one and pick its process: Blueprint then pushes its board (rooms from the model scan, or
+            frame lines from the engineer&apos;s set).
           </div>
         )}
 

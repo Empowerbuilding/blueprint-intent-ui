@@ -114,8 +114,10 @@ export default async function ProjectPage({
           {process_error && <p className="text-sm text-red-300">{process_error}</p>}
           {proc.status === 'draft' && (
             <p className="text-sm text-amber-300">
-              This playbook is a draft: Blueprint cannot compile a work order for it yet. The steps below (room board, Lock &amp; Emit, 2D, build)
-              belong to Draft 1 to Draft 2 and do not describe this process.
+              This playbook is a draft: Blueprint cannot compile a work order for it yet.
+              {proc.board === 'frame'
+                ? ''
+                : ' The steps below (room board, Lock & Emit, 2D, build) belong to Draft 1 to Draft 2 and do not describe this process.'}
             </p>
           )}
         </section>
@@ -127,7 +129,8 @@ export default async function ProjectPage({
             <div className="flex-1 min-w-[260px]">
               <NextStep progress={progress} compact />
             </div>
-            {total === 0 && (
+            {/* a frame process has no rooms: no standard room set to generate */}
+            {total === 0 && proc.board !== 'frame' && (
               <form action={createStandardRooms.bind(null, id)}>
                 <button className="btn-secondary" title="For a project with no model yet">
                   Generate standard room set (B1–B18 + HOUSE)
@@ -171,7 +174,7 @@ export default async function ProjectPage({
         )}
         {/* room board */}
         <section className="space-y-4">
-          <h2 className="section-title">Rooms ({total})</h2>
+          <h2 className="section-title">{proc.board === 'frame' ? 'Frame board' : 'Rooms (' + total + ')'}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {rooms.map((r) => {
               const o = outlinesByRoom.get(r.id)
@@ -243,7 +246,9 @@ export default async function ProjectPage({
           </div>
           {total === 0 && (
             <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-8 text-center">
-              No rooms yet. Blueprint pushes them from the model scan.
+              {proc.board === 'frame'
+                ? "No frame lines yet. Blueprint pushes them from the engineer's set and the open model. This process has no room scan."
+                : 'No rooms yet. Blueprint pushes them from the model scan.'}
             </div>
           )}
         </section>

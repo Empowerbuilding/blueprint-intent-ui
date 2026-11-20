@@ -20,6 +20,9 @@ export type ProgressData = {
   unassignedImages: number
   outlines: { room_id: string; status: string }[] // superseded excluded
   changesSinceLock: number // decisions / questions / redlines / images added after the last emit
+  // What the board of the project's process is made of and whether it has a 2D step (lib/processes.ts).
+  // Absent = a room board with a 2D step, as before the field existed.
+  shape?: { board: 'rooms' | 'frame'; has2d: boolean }
 }
 
 export type StepKey = 'board' | 'review' | 'lock' | '2d' | 'build'
@@ -64,6 +67,9 @@ export function projectProgress(d: ProgressData): Progress {
   const emitted = d.project.emitted_version || 0
   const stale = emitted > 0 && d.changesSinceLock > 0
   const status = d.project.status || ''
+  // a frame process (engineer set to 3D frame) has no rooms and no room scan: its board is frame lines on one section
+  const frame = d.shape?.board === 'frame'
+  const has2d = d.shape ? d.shape.has2d : true
 
   const pendingByRoom = new Map<string, number>()
   const approvedByRoom = new Map<string, number>()
@@ -99,19 +105,27 @@ export function projectProgress(d: ProgressData): Progress {
   }
   done.review = done.board && unreviewed.length === 0 && blocking.length === 0 && d.unassignedImages === 0
   done.lock = done.review && emitted > 0 && !stale
-  done['2d'] = done.lock && approved2d.length === designed.length
+  done['2d'] = done.lock && (!has2d || approved2d.length === designed.length)
   done.build = done['2d'] && status === 'done'
 
-  const order: StepKey[] = ['board', 'review', 'lock', '2d', 'build']
+  // a process with no 2D step (the engineer's set is its 2D) has four steps, not five
+  const order: StepKey[] = has2d ? ['board', 'review', 'lock', '2d', 'build'] : ['board', 'review', 'lock', 'build']
   const current: StepKey | 'done' = order.find((k) => !done[k]) || 'done'
 
   const reviewBits: string[] = []
-  if (total) reviewBits.push(total - unreviewed.length + '/' + total + ' rooms reviewed')
+  if (total)
+    reviewBits.push(
+      frame
+        ? unreviewed.length
+          ? 'frame lines to confirm'
+          : 'frame lines confirmed'
+        : total - unreviewed.length + '/' + total + ' rooms reviewed'
+    )
   if (blocking.length) reviewBits.push(plural(blocking.length, 'blocking question'))
   if (d.unassignedImages) reviewBits.push(plural(d.unassignedImages, 'unassigned image'))
 
   const detail: Record<StepKey, string> = {
-    board: total ? plural(total, 'room') : 'no rooms yet',
+    board: frame ? (total ? 'frame lines pushed' : 'no frame lines yet') : total ? plural(total, 'room') : 'no rooms yet',
     review: reviewBits.join(' · ') || 'not started',
     lock: emitted ? 'contract v' + emitted + (stale ? ' · out of date' : '') : 'not locked',
     '2d': designed.length
@@ -131,21 +145,36 @@ export function projectProgress(d: ProgressData): Progress {
 
   let next: NextStep
   if (current === 'board') {
-    next = {
-      who: 'blueprint',
-      label: 'Waiting on the room board',
-      detail:
-        'Blueprint pushes the rooms from the model scan. For a project with no model yet, generate the standard room set.',
-      href: base,
-    }
+    next = frame
+      ? {
+          who: 'blueprint',
+          label: 'Waiting on the frame board',
+          detail:
+            "Blueprint reads the engineer's set and the open model, then pushes the frame lines (one per member group). This process has no room scan.",
+          href: base,
+        }
+      : {
+          who: 'blueprint',
+          label: 'Waiting on the room board',
+          detail:
+            'Blueprint pushes the rooms from the model scan. For a project with no model yet, generate the standard room set.',
+          href: base,
+        }
   } else if (current === 'review') {
     if (unreviewed.length) {
-      next = {
-        who: 'you',
-        label: 'Review ' + plural(unreviewed.length, 'room'),
-        detail: 'Next: ' + unreviewed[0]!.section_code + ' ' + unreviewed[0]!.name,
-        href: roomHref(unreviewed[0]!.id, 'decide'),
-      }
+      next = frame
+        ? {
+            who: 'you',
+            label: 'Review the frame lines',
+            detail: 'Correct or strike lines, then confirm ' + unreviewed[0]!.name + '.',
+            href: roomHref(unreviewed[0]!.id, 'decide'),
+          }
+        : {
+            who: 'you',
+            label: 'Review ' + plural(unreviewed.length, 'room'),
+            detail: 'Next: ' + unreviewed[0]!.section_code + ' ' + unreviewed[0]!.name,
+            href: roomHref(unreviewed[0]!.id, 'decide'),
+          }
     } else if (blocking.length) {
       const roomId = blocking[0]!.room_id
       next = {
@@ -179,7 +208,9 @@ export function projectProgress(d: ProgressData): Progress {
       : {
           who: 'you',
           label: emitted ? 'Re-emit the contract (v' + (emitted + 1) + ')' : 'Lock & Emit',
-          detail: 'Every room is reviewed. Locking sends the contract to Blueprint.',
+          detail: frame
+            ? 'The frame lines are confirmed. Locking sends the contract to Blueprint.'
+            : 'Every room is reviewed. Locking sends the contract to Blueprint.',
           href: base + '/emit',
         }
   } else if (current === '2d') {
@@ -217,7 +248,9 @@ export function projectProgress(d: ProgressData): Progress {
         : {
             who: 'you',
             label: 'Give Blueprint the go in chat',
-            detail: 'All 2D is approved. Blueprint compiles the work order; your go in chat starts the build.',
+            detail: has2d
+              ? 'All 2D is approved. Blueprint compiles the work order; your go in chat starts the build.'
+              : 'The contract is locked. Blueprint compiles the work order; your go in chat starts the build.',
             href: base,
           }
   } else {

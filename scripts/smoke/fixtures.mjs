@@ -61,6 +61,9 @@ const db = {
     { id: P.man, name: 'Mann', client: null, status: 'intake', emitted_version: 0, created_at: t(4050) },
     { id: P.sch, name: 'Schwan', client: 'Schwan', status: 'building', emitted_version: 1, created_at: t(9000) },
     { id: P.ban, name: 'Banks', client: 'Banks', status: 'done', emitted_version: 1, created_at: t(20000) },
+    // a frame project with an empty board: no rooms, no room scan (Mitch 2026-11-20 07:33Z). The process rows below carry
+    // no shape columns, as on a database read before migration 20261120073600: the pages must still know eng_frame is a frame board.
+    { id: 'p-frame', name: 'Frame House', client: null, status: 'intake', emitted_version: 0, created_at: t(3900), process: 'eng_frame' },
   ],
   // recorded exceptions to a check (migration 20261114232000): none in the fixtures; the room pages read the table
   intent_check_exceptions: [],

@@ -1,5 +1,6 @@
 
 import { projectProgress } from '../src/lib/progress.ts'
+import { loadProcesses, processOf, shapeOf } from '../src/lib/processes.ts'
 import { lineDiff, foldDiff, diffStats } from '../src/lib/diff.ts'
 import { describeRule, describeScope, ruleToFields, fieldsToRule, keyFromDescription } from '../src/lib/rule-text.ts'
 import { roomNameMatches, runMathGate } from '../src/lib/rules.ts'
@@ -99,6 +100,32 @@ p = P({ project: { id: 'p', status: 'done', emitted_version: 1 }, rooms: [R('101
 eq('done', [p.current, p.steps.map((s) => s.state).join()], ['done', 'done,done,done,done,done'])
 p = P({ project: { id: 'p', status: 'done', emitted_version: 0 }, rooms: [R('101', 'unreviewed')] })
 eq('manual done ignored when data says review', p.current, 'review')
+
+// ---- progress of a frame process: no rooms, no room scan, no 2D step (Mitch 2026-11-20 07:33Z) ----
+const F = (o) => P({ shape: { board: 'frame', has2d: false }, ...o })
+p = F({})
+eq('frame: empty board', [p.current, p.next.who, p.next.label, p.steps.map((s) => s.key).join(), p.steps[0].detail], ['board', 'blueprint', 'Waiting on the frame board', 'board,review,lock,build', 'no frame lines yet'])
+eq('frame: says there is no room scan, offers no room set', [/no room scan/.test(p.next.detail), /standard room set|rooms from the model/.test(p.next.detail)], [true, false])
+p = F({ rooms: [{ id: 'h', section_code: 'HOUSE', name: 'House-Level (global)', review_state: 'unreviewed' }] })
+eq('frame: review', [p.current, p.next.label, p.next.detail, p.next.href, p.steps[1].detail], ['review', 'Review the frame lines', 'Correct or strike lines, then confirm House-Level (global).', '/projects/p/rooms/h?view=decide', 'frame lines to confirm'])
+p = F({ rooms: [R('HOUSE', 'confirmed')] })
+eq('frame: lock', [p.current, p.next.label, p.next.detail, p.steps[1].detail], ['lock', 'Lock & Emit', 'The frame lines are confirmed. Locking sends the contract to Blueprint.', 'frame lines confirmed'])
+p = F({ project: { id: 'p', status: 'locked', emitted_version: 1 }, rooms: [R('HOUSE', 'confirmed')] })
+eq('frame: build comes straight after the lock', [p.current, p.next.who, p.next.label, p.next.detail], ['build', 'you', 'Give Blueprint the go in chat', 'The contract is locked. Blueprint compiles the work order; your go in chat starts the build.'])
+p = F({ project: { id: 'p', status: 'done', emitted_version: 1 }, rooms: [R('HOUSE', 'confirmed')] })
+eq('frame: done in four steps', [p.current, p.steps.map((s) => s.state).join()], ['done', 'done,done,done,done'])
+p = P({ shape: { board: 'rooms', has2d: true } })
+eq('rooms shape said = as before', [p.next.label, p.steps.length], ['Waiting on the room board', 5])
+
+// ---- the shape of a process: from the table, or the known one when the table does not say ----
+const procDb = (rows, hasShapeColumns) => ({ from: () => ({ select: (cols) => ({ order: async () => (!hasShapeColumns && cols.includes('board') ? { data: null, error: { message: 'column intent_processes.board does not exist' } } : { data: rows, error: null }) }) }) })
+const seedRows = [{ key: 'd1_to_d2', title: 'Draft 1 to Draft 2', description: '', status: 'live', sort: 10 }, { key: 'eng_frame', title: 'Engineer set to 3D frame', description: '', status: 'live', sort: 20 }, { key: 'd2_to_d3', title: 'Draft 2 to Draft 3', description: '', status: 'live', sort: 30 }]
+let procs = await loadProcesses(procDb(seedRows, false))
+eq('shape before the migration: eng_frame is a frame board, the others room boards', procs.map((x) => x.key + ':' + x.board + ':' + x.has_2d), ['d1_to_d2:rooms:true', 'eng_frame:frame:false', 'd2_to_d3:rooms:true'])
+procs = await loadProcesses(procDb([{ ...seedRows[0], board: 'rooms', has_2d: true }, { ...seedRows[1], board: 'frame', has_2d: false }, { key: 'new_frame', title: 'New', description: '', status: 'draft', sort: 40, board: 'frame', has_2d: true }], true))
+eq('shape from the table: a new process says its own', procs.map((x) => x.key + ':' + x.board + ':' + x.has_2d), ['d1_to_d2:rooms:true', 'eng_frame:frame:false', 'new_frame:frame:true'])
+eq('shape of a project with no process = the default room board', shapeOf(processOf(procs, null)), { board: 'rooms', has2d: true })
+eq('shape when the table cannot be read at all', (await loadProcesses({ from: () => { throw new Error('down') } })).map((x) => x.key + ':' + x.board), ['d1_to_d2:rooms'])
 
 // ---- contract v2: vocabulary suggestions (never saved by themselves) ----
 eq('role: suggestions from names', ['Master Bath', 'Bath 2', 'M Closet', 'Great Room / Living', 'Golf Room', 'Bedroom 3', 'Master Suite', 'Covered Patio', 'Outdoor Kitchen', 'Zzz'].map(suggestRole), ['primary-bath', 'bath', 'closet', 'great', 'game-room', 'bedroom', 'primary-bedroom', 'patio', 'outdoor-kitchen', null])

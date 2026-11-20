@@ -4,6 +4,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { projectProgress, type Progress } from '@/lib/progress'
+import { loadProcesses, processOf, shapeOf } from '@/lib/processes'
 
 export type ProjectRow = {
   id: string
@@ -98,6 +99,8 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
   const projects = (projectsRes.data || []) as ProjectRow[]
   const processById = new Map(((processRes.data || []) as { id: string; process?: string | null }[]).map((r) => [r.id, r.process ?? null]))
   for (const p of projects) p.process = processById.get(p.id) ?? null
+  // what each project's process is made of (rooms or frame lines, 2D step or none): the progress wording follows it
+  const processes = await loadProcesses(supabase)
   const rooms = (roomsRes.data || []) as RoomRow[]
   const questions = (questionsRes.data || []) as QuestionRow[]
   const images = (imagesRes.data || []) as {
@@ -151,6 +154,7 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
       emittedAt: emittedAt.get(project.id) || null,
       changesSinceLock,
       progress: projectProgress({
+        shape: shapeOf(processOf(processes, project.process)),
         project,
         rooms: pRooms,
         openQuestions: pQuestions,
