@@ -1,8 +1,8 @@
 {
- "_history": "VERSION 1. LIVE 2026-11-20: accepted by Mitch, blueprint-mitch 05:56Z (\"Accept, I want the sheet set created like the latest Doug banks formating\"); the process row was set live by Tony 06:06Z; moved from stages/_draft/eng_frame by Blueprint the same hour. Blueprint's text, NOT reviewed by Michael (hold on questions since 2026-11-20 00:11Z). NOTHING here has run on a model: the scratch-model batch of SMOKE_TESTS.md comes before the first real run. The board of this process is the house-level section, a difference on each member line, no open questions (2026-11-20 06:10Z; INTAKE.md). Before that: WORKING DRAFT v0, REBUILT 2026-11-20 by the ENG_FRAME_BUILD worker so that the v2 compiler takes it (Mitch, blueprint-mitch 04:42Z: \"yes we need the engineering one too\"). Not reviewed, not synced, no work order compiled from it (dry runs only). Its state before (2026-11-17, nine phases E1 to E9, names only): pack.json.bak-20261120-eng. Fields starting with _ and the fields evidence / open are draft annotations, not schema. Built by automation/build_pack_eng_frame.py from tmp/eng_frame_build/pack_data_a.py and pack_data_b.py.",
+ "_history": "VERSION 2, 2026-11-20 06:58Z (Tony's go 06:56Z): pages shortened, no rule dropped (the page header, the ten-step line of the frame phases, and the stud-wall page E6; quotes moved from E6 steps to its evidence), because the first-floor stud-wall brief of the first real compile stood at 9,737 of 9,838 characters. VERSION 1 was LIVE 2026-11-20: accepted by Mitch, blueprint-mitch 05:56Z (\"Accept, I want the sheet set created like the latest Doug banks formating\"); the process row was set live by Tony 06:06Z; moved from stages/_draft/eng_frame by Blueprint the same hour. Blueprint's text, NOT reviewed by Michael (hold on questions since 2026-11-20 00:11Z). NOTHING here has run on a model: the scratch-model batch of SMOKE_TESTS.md comes before the first real run. The board of this process is the house-level section, a difference on each member line, no open questions (2026-11-20 06:10Z; INTAKE.md). Before that: WORKING DRAFT v0, REBUILT 2026-11-20 by the ENG_FRAME_BUILD worker so that the v2 compiler takes it (Mitch, blueprint-mitch 04:42Z: \"yes we need the engineering one too\"). Not reviewed, not synced, no work order compiled from it (dry runs only). Its state before (2026-11-17, nine phases E1 to E9, names only): pack.json.bak-20261120-eng. Fields starting with _ and the fields evidence / open are draft annotations, not schema. Built by automation/build_pack_eng_frame.py from tmp/eng_frame_build/pack_data_a.py and pack_data_b.py.",
  "stage": "eng_frame",
  "title": "Engineer set to 3D frame",
- "pack_version": 1,
+ "pack_version": 2,
  "provenance": [
   "banks"
  ],
@@ -373,14 +373,13 @@
     "M 11-05 18:16Z: all the walls, studs, plates, every window and door framed with the engineer's headers.",
     "M 11-17 05:15Z, 05:55Z, 06:37Z, 04:55Z: corners, a beam in the studs, the garage header and posts, stud tops in the air.",
     "BANKS 11-17: 32 open notches and 62 gaps at corners; a barn door framed solid; \"10x10\" was 11 x 9 (runbook 4).",
-    "MI 11-18 08:31Z to 18:56Z, CHR: REJECTED; his picture list of 12 defects.",
+    "MI 11-18 08:31Z to 18:56Z, CHR: REJECTED (\"didnt grame around windows properly at all....u gonna lose us the contract\"; 08:36Z \"u needa do a full sweep\"; 17:37Z \"we need to take on an engine approach\"); his picture list of 12 defects.",
     "MI 11-18 17:37Z, 20:23Z, 22:59Z: an engine, built from the rules; nothing started.",
     "MI 11-18 22:11Z \"next time we building an enginer yes ill clean it up myself\": the engine comes BEFORE the next framing job (training_data/WORKFLOWS.md)."
    ],
    "open": [
     "The engine itself: not built, not specified beyond Michael's messages; his go is needed to start it.",
-    "Stacked and ganged units, angled heads, sloped wall tops: no working recipe.",
-    "Opening rules R1 to R13 are not written out in the standards."
+    "Stacked and ganged units, angled heads, sloped wall tops: no working recipe."
    ]
   },
   {
