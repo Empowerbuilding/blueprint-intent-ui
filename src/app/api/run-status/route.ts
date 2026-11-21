@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   if (allowed.length === 0) {
     return NextResponse.json({ error: 'run-status secret not configured' }, { status: 503 })
   }
-  if (!allowed.includes(secret)) {
+  if (!secret || !allowed.includes(secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
