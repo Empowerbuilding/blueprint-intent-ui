@@ -11,10 +11,14 @@ import { serviceClient } from '@/lib/emit-core'
 // was granted the emit secret can move a run forward.
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-emit-secret')
-  if (!process.env.EMIT_SECRET) {
+  // INTENT_RUN_STATUS_SECRET (dedicated, display-grade) first; EMIT_SECRET remains valid for
+  // automation that already holds it. The emit secret never goes on the blueprint host
+  // (Tony ruling, blueprint-mitch 2026-11-21: run-status is display-grade, /api/emit grants work).
+  const allowed = [process.env.INTENT_RUN_STATUS_SECRET, process.env.EMIT_SECRET].filter(Boolean)
+  if (allowed.length === 0) {
     return NextResponse.json({ error: 'run-status secret not configured' }, { status: 503 })
   }
-  if (secret !== process.env.EMIT_SECRET) {
+  if (!allowed.includes(secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
