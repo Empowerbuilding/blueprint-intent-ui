@@ -1,0 +1,192 @@
+{
+ "_history": "VERSION 1. Live 2026-11-21: Mitch, tony-mitch 23:42Z (\"ok so thewres nothing else eft for me to do but wait for blueprint to finsih then i can pull up real projects and the deisgn intent app and start making study sets and engineering lite sets\"); Tony, blueprint-mitch 23:28Z (\"move stages/_draft/study_set to accepted per your doctrine, flip study_set draft->live\") and 22:25Z (the row goes live by a migration). Moved from stages/_draft/study_set by Blueprint 2026-11-22 00:0xZ. Blueprint's working text: NOT reviewed by Michael or line by line by Mitch. Rests on two plans run by hand-started scripts (Ranch View, Farm Modern scratch copy); no phase has run as a phase; study_carry.py (carry-or-generate) is not built yet. Built by automation/build_pack_study_set.py.",
+ "stage": "study_set",
+ "title": "Full set to Study set",
+ "pack_version": 1,
+ "provenance": [
+  "ranch_view",
+  "farm_modern"
+ ],
+ "_provenance_note": "Two plans: Ranch View, 2026-11-21 (acceptance test passed, Tony 22:15Z; plan file by hand, in a copy) and Farm Modern, 2026-11-21 (scratch copy; plan file derived from the open project). Both by scripts started by hand; no phase of this pack has run as a phase.",
+ "format_version": 1,
+ "_format_note": "The study-set format this pack draws: automation/study_set/template.json format_version. The plan row a person confirms names the same number; GENERATE stops when they differ.",
+ "entry": {
+  "requires": [
+   "contract.locked"
+  ],
+  "_note": "The contract is the plan row: ONE line of kind sheet.create on the house-level section (plan, format version, the open project file, STUDY sheets, carried sheets), derived from the open project (study_scan.py, plan_from_scan.py), pushed by automation/study_set/plan_push.py and confirmed by a person. No room scan, no decisions, no 2D."
+ },
+ "phase_order": [
+  "GENERATE",
+  "PACKAGE"
+ ],
+ "deferred_kinds": [],
+ "phases": [
+  {
+   "id": "GENERATE",
+   "title": "Generate the STUDY sheets in the model copy",
+   "kinds": [
+    "sheet.create",
+    "sheet.view",
+    "sheet.annotate"
+   ],
+   "procedure_md": "stages/study_set/generate.md",
+   "standard_items": [
+    {
+     "id": "si-open-project",
+     "kind": "qa.run",
+     "summary": "The work is in the full project open in Revit, with a backup first; no sheet or view of the full set is changed; the plan file is derived from the open project, nothing by hand",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 2026-11-21 22:35Z"
+    },
+    {
+     "id": "si-layouts",
+     "kind": "sheet.create",
+     "summary": "One STUDY layout sheet per level: red room names, black room sizes, blue overall dimensions, SF inset with one area tag per zone",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED); Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project)"
+    },
+    {
+     "id": "si-elevations",
+     "kind": "sheet.create",
+     "summary": "Two STUDY elevation sheets (Front / Back, Left / Right): tags off, heights blue",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED); Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project)"
+    },
+    {
+     "id": "si-sheet-pdfs",
+     "kind": "export.pdf",
+     "summary": "One PDF per sheet for the STUDY sheets and the carried sheets, named by sheet number",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project)"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project). The scripts ran once, started by hand; this page has not run as a phase.",
+    "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED): \"STUDY sheets are generated FROM THE MODEL\".",
+    "Tony, blueprint-mitch 2026-11-21 22:15Z: acceptance test PASSED; \"the app now has the study step pack: board > review > lock > generate > package\"."
+   ],
+   "open": [
+    "Rules read off two plans only: which rooms get a size (by name), room sizes from the walls around the name when the room is not bounded, one overall dimension pair on the largest wing.",
+    "Room size rule: wall face to wall face (as generated) or as Mitch drew them by hand (3 of 8 differ on Ranch View)."
+   ]
+  },
+  {
+   "id": "PACKAGE",
+   "title": "Package the study set",
+   "kinds": [
+    "export.pdf",
+    "export.render",
+    "qa.run"
+   ],
+   "procedure_md": "stages/study_set/package.md",
+   "standard_items": [
+    {
+     "id": "si-upsell",
+     "kind": "export.pdf",
+     "summary": "A111 UPGRADE page: locked words, voucher <PLAN>-VIP, the full set's sheet count, thumbnail grid",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED)"
+    },
+    {
+     "id": "si-package",
+     "kind": "export.pdf",
+     "summary": "ONE study PDF in the template order; no page of a NEVER type",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED)"
+    },
+    {
+     "id": "si-diff",
+     "kind": "qa.run",
+     "summary": "The automated diff against the template (and the hand-made set where one exists), every difference in numbers",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 22:15Z"
+    },
+    {
+     "id": "si-handback",
+     "kind": "qa.run",
+     "summary": "The hand-back card to Mitch: link, page table, voucher, differences; nothing uploaded, nothing sent",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP"
+    }
+   ],
+   "acceptance": [
+    "final.pdf_exists"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project).",
+    "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED): page order, NEVER list, voucher pattern.",
+    "Tony, blueprint-mitch 2026-11-21 21:45Z: study-set status mapping generate = building, package = sheets."
+   ],
+   "open": [
+    "The sheet count on A111: the real page count of the full set (21 on Ranch View) or a fixed number (the hand-made page says 19).",
+    "The Architect font of the hand-made A111 is not on this host (Helvetica is used).",
+    "Who lists the package in the store."
+   ]
+  }
+ ],
+ "2d": {
+  "_status": "This process has no 2D drawing step.",
+  "enabled": false
+ },
+ "exit": {
+  "acceptance": [
+   "model.warnings_not_up",
+   "final.pdf_exists"
+  ],
+  "artifacts": [
+   "backup",
+   "study PDF",
+   "diff notes",
+   "hand-back card"
+  ]
+ },
+ "library": {
+  "kind": "folder",
+  "root": "the shared library Blueprint Families on H:",
+  "map": "standards/BLUEPRINT_LIBRARY.md",
+  "note": "No phase of this pack reads the library."
+ },
+ "defaults": {
+  "kind": "app default group",
+  "groups": [
+   "house",
+   "public",
+   "secondary",
+   "garage",
+   "adu",
+   "bath",
+   "master",
+   "outdoor"
+  ],
+  "source": "blueprint-intent-ui src/lib/defaults.ts",
+  "note": "As PACK V1 lists them; this pack uses none."
+ },
+ "_product_note": "The 99 dollar study set: cover and 3D sheets carried from the full set, STUDY layouts and elevations generated as new sheets in the full project that is open (Mitch 2026-11-21 22:35Z), the A111 upgrade page with the voucher. No sheet or view of the full set is changed; no decisions.",
+ "_run_status_note": "Phase keys reported to the app: generate (run status building), package (run status sheets), then done. Tony 2026-11-21 21:40Z and 21:45Z."
+}
