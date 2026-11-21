@@ -19,6 +19,32 @@ export type ProcessRow = {
 
 export type ProcessShape = { board: 'rooms' | 'frame'; has2d: boolean }
 
+// FLOW (2026-11-21, migration 20261121220000 era): which step pack the progress tracker shows.
+// The board/has_2d pair answered "rooms or frame lines, 2D step or not" — two catalog products later that
+// is no longer enough, because both of them GENERATE a sheet set as their deliverable, which the old
+// five-step model has no step for at all.
+//   rooms  — board → review → lock → 2d → build   (D1→D2, D2→D3: the original flow)
+//   frame  — board → review → lock → build        (engineer set → 3D frame; the engineer's set is its 2D)
+//   lite   — board → review → lock → build → sheets (catalog framing package: members sized by calculation
+//            from the plan model, no engineer set; the sheet set — framing plans, 3D views, takeoff — is
+//            generated, so it gets its own step)
+//   study  — board → review → lock → generate → package (the $99 study set: one plan row to confirm, then
+//            pure generation in the model copy — STUDY layouts, elevations, upsell page — then packaging
+//            for the Shopify listing. No decisions, no 2D outlines)
+export type FlowKey = 'rooms' | 'frame' | 'lite' | 'study'
+
+const FLOW_BY_KEY: Record<string, FlowKey> = {
+  d1_to_d2: 'rooms',
+  d2_to_d3: 'rooms',
+  eng_frame: 'frame',
+  eng_frame_lite: 'lite',
+  study_set: 'study',
+}
+
+export function flowOf(p: ProcessRow): FlowKey {
+  return FLOW_BY_KEY[p.key] || (p.board === 'frame' ? 'frame' : 'rooms')
+}
+
 export const DEFAULT_PROCESS = 'd1_to_d2'
 
 // What the pages fall back to when the table cannot be read (before the migration has run, or a read error):

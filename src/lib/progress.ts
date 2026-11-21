@@ -1,7 +1,7 @@
 // Project progress — derived from the data, never set by hand.
 // One function answers the same three questions everywhere in the app (inbox,
-// project list, project page): where is this project, what is done, and what
-// is next and who is it waiting on.
+// project list, project page): where is this project, what is done, and what is
+// next and who is it waiting on.
 //
 // Pure: no imports, no I/O.
 
@@ -23,9 +23,19 @@ export type ProgressData = {
   // What the board of the project's process is made of and whether it has a 2D step (lib/processes.ts).
   // Absent = a room board with a 2D step, as before the field existed.
   shape?: { board: 'rooms' | 'frame'; has2d: boolean }
+  // Which step pack the tracker shows (lib/processes.ts flowOf, 2026-11-21). Absent = the shape decides,
+  // as before the flows existed: rooms with a 2D step, or frame without.
+  //   rooms  — board → review → lock → 2d → build
+  //   frame  — board → review → lock → build
+  //   lite   — board → review → lock → build → sheets (catalog framing package: generated sheet set)
+  //   study  — board → review → lock → generate → package ($99 study set from the plan model)
+  flow?: 'rooms' | 'frame' | 'lite' | 'study'
+  // Live phase rows from the runner (intent_run_phases), when a run has reported them: the fine-grained
+  // "what is it actually doing" under the steps. A 32-phase run is no longer one opaque Build dot.
+  phases?: { phase_key: string; state: string }[]
 }
 
-export type StepKey = 'board' | 'review' | 'lock' | '2d' | 'build'
+export type StepKey = 'board' | 'review' | 'lock' | '2d' | 'build' | 'sheets' | 'generate' | 'package'
 export type Step = { key: StepKey; label: string; state: 'done' | 'current' | 'todo'; detail: string }
 export type NextStep = { who: 'you' | 'blueprint' | 'nobody'; label: string; detail: string; href: string }
 
@@ -53,6 +63,9 @@ const STEP_LABEL: Record<StepKey, string> = {
   lock: 'Lock',
   '2d': '2D',
   build: 'Build',
+  sheets: 'Sheets',
+  generate: 'Generate',
+  package: 'Package',
 }
 
 const plural = (n: number, one: string, many = one + 's') => n + ' ' + (n === 1 ? one : many)
@@ -67,9 +80,12 @@ export function projectProgress(d: ProgressData): Progress {
   const emitted = d.project.emitted_version || 0
   const stale = emitted > 0 && d.changesSinceLock > 0
   const status = d.project.status || ''
-  // a frame process (engineer set to 3D frame) has no rooms and no room scan: its board is frame lines on one section
-  const frame = d.shape?.board === 'frame'
-  const has2d = d.shape ? d.shape.has2d : true
+  // the flow picks the step pack; the shape is the pre-flow way of saying the same thing for rooms/frame
+  const flow: 'rooms' | 'frame' | 'lite' | 'study' = d.flow || (d.shape?.board === 'frame' ? 'frame' : 'rooms')
+  // a frame-line board: the engineer-set process and the lite catalog package both work this way
+  const frame = flow === 'frame' || flow === 'lite'
+  const has2d = flow === 'rooms' && (d.shape ? d.shape.has2d : true)
+  const phaseDone = (key: string) => !!d.phases?.some((p) => p.phase_key === key && p.state === 'done')
 
   const pendingByRoom = new Map<string, number>()
   const approvedByRoom = new Map<string, number>()
@@ -97,19 +113,40 @@ export function projectProgress(d: ProgressData): Progress {
   )
 
   const done: Record<StepKey, boolean> = {
-    board: total > 0,
+    board: false,
     review: false,
     lock: false,
     '2d': false,
     build: false,
+    sheets: false,
+    generate: false,
+    package: false,
   }
+  done.board = total > 0
   done.review = done.board && unreviewed.length === 0 && blocking.length === 0 && d.unassignedImages === 0
   done.lock = done.review && emitted > 0 && !stale
   done['2d'] = done.lock && (!has2d || approved2d.length === designed.length)
-  done.build = done['2d'] && status === 'done'
+  if (flow === 'lite') {
+    // the runner moves the project building → sheets (frame built, sheet set generating) → done
+    done.build = done.lock && (status === 'sheets' || status === 'done')
+    done.sheets = done.build && status === 'done'
+  } else if (flow === 'study') {
+    // generation runs in the model copy; packaging is the PDF + voucher for the listing
+    done.generate = done.lock && (phaseDone('generate') || status === 'done')
+    done.package = done.generate && status === 'done'
+  } else {
+    done.build = done['2d'] && status === 'done'
+  }
 
-  // a process with no 2D step (the engineer's set is its 2D) has four steps, not five
-  const order: StepKey[] = has2d ? ['board', 'review', 'lock', '2d', 'build'] : ['board', 'review', 'lock', 'build']
+  // which steps this process runs (flow picks the pack; has2d only matters for the rooms flow)
+  const order: StepKey[] =
+    flow === 'study'
+      ? ['board', 'review', 'lock', 'generate', 'package']
+      : flow === 'lite'
+        ? ['board', 'review', 'lock', 'build', 'sheets']
+        : has2d
+          ? ['board', 'review', 'lock', '2d', 'build']
+          : ['board', 'review', 'lock', 'build']
   const current: StepKey | 'done' = order.find((k) => !done[k]) || 'done'
 
   const reviewBits: string[] = []
@@ -119,13 +156,27 @@ export function projectProgress(d: ProgressData): Progress {
         ? unreviewed.length
           ? 'frame lines to confirm'
           : 'frame lines confirmed'
-        : total - unreviewed.length + '/' + total + ' rooms reviewed'
+        : flow === 'study'
+          ? unreviewed.length
+            ? 'plan to confirm'
+            : 'plan confirmed'
+          : total - unreviewed.length + '/' + total + ' rooms reviewed'
     )
   if (blocking.length) reviewBits.push(plural(blocking.length, 'blocking question'))
   if (d.unassignedImages) reviewBits.push(plural(d.unassignedImages, 'unassigned image'))
 
   const detail: Record<StepKey, string> = {
-    board: frame ? (total ? 'frame lines pushed' : 'no frame lines yet') : total ? plural(total, 'room') : 'no rooms yet',
+    board: frame
+      ? total
+        ? 'frame lines pushed'
+        : 'no frame lines yet'
+      : flow === 'study'
+        ? total
+          ? 'plan row pushed'
+          : 'no plan row yet'
+        : total
+          ? plural(total, 'room')
+          : 'no rooms yet',
     review: reviewBits.join(' · ') || 'not started',
     lock: emitted ? 'contract v' + emitted + (stale ? ' · out of date' : '') : 'not locked',
     '2d': designed.length
@@ -133,7 +184,32 @@ export function projectProgress(d: ProgressData): Progress {
       : done.lock
         ? 'no rooms need drawings'
         : 'not started',
-    build: status === 'done' ? 'complete' : status === 'building' ? 'in progress' : 'not started',
+    build:
+      flow === 'lite'
+        ? status === 'done' || status === 'sheets'
+          ? 'frame complete'
+          : status === 'building'
+            ? 'in progress — 3D frame'
+            : 'not started'
+        : status === 'done'
+          ? 'complete'
+          : status === 'building'
+            ? 'in progress'
+            : 'not started',
+    sheets:
+      flow === 'lite'
+        ? status === 'done'
+          ? 'framing plans · 3D views · takeoff'
+          : status === 'sheets'
+            ? 'generating — acceptance check'
+            : 'after the frame build'
+        : '',
+    generate: status === 'building'
+      ? 'in progress — STUDY sheets in the model copy'
+      : phaseDone('generate') || status === 'done'
+        ? 'complete'
+        : 'not started',
+    package: status === 'done' ? 'PDF + voucher — ready for the listing' : 'after generation',
   }
 
   const steps: Step[] = order.map((k) => ({
@@ -145,36 +221,63 @@ export function projectProgress(d: ProgressData): Progress {
 
   let next: NextStep
   if (current === 'board') {
-    next = frame
-      ? {
-          who: 'blueprint',
-          label: 'Waiting on the frame board',
-          detail:
-            "Blueprint reads the engineer's set and the open model, then pushes the frame lines (one per member group). This process has no room scan.",
-          href: base,
-        }
-      : {
-          who: 'blueprint',
-          label: 'Waiting on the room board',
-          detail:
-            'Blueprint pushes the rooms from the model scan. For a project with no model yet, generate the standard room set.',
-          href: base,
-        }
+    if (flow === 'lite') {
+      next = {
+        who: 'blueprint',
+        label: 'Waiting on the frame board',
+        detail:
+          'Blueprint reads the catalog plan model, sizes every member by calculation, then pushes the frame board (one line per member group) for you to confirm. No engineer set involved.',
+        href: base,
+      }
+    } else if (flow === 'study') {
+      next = {
+        who: 'blueprint',
+        label: 'Waiting on the plan row',
+        detail:
+          'Blueprint pushes one row: the plan and the study-set format version to confirm. No room scan, no decisions, no model changes.',
+        href: base,
+      }
+    } else if (frame) {
+      next = {
+        who: 'blueprint',
+        label: 'Waiting on the frame board',
+        detail:
+          "Blueprint reads the engineer's set and the open model, then pushes the frame lines (one per member group). This process has no room scan.",
+        href: base,
+      }
+    } else {
+      next = {
+        who: 'blueprint',
+        label: 'Waiting on the room board',
+        detail:
+          'Blueprint pushes the rooms from the model scan. For a project with no model yet, generate the standard room set.',
+        href: base,
+      }
+    }
   } else if (current === 'review') {
     if (unreviewed.length) {
-      next = frame
-        ? {
-            who: 'you',
-            label: 'Review the frame lines',
-            detail: 'Correct or strike lines, then confirm ' + unreviewed[0]!.name + '.',
-            href: roomHref(unreviewed[0]!.id, 'decide'),
-          }
-        : {
-            who: 'you',
-            label: 'Review ' + plural(unreviewed.length, 'room'),
-            detail: 'Next: ' + unreviewed[0]!.section_code + ' ' + unreviewed[0]!.name,
-            href: roomHref(unreviewed[0]!.id, 'decide'),
-          }
+      if (flow === 'study') {
+        next = {
+          who: 'you',
+          label: 'Confirm the plan',
+          detail: 'One row: the plan and the format version. That is the whole review for a study set.',
+          href: roomHref(unreviewed[0]!.id, 'decide'),
+        }
+      } else if (frame) {
+        next = {
+          who: 'you',
+          label: 'Review the frame lines',
+          detail: 'Correct or strike lines, then confirm ' + unreviewed[0]!.name + '.',
+          href: roomHref(unreviewed[0]!.id, 'decide'),
+        }
+      } else {
+        next = {
+          who: 'you',
+          label: 'Review ' + plural(unreviewed.length, 'room'),
+          detail: 'Next: ' + unreviewed[0]!.section_code + ' ' + unreviewed[0]!.name,
+          href: roomHref(unreviewed[0]!.id, 'decide'),
+        }
+      }
     } else if (blocking.length) {
       const roomId = blocking[0]!.room_id
       next = {
@@ -210,7 +313,9 @@ export function projectProgress(d: ProgressData): Progress {
           label: emitted ? 'Re-emit the contract (v' + (emitted + 1) + ')' : 'Lock & Emit',
           detail: frame
             ? 'The frame lines are confirmed. Locking sends the contract to Blueprint.'
-            : 'Every room is reviewed. Locking sends the contract to Blueprint.',
+            : flow === 'study'
+              ? 'The plan is confirmed. Locking sends the study-set contract to Blueprint.'
+              : 'Every room is reviewed. Locking sends the contract to Blueprint.',
           href: base + '/emit',
         }
   } else if (current === '2d') {
@@ -242,7 +347,7 @@ export function projectProgress(d: ProgressData): Progress {
         ? {
             who: 'blueprint',
             label: 'Build in progress',
-            detail: 'Blueprint is running the work order in Revit.',
+            detail: flow === 'lite' ? 'Blueprint is building the 3D frame in Revit.' : 'Blueprint is running the work order in Revit.',
             href: base,
           }
         : {
@@ -253,6 +358,28 @@ export function projectProgress(d: ProgressData): Progress {
               : 'The contract is locked. Blueprint compiles the work order; your go in chat starts the build.',
             href: base,
           }
+  } else if (current === 'sheets') {
+    next = {
+      who: 'blueprint',
+      label: status === 'sheets' ? 'Sheet set in progress' : 'Sheets after the build',
+      detail: 'Framing plans, 3D views and the takeoff, then the acceptance check against the pack standard.',
+      href: base,
+    }
+  } else if (current === 'generate') {
+    next = {
+      who: 'blueprint',
+      label: status === 'building' ? 'Generation in progress' : 'Generation next',
+      detail:
+        'STUDY layouts per level (red room dimensions, SF zone inset), elevations with blue heights, upsell page — generated in the model copy, then the automated diff against the study-set template.',
+      href: base,
+    }
+  } else if (current === 'package') {
+    next = {
+      who: 'blueprint',
+      label: 'Packaging',
+      detail: 'PDF assembled and the voucher code attached, ready for the Shopify listing.',
+      href: base,
+    }
   } else {
     next = { who: 'nobody', label: 'Complete', detail: 'Nothing left to do on this project.', href: base }
   }

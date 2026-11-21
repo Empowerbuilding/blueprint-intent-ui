@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { createStandardRooms, setProjectStatus, deleteProject, setProjectProcess } from '@/app/actions'
-import { loadProcesses, processOf } from '@/lib/processes'
+import { loadProcesses, processOf, flowOf } from '@/lib/processes'
 import { decisionGaps, decisionFreshness } from '@/lib/decision-gaps'
 import { loadOverview } from '@/lib/overview'
 import { Pill, REVIEW_STATE_TONE } from '@/components/pill'
@@ -27,6 +27,7 @@ export default async function ProjectPage({
   const [overview] = await loadOverview(id)
   if (!overview) notFound()
   const { project, rooms, progress, openQuestions, outlines, unassignedImages, changesSinceLock } = overview
+  const phases = overview.phases || []
 
   const supabase = await createClient()
   const { data: decisionRows } = await supabase
@@ -63,6 +64,7 @@ export default async function ProjectPage({
   const emitted = project.emitted_version || 0
   const processes = await loadProcesses(supabase)
   const proc = processOf(processes, project.process)
+  const flow = flowOf(proc)
   const status = project.status || ''
   const total = rooms.length
 
@@ -115,9 +117,9 @@ export default async function ProjectPage({
           {proc.status === 'draft' && (
             <p className="text-sm text-amber-300">
               This playbook is a draft: Blueprint cannot compile a work order for it yet.
-              {proc.board === 'frame'
-                ? ''
-                : ' The steps below (room board, Lock & Emit, 2D, build) belong to Draft 1 to Draft 2 and do not describe this process.'}
+              {flow === 'rooms' && proc.key !== 'd1_to_d2' && proc.key !== 'd2_to_d3'
+                ? ' The steps below (room board, Lock & Emit, 2D, build) belong to Draft 1 to Draft 2 and do not describe this process.'
+                : ''}
             </p>
           )}
         </section>
@@ -130,7 +132,7 @@ export default async function ProjectPage({
               <NextStep progress={progress} compact />
             </div>
             {/* a frame process has no rooms: no standard room set to generate */}
-            {total === 0 && proc.board !== 'frame' && (
+            {total === 0 && proc.board !== 'frame' && flow !== 'study' && (
               <form action={createStandardRooms.bind(null, id)}>
                 <button className="btn-secondary" title="For a project with no model yet">
                   Generate standard room set (B1–B18 + HOUSE)
@@ -157,6 +159,40 @@ export default async function ProjectPage({
           )}
         </section>
 
+        {/* run phases — live from the runner (POST /api/run-status): what the run is actually doing */}
+        {phases.length > 0 && (
+          <section className="card p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs uppercase tracking-wide text-slate-500">Run phases</span>
+              <span className="text-xs text-slate-600">
+                {phases.filter((p) => p.state === 'done').length}/{phases.length} done
+              </span>
+            </div>
+            <ol className="space-y-1.5">
+              {phases.map((p) => (
+                <li key={p.phase_key} className="flex flex-wrap items-center gap-3 text-sm">
+                  <span
+                    className={
+                      'text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded ' +
+                      (p.state === 'done'
+                        ? 'bg-emerald-900/60 text-emerald-300'
+                        : p.state === 'doing'
+                          ? 'bg-gold text-slate-950'
+                          : p.state === 'failed'
+                            ? 'bg-red-950 text-red-300'
+                            : 'bg-bh-border/40 text-slate-600')
+                    }
+                  >
+                    {p.state}
+                  </span>
+                  <span className={p.state === 'done' ? 'text-slate-400' : 'text-white font-medium'}>{p.label}</span>
+                  {p.note && <span className="text-xs text-slate-500">{p.note}</span>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
         {gaps.length > 0 && (
           <div className="bg-amber-950/40 border border-amber-800/70 rounded-lg px-4 py-3 text-sm text-amber-200">
             <span className="font-semibold">Decision gaps: {gaps.length} room{gaps.length === 1 ? '' : 's'} with evidence but no covering decision.</span>{' '}
@@ -174,7 +210,9 @@ export default async function ProjectPage({
         )}
         {/* room board */}
         <section className="space-y-4">
-          <h2 className="section-title">{proc.board === 'frame' ? 'Frame board' : 'Rooms (' + total + ')'}</h2>
+          <h2 className="section-title">
+            {flow === 'study' ? 'Plan' : proc.board === 'frame' ? 'Frame board' : 'Rooms (' + total + ')'}
+          </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {rooms.map((r) => {
               const o = outlinesByRoom.get(r.id)
@@ -247,8 +285,12 @@ export default async function ProjectPage({
           {total === 0 && (
             <div className="text-sm text-slate-600 border border-dashed border-bh-border rounded-xl p-8 text-center">
               {proc.board === 'frame'
-                ? "No frame lines yet. Blueprint pushes them from the engineer's set and the open model. This process has no room scan."
-                : 'No rooms yet. Blueprint pushes them from the model scan.'}
+                ? flow === 'lite'
+                  ? 'No frame lines yet. Blueprint reads the catalog plan model, sizes the members by calculation, then pushes the frame board.'
+                  : "No frame lines yet. Blueprint pushes them from the engineer's set and the open model. This process has no room scan."
+                : flow === 'study'
+                  ? 'No plan row yet. Blueprint pushes the plan and the study-set format version to confirm.'
+                  : 'No rooms yet. Blueprint pushes them from the model scan.'}
             </div>
           )}
         </section>

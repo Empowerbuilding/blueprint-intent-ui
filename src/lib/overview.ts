@@ -4,7 +4,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { projectProgress, type Progress } from '@/lib/progress'
-import { loadProcesses, processOf, shapeOf } from '@/lib/processes'
+import { loadProcesses, processOf, shapeOf, flowOf } from '@/lib/processes'
 
 export type ProjectRow = {
   id: string
@@ -44,6 +44,16 @@ export type OutlineRow = {
   checks: Record<string, unknown> | null
 }
 
+export type RunPhaseRow = {
+  project_id: string
+  phase_key: string
+  label: string
+  state: string
+  note: string | null
+  sort: number
+  updated_at: string
+}
+
 export type ProjectOverview = {
   project: ProjectRow
   rooms: RoomRow[]
@@ -52,6 +62,7 @@ export type ProjectOverview = {
   unassignedImages: number
   emittedAt: string | null
   changesSinceLock: number
+  phases: RunPhaseRow[] // live from the runner; empty until a run reports
   progress: Progress
 }
 
@@ -76,6 +87,8 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
     .select('id, project_id, room_id, outline_type, label, status, pushed_at, checks')
     .neq('status', 'superseded')
   let emissionsQ = supabase.from('intent_emissions').select('project_id, version, emitted_at')
+  // run phases (2026-11-21): what the runner is actually doing, phase by phase — empty until a run reports
+  let phasesQ = supabase.from('intent_run_phases').select('project_id, phase_key, label, state, note, sort, updated_at')
   if (projectId) {
     projectsQ = projectsQ.eq('id', projectId)
     processQ = processQ.eq('id', projectId)
@@ -84,9 +97,10 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
     imagesQ = imagesQ.eq('project_id', projectId)
     outlinesQ = outlinesQ.eq('project_id', projectId)
     emissionsQ = emissionsQ.eq('project_id', projectId)
+    phasesQ = phasesQ.eq('project_id', projectId)
   }
 
-  const [projectsRes, roomsRes, questionsRes, imagesRes, outlinesRes, emissionsRes, processRes] = await Promise.all([
+  const [projectsRes, roomsRes, questionsRes, imagesRes, outlinesRes, emissionsRes, processRes, phasesRes] = await Promise.all([
     projectsQ.order('created_at', { ascending: false }),
     roomsQ.order('sort_order'),
     questionsQ.order('created_at'),
@@ -94,6 +108,7 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
     outlinesQ.order('pushed_at'),
     emissionsQ.order('version', { ascending: false }),
     processQ,
+    phasesQ.order('sort'),
   ])
 
   const projects = (projectsRes.data || []) as ProjectRow[]
@@ -139,6 +154,13 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
     }
   }
 
+  const phasesByProject = new Map<string, RunPhaseRow[]>()
+  for (const ph of (phasesRes.data || []) as RunPhaseRow[]) {
+    const cur = phasesByProject.get(ph.project_id) || []
+    cur.push(ph)
+    phasesByProject.set(ph.project_id, cur)
+  }
+
   return projects.map((project) => {
     const pRooms = rooms.filter((r) => r.project_id === project.id)
     const pQuestions = questions.filter((q) => q.project_id === project.id)
@@ -153,8 +175,11 @@ export async function loadOverview(projectId?: string): Promise<ProjectOverview[
       unassignedImages,
       emittedAt: emittedAt.get(project.id) || null,
       changesSinceLock,
+      phases: phasesByProject.get(project.id) || [],
       progress: projectProgress({
         shape: shapeOf(processOf(processes, project.process)),
+        flow: flowOf(processOf(processes, project.process)),
+        phases: (phasesByProject.get(project.id) || []).map((p) => ({ phase_key: p.phase_key, state: p.state })),
         project,
         rooms: pRooms,
         openQuestions: pQuestions,
