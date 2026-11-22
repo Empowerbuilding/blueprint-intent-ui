@@ -1,0 +1,956 @@
+{
+ "_history": "VERSION 1. Live 2026-11-22: Mitch, blueprint-mitch 2026-11-21 23:49:46Z (\"Accept study set and lite\"; read from the portal 00:02Z). Moved from stages/_draft/eng_frame_lite by Blueprint 2026-11-22; the row goes live by a migration (Tony, blueprint-mitch 2026-11-21 22:25Z). Blueprint's working text, cut from eng_frame pack version 2: NOT reviewed line by line. The three Lite steps passed a smoke test on a scratch copy (SMOKE_RESULT.md). NOT proven: a frame laid out with no engineer's set (E1), and a whole Lite run. NOT built at go-live: a tool that writes the Lite frame board (automation/eng_intake_push.py asks for an engineer's set revision), so a Lite project stops at the board step until it is. Built by automation/build_pack_eng_frame_lite.py.",
+ "stage": "eng_frame_lite",
+ "title": "Framing Package — Lite (catalog)",
+ "pack_version": 1,
+ "provenance": [
+  "banks",
+  "whaley"
+ ],
+ "_provenance_note": "The frame phases and the kept sheet phases are those of eng_frame version 2, which has now run once end to end (Whaley - Engineering, 2026-11-20 and 21, 32 phases) after Banks by hand. The Lite cuts themselves (the stamp, the cover finished in SH8, the review list) have run on nothing.",
+ "_frame_type_note": "This pack is the HYBRID rule book (steel frame, wood infill). All wood and light-gauge steel are NOT covered: phase E1 stops on them (slot frame_type). Mitch 2026-11-17 07:29Z.",
+ "entry": {
+  "requires": [
+   "contract.locked",
+   "doc.is_engineering_save_as",
+   "bridge_build>=95e6941"
+  ],
+  "_note": "Lite: no engineer's set is recorded or required (Mitch 2026-11-21 20:48Z); the requirement eng.pdf_revision_recorded of the full pack is taken out. The contract is the Lite board: one line per member group, sizes from HOUSE_SIZES.md."
+ },
+ "phase_order": [
+  "E1",
+  "E2",
+  "E3",
+  "E4",
+  "E5",
+  "E6",
+  "E7",
+  "E7R",
+  "E8",
+  "E9",
+  "SH1",
+  "SH2",
+  "SH4",
+  "SH7",
+  "SH8",
+  "EH"
+ ],
+ "deferred_kinds": [
+  "structure.connection",
+  "structure.rebar",
+  "structure.engineer_set"
+ ],
+ "_deferred_kinds_note": "Parts the frame model does not carry: connections (welds, bolts, clips, hangers, hold-downs, straps) and reinforcing. They reach the sheets as detail callouts, notes, plan symbols and takeoff rows. A work item of one of them is listed on the plan as deferred and built by nothing. Both names are Blueprint's proposal, not reviewed, and NOT in the app's vocabulary today.",
+ "phases": [
+  {
+   "id": "E1",
+   "title": "Frame basis: the model, the house system, the typical sizes",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/e1.md",
+   "standard_items": [
+    {
+     "id": "si-set-frame-type",
+     "kind": "qa.run",
+     "summary": "Frame type of this job: hybrid, the house system (the only rule book this pack has)",
+     "params": {
+      "ask": {
+       "slot": "frame_type",
+       "question": "Frame type: hybrid (steel frame, wood infill) is the house system and the only rule book of this pack. Is this house hybrid?",
+       "options": [
+        "hybrid",
+        "wood",
+        "light_gauge"
+       ],
+       "default": "hybrid"
+      }
+     },
+     "acceptance": [],
+     "evidence": "M 2026-11-21 20:48Z; M 11-17 07:29Z"
+    },
+    {
+     "id": "si-basis",
+     "kind": "qa.run",
+     "summary": "The frame basis record: column lines, member lines and the size of every member from its span and load (frame_sizing.py, floor HOUSE_SIZES.md), written in numbers before anything is built",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 2026-11-21 20:48Z"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [
+    "frame_type"
+   ],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: NOTHING run. Banks and Whaley were both framed from an engineer's set; a frame laid out from the model alone has not been built by this process.",
+    "Mitch, blueprint-mitch 2026-11-21 20:48Z: \"do youtink you are confident to frame an engineer lite set without goign off an engineered set? i feel liek you could. plus since lite isnt an actual engineered set we shoudlnt have to worry about sizing\".",
+    "M 2026-11-21 19:52Z: \"the steel frame is not comepletly infilling the roof\": on Whaley the misses came from following the engineer's plan literally; the house system frames to the roof edges.",
+    "MI 11-18 06:58Z (Christianson): \"new columns should be on exterior walls and corners of the house..... not inside house maybe a lil bit\"."
+   ],
+   "open": [
+    "Whether the loads of automation/frame_sizing_criteria.json are the ones to use: they are Blueprint's assumptions.",
+    "How a frame laid out with no set compares with what an engineer then draws: no case on file."
+   ],
+   "carries": "every_work_item"
+  },
+  {
+   "id": "E2",
+   "title": "The architecture and the frame as they stand",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/e2.md",
+   "standard_items": [
+    {
+     "id": "si-arch-table",
+     "kind": "qa.run",
+     "summary": "The designer's building measured in the engineering file, with the file and save date it was copied from",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 05:23Z; HG 9"
+    },
+    {
+     "id": "si-arch-differences",
+     "kind": "qa.run",
+     "summary": "Every place the engineer's sheet differs from the model listed for the engineer; the designer's model governs position",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 07:07Z STANDING"
+    },
+    {
+     "id": "si-frame-sort",
+     "kind": "qa.run",
+     "summary": "The frame as it stands read to a file; every work item sorted done_in_model or to_do with what was read; members no work item explains LISTED",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP, shaped as d2_to_d3 T1; M 11-17 03:42Z"
+    },
+    {
+     "id": "si-preplan",
+     "kind": "qa.run",
+     "summary": "One pre-plan picture per level and per frame line with the planned member lines, looked at before the first write",
+     "params": {},
+     "acceptance": [],
+     "evidence": "MI 11-18 22:59Z; MI 11-18 00:00Z"
+    }
+   ],
+   "acceptance": [
+    "intake.doc_title_matches"
+   ],
+   "qa_scripts": [
+    "checks_intake"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1; Christianson for the opening sizes (a rejection); the pre-plan is Michael's direction, not yet done on any house.",
+    "M 11-17 05:23Z, 07:07Z: the frame always matches the model Michael designed; differences go on the engineer's list.",
+    "BANKS 11-17: rafters stood through second-floor ceilings because the roof of the model was not measured first (M 04:01Z).",
+    "CHR 11-18: opening sizes read from type Width / Height were wrong for angled and ganged units (RESUME.md).",
+    "MI 11-18 22:59Z: build in the order it is built; lines on cross sections first, outside Revit."
+   ],
+   "open": [
+    "The 2D environment Michael describes (fast, vectorised, outside Revit) is not built; the pre-plan pictures are Blueprint's stand-in.",
+    "What the frame read is compared with when the designer's model changes AFTER the save-as (no rule yet).",
+    "The check intake.doc_title_matches was written for d1_to_d2; whether its tool takes this phase id is not proven."
+   ],
+   "carries": "every_work_item"
+  },
+  {
+   "id": "E3",
+   "title": "Foundation",
+   "kinds": [
+    "structure.foundation"
+   ],
+   "procedure_md": "stages/eng_frame_lite/e3.md",
+   "standard_items": [
+    {
+     "id": "si-found-readback",
+     "kind": "qa.run",
+     "summary": "One footing, pier and base plate centred under every column; slab zones and grade beams as the set; concrete read on faces",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 03:58Z; MI 11-18 08:51Z; HG 11"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection"
+   ],
+   "evidence": [
+    "Rests on: Banks 1 of 1 (and Michael's review of the Banks foundation plan, 11-18).",
+    "M 11-05 18:58Z asked what the foundation would be in 3D; built 11-05 (wood/build_foundation_v2.py).",
+    "M 11-17 03:58Z: concrete must read as concrete; the plates did not look right.",
+    "MI 11-18 08:51Z: grade beams on the pier lines; Banks: 26 piers, 11 tied one way only before the change (OPEN_ITEMS).",
+    "BANKS S1.01 as it stands: 26 footings F01, 26 columns C1, grade beams 12 x 24 interior and 16 x 24 perimeter."
+   ],
+   "open": [
+    "Pier-and-beam and sloped-site foundations: no house on file.",
+    "Grade beam pairs close together (M 11-19 03:51Z asked their purpose; on hold on Banks).",
+    "Rebar is not modelled (deferred kind structure.rebar): it lives in notes, details and the takeoff."
+   ]
+  },
+  {
+   "id": "E4",
+   "title": "Primary steel",
+   "kinds": [
+    "structure.column",
+    "structure.beam"
+   ],
+   "procedure_md": "stages/eng_frame_lite/e4.md",
+   "standard_items": [
+    {
+     "id": "si-steel-audit",
+     "kind": "qa.run",
+     "summary": "Whole-frame steel audit: beam tops on the roof top, every bearing on a column, porch tie-ins level, no steel above a roof, cap purlins web out, roof steel clash-tested against the top floor",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 04:01Z, 05:50Z, 05:57Z, 07:20Z; HG 8, HG 10, HG 18"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": {
+    "by": "item",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection"
+   ],
+   "evidence": [
+    "Rests on: Banks 1 of 1; Christianson and Sellers for four of Michael's rules (each marked).",
+    "M 11-05 17:05Z: built the steel from the engineer's PDF; 17:42Z \"make sure the ibeams are goign to edges of roof though and the posts attach to the bottom of ibeams\"; 17:57Z \"tne engineer specced 18 in bemans\"; 18:46Z.",
+    "M 11-17 04:01Z \"the ibeam rafters of roof frame are protuding through room ceiligns\"; 05:50Z, 05:57Z: tops on the roof top, porch tie-in.",
+    "M 11-17 07:20Z, 11-18 01:37Z: cap purlins and eave struts.",
+    "BANKS S1.04 as it stands: W18x46 rafter pairs on grids 0 to 5, 8 in. C-purlins at 24 in., W10x17 porch rafters, eave struts WEB OUT, one W10x33 eave beam.",
+    "CHR 11-18 08:31Z (rejected): a beam ran in a window; steel missing on roofs."
+   ],
+   "open": [
+    "Where columns go when the engineer gives none (M 11-20 02:42Z, said for Draft 3: \"your gonna have to be able to tell whwere all the columns need to be placed\"): this pack does not place them; d2_to_d3 T11C draws a layout for approval.",
+    "Purlin size against span (MI 11-18 08:51Z 10 in. for 20 ft; M 15:19Z \"keep 8 in\": Banks only).",
+    "Sellers' way (wall girts, a second beam on top inside the roof) is that client's, not a standard (MI 11-17 06:53Z)."
+   ]
+  },
+  {
+   "id": "E5",
+   "title": "Floor framing",
+   "kinds": [
+    "structure.floor_framing"
+   ],
+   "procedure_md": "stages/eng_frame_lite/e5.md",
+   "standard_items": [
+    {
+     "id": "si-floor-ends",
+     "kind": "qa.run",
+     "summary": "Floor bearing audit: every truss, joist and beam end of the floor framing counted against its bearing: none loose; plies as plies; members stop at beam faces",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 05:08Z, 06:49Z; HG 6, HG 11"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": {
+    "by": "item",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [
+    "family_selection"
+   ],
+   "evidence": [
+    "Rests on: Banks 1 of 1; Christianson for one line of Michael's.",
+    "M 11-17 04:12Z, 05:08Z, 06:49Z: trusses, hanger beam, plies.",
+    "M 11-05 18:34Z: subfloor, plates above it.",
+    "BANKS S1.02 as it stands: 22 in. open-web trusses at 24 in., 2-ply 1-3/4 x 16 LVL, 24 in. rim board, W18x46 over the garage doors, W10x22 balcony frame with C-joists.",
+    "M 11-18 17:58Z to 18:28Z: an LVL extended to full bearing, bearing blocks, a stud pack."
+   ],
+   "open": [
+    "Floors framed with 2x members instead of trusses: no house on file.",
+    "Truss bearing at a steel balcony: settled on Banks 11-18 (an edge beam outside the wall); one house."
+   ]
+  },
+  {
+   "id": "E6",
+   "title": "Stud walls",
+   "kinds": [
+    "structure.wall_framing"
+   ],
+   "procedure_md": "stages/eng_frame_lite/e6.md",
+   "standard_items": [
+    {
+     "id": "si-wall-audit",
+     "kind": "qa.run",
+     "summary": "Whole-frame wall audit: corners closed, 0 members inside any opening, a trimmer under each header end, a stud at every steel post face, wall top to steel gap 0, no doubled or stray wall; openings fully framed n of n, the rest listed by id",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 05:15Z, 05:55Z, 06:37Z; MI 11-18 08:31Z; HG 1 to HG 5, HG 12"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": {
+    "by": "item",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1 for the rules; Christianson for the rejection (3 of 156 openings fully framed) and the engine rules.",
+    "M 11-05 18:16Z: all the walls, studs, plates, every window and door framed with the engineer's headers.",
+    "M 11-17 05:15Z, 05:55Z, 06:37Z, 04:55Z: corners, a beam in the studs, the garage header and posts, stud tops in the air.",
+    "BANKS 11-17: 32 open notches and 62 gaps at corners; a barn door framed solid; \"10x10\" was 11 x 9 (runbook 4).",
+    "MI 11-18 08:31Z to 18:56Z, CHR: REJECTED (\"didnt grame around windows properly at all....u gonna lose us the contract\"; 08:36Z \"u needa do a full sweep\"; 17:37Z \"we need to take on an engine approach\"); his picture list of 12 defects.",
+    "MI 11-18 17:37Z, 20:23Z, 22:59Z: an engine, built from the rules; nothing started.",
+    "MI 11-18 22:11Z \"next time we building an enginer yes ill clean it up myself\": the engine comes BEFORE the next framing job (training_data/WORKFLOWS.md)."
+   ],
+   "open": [
+    "The engine itself: not built, not specified beyond Michael's messages; his go is needed to start it.",
+    "Stacked and ganged units, angled heads, sloped wall tops: no working recipe."
+   ]
+  },
+  {
+   "id": "E7",
+   "title": "Ceiling framing",
+   "kinds": [
+    "structure.ceiling_framing"
+   ],
+   "procedure_md": "stages/eng_frame_lite/e7.md",
+   "standard_items": [
+    {
+     "id": "si-ceiling-ends",
+     "kind": "qa.run",
+     "summary": "Ceiling end audit: every ceiling-level member end on a plate or beam, into a beam, on a hanger, a ledger, or a 12 in. lap; none on nothing; nothing runs into another member",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 06:31Z, 06:46Z; HG 6, HG 7"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": {
+    "by": "item",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1.",
+    "M 11-17 04:32Z, 04:55Z, 06:31Z, 06:42Z, 06:46Z, 06:49Z.",
+    "BANKS S1.03 as it stands: 2x10 joists at 24 in., flat at 9 ft, sloped to about 7 ft 4 in. at the walls, 33 hanger boards, 2-2x10 beams and a 3-2x10 beam at the stair opening, a 2x10 ledger."
+   ],
+   "open": [
+    "Whether hanging ceiling joists from roof purlins is accepted by the engineer (Banks: on the open list).",
+    "Houses whose ceilings are all flat under trusses: no house on file."
+   ]
+  },
+  {
+   "id": "E7R",
+   "title": "Roof build-up above the purlins, and the modelled parts of the parts list",
+   "kinds": [
+    "structure.roof_buildup"
+   ],
+   "procedure_md": "stages/eng_frame_lite/e7r.md",
+   "standard_items": [],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": false,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1 (added 11-17 after the sleepers were missed); Christianson for overhangs.",
+    "M 11-17 07:39Z, 08:06Z, 08:16Z, 08:29Z.",
+    "BANKS S1.07 as it stands: 56 sleepers on the main roof, 36 on each porch roof; S3.04 shows them in 3D."
+   ],
+   "open": [
+    "Sleeper size, spacing, splices and fastening: the engineer's set gave none (Banks open list).",
+    "Other roof build-ups (insulated panels, purlin-bearing deck): no house on file but Sellers, which is that client's way."
+   ]
+  },
+  {
+   "id": "E8",
+   "title": "Looks and views",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/e8.md",
+   "standard_items": [
+    {
+     "id": "si-looks",
+     "kind": "qa.run",
+     "summary": "Steel black, wood as lumber, concrete as concrete, read back on element faces in the project",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 03:58Z; HG 14"
+    },
+    {
+     "id": "si-frame-view",
+     "kind": "qa.run",
+     "summary": "A 3D view \"Frame only\": everything hidden except steel, wood and foundation",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-05 18:12Z"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1; Sellers for hiding a frame on the designer's sheets.",
+    "M 11-05 18:12Z; M 11-17 03:58Z.",
+    "BANKS S3.01 as it stands: steel dark, wood lumber-coloured, slab gray."
+   ],
+   "open": [
+    "Whether Enscape shows the same materials as the Revit faces for framing families (looked at by Mitch, not measured)."
+   ]
+  },
+  {
+   "id": "E9",
+   "title": "Final frame audit",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/e9.md",
+   "standard_items": [
+    {
+     "id": "si-audit-overlap",
+     "kind": "qa.run",
+     "summary": "Whole-frame overlap audit against the read of E2: new overlaps 0 or each explained",
+     "params": {},
+     "acceptance": [],
+     "evidence": "runbook 3.8; BANKS corner_overlaps.py"
+    },
+    {
+     "id": "si-audit-bearing",
+     "kind": "qa.run",
+     "summary": "Bearing audit, floor and ceiling: every end of every truss, joist and beam carried",
+     "params": {},
+     "acceptance": [],
+     "evidence": "HG 6"
+    },
+    {
+     "id": "si-audit-arch",
+     "kind": "qa.run",
+     "summary": "Frame-against-architecture table (levels, floors, ceilings, eave, ridge, porches) naming the file used",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 05:23Z; HG 9"
+    },
+    {
+     "id": "si-sheets-ask",
+     "kind": "qa.run",
+     "summary": "THE SHEET SWITCH: is the Lite sheet set made from this frame?",
+     "params": {
+      "ask": {
+       "slot": "sheet_set",
+       "question": "Is the Lite sheet set (cover, framing plans, 3D pages, takeoff, PDF; every sheet stamped preliminary) made from this frame in this run?",
+       "options": [
+        "yes",
+        "no"
+       ],
+       "default": "yes"
+      }
+     },
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 19:44Z and 20:33Z (Mitch approved): the trimmed sheet list of the Lite package"
+    }
+   ],
+   "acceptance": [
+    "model.warnings_not_up"
+   ],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [
+    "sheet_set"
+   ],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1.",
+    "BANKS 11-17: the audits that closed the session (runbook E9).",
+    "M 11-17 04:32Z: a wrong \"14 in. below\" was caught by Mitch; numbers must be measured."
+   ],
+   "open": [
+    "Who accepts a finished frame before sheets are made (today: Mitch looks in Enscape).",
+    "A frame gate in the QA tool: none exists."
+   ]
+  },
+  {
+   "id": "SH1",
+   "title": "Sheet set: set-up",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/sh1.md",
+   "standard_items": [
+    {
+     "id": "si-set-setup",
+     "kind": "sheet.create",
+     "summary": "Scan and snapshot, the S series, the STRUCTURAL title block, the state file, the frame classified into named groups",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BANKS 11-17, 11-18; skill revit-bridge-structural-sheet-set steps 1 to 3"
+    },
+    {
+     "id": "si-stamp",
+     "kind": "sheet.annotate",
+     "summary": "Every sheet of the set prints the stamp \"PRELIMINARY FRAMING — REFERENCE/TAKEOFF ONLY — NOT FOR CONSTRUCTION\": fixed text in the structural title block, read back on the first sheet",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 19:44Z and 20:33Z (Mitch approved)"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1 (the set as it stands in the model: 24 S sheets, 47 views; every sheet picture opened 2026-11-20).",
+    "M 11-17 09:17Z: the ask for a full set.",
+    "M 11-18 01:26Z: \"those sheets you did were trash. we need to fine tune them\": the first pass failed; the set as it stands is the result of two days of his corrections.",
+    "BANKS as it stands: S0.00 to S0.02, S1.01 to S1.09, S2.01 to S2.03, S3.01 to S3.04, S5.01 to S5.04, S6.01."
+   ],
+   "open": [
+    "Whether every project gets the same series or the engineer's sheet numbers are kept.",
+    "Title block fields on Banks (cover date, issue line) are still open with Mitch."
+   ],
+   "when": {
+    "slot": "sheet_set",
+    "equals": "yes"
+   }
+  },
+  {
+   "id": "SH2",
+   "title": "Sheet set: plans",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/sh2.md",
+   "standard_items": [
+    {
+     "id": "si-plan-foundation",
+     "kind": "sheet.view",
+     "summary": "FOUNDATION PLAN: toned footings, piers and grade beams, black columns, footing tags, slab notes, foundation and column schedules; its view by keep list, a label with an arrow on every beam and header, plan notes, on its own sheet, the picture looked at",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 04:16Z; BANKS S1.01"
+    },
+    {
+     "id": "si-plan-floor",
+     "kind": "sheet.view",
+     "summary": "FLOOR FRAMING PLAN of each framed floor: trusses as run notes, beams as black bars, bearing walls below dashed; its view by keep list, a label with an arrow on every beam and header, plan notes, on its own sheet, the picture looked at",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 02:35Z, 17:15Z; BANKS S1.02"
+    },
+    {
+     "id": "si-plan-ceiling",
+     "kind": "sheet.view",
+     "summary": "CEILING FRAMING PLAN of each floor with ceiling framing: joists, beams, flat and sloped parts, how joists are held; its view by keep list, a label with an arrow on every beam and header, plan notes, on its own sheet, the picture looked at",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 03:30Z; MI 11-18 08:51Z; BANKS S1.03"
+    },
+    {
+     "id": "si-plan-roof",
+     "kind": "sheet.view",
+     "summary": "ROOF FRAMING PLAN: rafters heaviest and labelled, purlins thin, eave struts, slopes, ridge; its view by keep list, a label with an arrow on every beam and header, plan notes, on its own sheet, the picture looked at",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 04:16Z; BANKS S1.04"
+    },
+    {
+     "id": "si-plan-walls",
+     "kind": "sheet.view",
+     "summary": "WALL FRAMING AND BRACING PLAN of each floor: studs, a solid symbol at each hold-down, braced-wall letters, legend; its view by keep list, a label with an arrow on every beam and header, plan notes, on its own sheet, the picture looked at",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 04:16Z; BANKS S1.05, S1.06"
+    },
+    {
+     "id": "si-plan-sleepers",
+     "kind": "sheet.view",
+     "summary": "ROOF SLEEPER AND SHEATHING PLAN where a roof build-up was built (none built: say so and close); its view by keep list, a label with an arrow on every beam and header, plan notes, on its own sheet, the picture looked at",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 07:39Z; BANKS S1.07"
+    },
+    {
+     "id": "si-plan-headers",
+     "kind": "sheet.view",
+     "summary": "HEADER PLAN of each floor: every header a white box with its own size label and arrow, exterior headers name the opening; its view by keep list, a label with an arrow on every beam and header, plan notes, on its own sheet, the picture looked at",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 03:13Z, 16:49Z; MI 11-18 08:51Z; BANKS S1.08, S1.09"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": {
+    "by": "item",
+    "target_minutes": [
+     10,
+     60
+    ]
+   },
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1 (S1.01 to S1.09 as they stand; Mitch's corrections of 11-18; Michael's review of 11-18).",
+    "M 11-18 02:35Z, 02:51Z, 03:13Z, 03:30Z, 04:16Z, 16:49Z, 16:55Z, 16:56Z, 17:15Z; MI 11-18 08:51Z.",
+    "BANKS as it stands: S1.01 FOUNDATION PLAN; S1.02 SECOND FLOOR FRAMING PLAN; S1.03 SECOND FLOOR CEILING FRAMING; S1.04 ROOF FRAMING PLAN; S1.05 and S1.06 WALL FRAMING AND BRACING; S1.07 ROOF SLEEPER AND SHEATHING PLAN; S1.08 and S1.09 HEADER PLANS. All scale 48."
+   ],
+   "open": [
+    "A first-floor ceiling framing plan: Banks has none (its first-floor ceiling is the floor above).",
+    "Plans of a one-storey house and of a house with three framed floors: not on file."
+   ],
+   "when": {
+    "slot": "sheet_set",
+    "equals": "yes"
+   }
+  },
+  {
+   "id": "SH4",
+   "title": "Sheet set: 3D pages and the cover view",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/sh4.md",
+   "standard_items": [
+    {
+     "id": "si-3d-pages",
+     "kind": "sheet.view",
+     "summary": "Shaded 3D views by keep list (whole frame from two corners, foundation, steel, wood, floor framing, roof steel and sleepers, sheathing), two a sheet, titled by what they show",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-17 09:17Z; BANKS S3.01 to S3.04"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1 (S3.01 to S3.04 and the cover view as they stand).",
+    "BANKS as it stands: S3.01 3D STRUCTURAL FRAME (south-east, north-west); S3.02 3D FOUNDATION AND STEEL; S3.03 3D WOOD FRAMING; S3.04 3D ROOF BUILD-UP; S0.00 cover view. All scale 96."
+   ],
+   "open": [],
+   "when": {
+    "slot": "sheet_set",
+    "equals": "yes"
+   }
+  },
+  {
+   "id": "SH7",
+   "title": "Sheet set: material takeoff",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/sh7.md",
+   "standard_items": [
+    {
+     "id": "si-takeoff",
+     "kind": "sheet.annotate",
+     "summary": "The last sheet: a material takeoff a builder can price from, from a fresh whole-frame read",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 05:53Z, 17:39Z; BANKS S6.01"
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1 (S6.01 as it stands).",
+    "M 11-18 05:53Z, 17:39Z.",
+    "BANKS S6.01 as it stands: CONCRETE AND REINFORCING / STEEL (22.3 tons, one group) / WOOD FRAMING AND SHEATHING, a column cut list, four takeoff notes."
+   ],
+   "open": [
+    "Prices: none on the sheet, by design.",
+    "Waste factors: none added; whether a builder wants them is not known."
+   ],
+   "when": {
+    "slot": "sheet_set",
+    "equals": "yes"
+   }
+  },
+  {
+   "id": "SH8",
+   "title": "Sheet set: set check and PDF",
+   "kinds": [],
+   "procedure_md": "stages/eng_frame_lite/sh8.md",
+   "standard_items": [
+    {
+     "id": "si-cover-lite",
+     "kind": "sheet.annotate",
+     "summary": "Cover S0.00 finished: project, address, issue date, the stamp in large text, the index of the sheets of this set, the structural system in a few lines with the model sizes",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 19:44Z and 20:33Z (Mitch approved): the cover text of the dropped phase SH6 lands here, after the last sheet exists"
+    },
+    {
+     "id": "si-set-check",
+     "kind": "qa.run",
+     "summary": "Every sheet exported and looked at; the text of the whole set swept for old sizes, old sheet numbers and engineer wording; stale annotation redrawn",
+     "params": {},
+     "acceptance": [],
+     "evidence": "M 11-18 15:19Z, 04:57Z; BANKS SET_AUDIT 11-19"
+    },
+    {
+     "id": "si-set-pdf",
+     "kind": "export.pdf",
+     "summary": "PDF of the set with an official file name; selection cleared first, every page scanned for coloured linework",
+     "params": {},
+     "acceptance": [
+      "final.pdf_exists"
+     ],
+     "evidence": "M 11-18 05:51Z, 18:28Z"
+    }
+   ],
+   "acceptance": [
+    "final.pdf_exists",
+    "sheet.bounds_edge_clean"
+   ],
+   "qa_scripts": [
+    "qa-model"
+   ],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Banks 1 of 1 (PDF issues up to r12 on 11-18, review sets up to v4 on 11-19).",
+    "M 11-18 05:51Z, 15:19Z, 18:28Z.",
+    "BANKS 11-19: a set audit after the client set: the hold-down reference and 6 clerical points fixed, 19 findings listed and not changed (projects/banks_eng_jobs/SET_AUDIT_report.md, by OPEN_ITEMS)."
+   ],
+   "open": [
+    "What a structural set has to pass before it may go to a client (today: Mitch reads it).",
+    "final.pdf_exists and sheet.bounds_edge_clean were written for the d1_to_d2 sheets; whether their tools take S sheets is not proven."
+   ],
+   "when": {
+    "slot": "sheet_set",
+    "equals": "yes"
+   }
+  },
+  {
+   "id": "EH",
+   "title": "Hand-back",
+   "kinds": [
+    "qa.run",
+    "export.pdf",
+    "export.render"
+   ],
+   "procedure_md": "stages/eng_frame_lite/eh.md",
+   "standard_items": [
+    {
+     "id": "si-trace",
+     "kind": "qa.run",
+     "summary": "Every work item of the list closed: built / stood already / built to the designer's model and differs from the set / sized by Blueprint / not modelled (reason) / not built (why)",
+     "params": {},
+     "acceptance": [],
+     "evidence": "BP; runbook E9"
+    },
+    {
+     "id": "si-review-list",
+     "kind": "qa.run",
+     "summary": "The review list complete and posted to Mitch as ONE list: what a person looks at before the package is released; no engineer list, nothing sent to anyone",
+     "params": {},
+     "acceptance": [],
+     "evidence": "Tony, blueprint-mitch 2026-11-21 19:44Z and 20:33Z (Mitch approved): \"EH (trimmed hand-back — review list only, no engineer-reconciliation layer)\""
+    }
+   ],
+   "acceptance": [],
+   "qa_scripts": [],
+   "library_refs": [],
+   "defaults_scope": [],
+   "split": null,
+   "mandatory": true,
+   "judgment_slots": [],
+   "runtime_calls": [],
+   "evidence": [
+    "Rests on: Whaley 1 of 1 (a hand-back whose engineer list was closed by the owner).",
+    "M 2026-11-21 03:40Z \"And you have 74 questions fir engineer? Wtf\"; M 2026-11-21 19:52Z \"forget all the questiosn for the engineer jsut make your best judgement for this set\".",
+    "Tony, blueprint-mitch 2026-11-21 19:44Z and 20:33Z (Mitch approved)."
+   ],
+   "open": [
+    "Who releases a Lite package to the store, and what that person must see first."
+   ],
+   "carries": "every_work_item"
+  }
+ ],
+ "2d": {
+  "_status": "DRAFT 2026-11-20. This process has NO 2D drawing step of ours: the engineer's set IS the 2D (Blueprint's assumption, not reviewed: ASSUMPTIONS.md 2). The section exists in the shape of PACK V1 so that the compiler answers \"switched off\" and so that no section of the board waits for a drawing. NOT RUN, and no tool draws what it describes.",
+  "enabled": false,
+  "_enabled_note": "THE 2D SWITCH. false (as shipped) = no 2D work order is compiled, the 3D compile waits for no drawing, and a work item of the kinds below is placed by the procedure of its phase (position from the designer's model, size from the engineer's set), written down in numbers before anything is placed. true = one frame pre-plan drawing per section would be drawn and approved by a person before anything is built (Michael, blueprint-michael 2026-11-18 22:59Z: \"we should be putting just a line on cross sections first, right? all outside of revit\"). NOT SUPPORTED today: no tool draws it; do not switch it on.",
+  "subject": "frame_preplan",
+  "rooms": "all",
+  "kinds": [
+   "structure.foundation",
+   "structure.column",
+   "structure.beam",
+   "structure.floor_framing",
+   "structure.wall_framing",
+   "structure.ceiling_framing",
+   "structure.roof_buildup"
+  ],
+  "_kinds_note": "The kinds a pre-plan would draw. With the switch off, a work item of one of them is not \"to be found by scan\": its phase places it by its page, and the plan says how many.",
+  "procedure_md": "stages/eng_frame_lite/2d.md",
+  "batch_rooms": 3,
+  "gate": "none: no rule of the outline rulebook is about framing. A person would approve each pre-plan.",
+  "phases": [
+   {
+    "id": "F0",
+    "role": "scan",
+    "section": "F0",
+    "title": "Frame read for the pre-plans (read-only)",
+    "est_minutes": 15,
+    "brief": "Read the architecture and the frame as they stand (page e2.md steps 2 and 5) to checks/E2_arch.json and checks/E2_frame.json. Read-only.",
+    "verify": {
+     "readback": "both files exist; every level and grid of the model is in the architecture table"
+    }
+   },
+   {
+    "id": "F{n}",
+    "role": "batch",
+    "section": "F-batch",
+    "title": "Frame pre-plans: {rooms}",
+    "est_minutes_per_room": 15,
+    "brief": "Per frame stage: one pre-plan drawing with every member line of its work items over the designer's outline; each line names its work item. geometry.meta.subject = \"frame_preplan\". Then push for a person's approval.",
+    "verify": {
+     "coverage": "every work item of the section drawn, or declared not drawable with the reason",
+     "clear": "no member line crosses a window or a door"
+    }
+   },
+   {
+    "id": "FW",
+    "role": "review",
+    "section": "FW",
+    "title": "Frame pre-plan review (a person)",
+    "est_minutes": 0,
+    "brief": "A person approves or rejects each pre-plan. Blueprint approves nothing.",
+    "verify": {
+     "gate": "the 3D compile exits 0: every section has an approved pre-plan drawn against this contract version"
+    }
+   }
+  ]
+ },
+ "exit": {
+  "acceptance": [
+   "model.warnings_not_up"
+  ],
+  "artifacts": [
+   "backup",
+   "review_list",
+   "closed_work_item_list",
+   "pdf (only with the sheet switch on)"
+  ]
+ },
+ "library": {
+  "kind": "folder",
+  "root": "the shared library Blueprint Families on H:",
+  "map": "standards/BLUEPRINT_LIBRARY.md",
+  "note": "No phase names a library folder: the folder map of the shared library has no folder for structural framing, columns, trusses or foundations. E3, E4 and E5 pick families at run time (types already in the project first)."
+ },
+ "defaults": {
+  "kind": "app default group",
+  "groups": [
+   "house",
+   "public",
+   "secondary",
+   "garage",
+   "adu",
+   "bath",
+   "master",
+   "outdoor"
+  ],
+  "source": "blueprint-intent-ui src/lib/defaults.ts",
+  "note": "As PACK V1 lists them; this pack uses none (defaults_scope is empty in every phase). The defaults of this process are the lines of standards/ENGINEERING_FRAME_RUNBOOK.md section 5, used without asking and stated in the phase note."
+ },
+ "_sheet_switch_note": "THE SHEET SWITCH is ONE field: phases[id=E9].standard_items[id=si-sheets-ask].params.ask.default. \"yes\" (as shipped) = the sheet phases SH1, SH2, SH4, SH7, SH8 are compiled after the frame audit. \"no\" = they are left out and nothing else changes. A person can also answer the slot sheet_set for one project (--answers).",
+ "_kinds_note": "Kinds this pack claims that the app's vocabulary does NOT have today (35 kinds, read 2026-11-20): structure.engineer_set, structure.column, structure.beam, structure.floor_framing, structure.wall_framing, structure.ceiling_framing, structure.roof_buildup. Claimed and in the app: structure.foundation, qa.run, export.pdf, export.render. Every other kind of the app is neither claimed nor deferred here: a contract of this process that carries one is a hard error, on purpose (rooms, casework, finishes play no part).",
+ "_acceptance_note": "A phase names only checks that exist in the app today (read 2026-11-20): model.warnings_not_up, intake.doc_title_matches, final.pdf_exists, sheet.bounds_edge_clean. Everything else a phase needs is in CHECKS_WANTED.md and is run by hand, in numbers, until a checker exists.",
+ "_no_set_note": "A Lite job has NO engineer's set (Mitch, blueprint-mitch 2026-11-21 20:48Z: \"do youtink you are confident to frame an engineer lite set without goign off an engineered set? i feel liek you could. plus since lite isnt an actual engineered set we shoudlnt have to worry about sizing\"). E1 is the frame basis from the designer's model, the house system and HOUSE_SIZES.md (typical sizes, not engineered). A work item of kind structure.engineer_set is deferred: built by nothing.",
+ "_product_note": "The catalog SKU: the Shopify product \"Framing Package — Lite\". A preliminary framing model, framing plans, 3D pages and a material takeoff for a catalog plan, for reference and takeoff only. Not for construction; no sections, no details, no general notes, no engineer reconciliation.",
+ "_cost_note": "Cost basis: target 120 to 200 dollars a run, tiered (Tony 2026-11-21 19:44Z). No run of this pack has been measured. Whaley ran the full pack on the judgment tier; the sheet phases are classed mechanical since then (automation/phase_classes.json).",
+ "_sheet_list": [
+  "S0.00 COVER (cover view, index, structural system, the stamp)",
+  "S1.01 FOUNDATION PLAN",
+  "S1.xx FRAMING PLANS, one per plan the house has: floor, ceiling, roof, wall, roof sheathing, header",
+  "S3.01 to S3.04 3D PAGES",
+  "S6.01 MATERIAL TAKEOFF"
+ ],
+ "_cut_phases": {
+  "SH3": "building sections and steel frame elevations",
+  "SH5": "details",
+  "SH6": "general notes and fastener schedule (its cover text moves to SH8)",
+  "ER": "revision of an engineer's set (not on the keep list; Blueprint's reading)"
+ },
+ "_stamp_note": "The stamp text is one constant: the summary of SH1 standard item si-stamp. PRELIMINARY FRAMING — REFERENCE/TAKEOFF ONLY — NOT FOR CONSTRUCTION",
+ "_review_list_note": "This pack makes no engineer list. Where a frame page (E1 to E9, E7R) says \"engineer list\" or \"listed for the engineer\", the line is written to checks/REVIEW_LIST.md and reaches Mitch once, on the hand-back card (EH)."
+}
