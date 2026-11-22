@@ -1,8 +1,8 @@
 {
- "_history": "VERSION 3, 2026-11-22 00:1xZ: no step changed. ACCEPTED by Mitch, blueprint-mitch 2026-11-21 23:49:46Z (\"Accept study set and lite\"; read from the portal 2026-11-22 00:02Z): his word in this channel, after the pack had gone live at 23:51:59Z on his 23:42Z message. VERSION 2, 2026-11-22 00:0xZ: no step changed. The carry-or-generate tool automation/study_set/model/study_carry.py is BUILT and ran once (Farm Modern scratch copy, the three pages forced: STUDY 0 cover, STUDY 0.1 exterior 3D, STUDY 0.2 interior 3D; 8-page set packaged); version 1 said it was not built. Its limits are in MISSING.md. VERSION 1. Live 2026-11-21: Mitch, tony-mitch 23:42Z (\"ok so thewres nothing else eft for me to do but wait for blueprint to finsih then i can pull up real projects and the deisgn intent app and start making study sets and engineering lite sets\"); Tony, blueprint-mitch 23:28Z (\"move stages/_draft/study_set to accepted per your doctrine, flip study_set draft->live\") and 22:25Z (the row goes live by a migration). Moved from stages/_draft/study_set by Blueprint 2026-11-22 00:0xZ. Blueprint's working text: NOT reviewed by Michael or line by line by Mitch. Rests on two plans run by hand-started scripts (Ranch View, Farm Modern scratch copy); no phase has run as a phase. Built by automation/build_pack_study_set.py.",
+ "_history": "VERSION 4, 2026-11-22 01:5xZ: the GENERATE page shortened, NO rule dropped (the quotes and the long names of the two proving runs moved from its steps to its evidence section; phase title 'in the open project'), because the first real compile (Pure pastures, contract v1) stood at 10,091 of 9,838 characters and was refused. Mitch, blueprint-mitch 2026-11-22 01:02Z: \"Go\", given on the plan post that named this change. VERSION 3, 2026-11-22 00:1xZ: no step changed. ACCEPTED by Mitch, blueprint-mitch 2026-11-21 23:49:46Z (\"Accept study set and lite\"; read from the portal 2026-11-22 00:02Z): his word in this channel, after the pack had gone live at 23:51:59Z on his 23:42Z message. VERSION 2, 2026-11-22 00:0xZ: no step changed. The carry-or-generate tool automation/study_set/model/study_carry.py is BUILT and ran once (Farm Modern scratch copy, the three pages forced: STUDY 0 cover, STUDY 0.1 exterior 3D, STUDY 0.2 interior 3D; 8-page set packaged); version 1 said it was not built. Its limits are in MISSING.md. VERSION 1. Live 2026-11-21: Mitch, tony-mitch 23:42Z (\"ok so thewres nothing else eft for me to do but wait for blueprint to finsih then i can pull up real projects and the deisgn intent app and start making study sets and engineering lite sets\"); Tony, blueprint-mitch 23:28Z (\"move stages/_draft/study_set to accepted per your doctrine, flip study_set draft->live\") and 22:25Z (the row goes live by a migration). Moved from stages/_draft/study_set by Blueprint 2026-11-22 00:0xZ. Blueprint's working text: NOT reviewed by Michael or line by line by Mitch. Rests on two plans run by hand-started scripts (Ranch View, Farm Modern scratch copy); no phase has run as a phase. Built by automation/build_pack_study_set.py.",
  "stage": "study_set",
  "title": "Full set to Study set",
- "pack_version": 3,
+ "pack_version": 4,
  "provenance": [
   "ranch_view",
   "farm_modern"
@@ -24,7 +24,7 @@
  "phases": [
   {
    "id": "GENERATE",
-   "title": "Generate the STUDY sheets in the model copy",
+   "title": "Generate the STUDY sheets in the open project",
    "kinds": [
     "sheet.create",
     "sheet.view",
@@ -46,7 +46,7 @@
      "summary": "One STUDY layout sheet per level: red room names, black room sizes, blue overall dimensions, SF inset with one area tag per zone",
      "params": {},
      "acceptance": [],
-     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED); Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project)"
+     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED); RV, FM"
     },
     {
      "id": "si-elevations",
@@ -54,7 +54,7 @@
      "summary": "Two STUDY elevation sheets (Front / Back, Left / Right): tags off, heights blue",
      "params": {},
      "acceptance": [],
-     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED); Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project)"
+     "evidence": "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED); RV, FM"
     },
     {
      "id": "si-sheet-pdfs",
@@ -62,7 +62,7 @@
      "summary": "One PDF per sheet for the STUDY sheets and the carried sheets, named by sheet number",
      "params": {},
      "acceptance": [],
-     "evidence": "Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project)"
+     "evidence": "RV, FM"
     }
    ],
    "acceptance": [
@@ -76,7 +76,9 @@
    "judgment_slots": [],
    "runtime_calls": [],
    "evidence": [
-    "Rests on: Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project). The scripts ran once, started by hand; this page has not run as a phase.",
+    "Rests on: Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project) (RV, FM in the steps). The scripts ran started by hand; this page has not run as a phase.",
+    "M 2026-11-21 22:35Z, blueprint-mitch: \"i hav wa full project open in revit then the study set process creates new study set pages and formats them all how they are suppsoed to working form the full set\".",
+    "M 2026-11-21 23:31Z, tony-mitch: \"what will study set process do if a page is missing in an old set will it just go ahead and create it for hte study set?\"; worded as carry-or-generate by Tony, blueprint-mitch 23:35Z and 23:46Z.",
     "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED): \"STUDY sheets are generated FROM THE MODEL\".",
     "Tony, blueprint-mitch 2026-11-21 22:15Z: acceptance test PASSED; \"the app now has the study step pack: board > review > lock > generate > package\"."
    ],
@@ -139,7 +141,7 @@
    "judgment_slots": [],
    "runtime_calls": [],
    "evidence": [
-    "Rests on: Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project).",
+    "Rests on: Ranch View (acceptance test 2026-11-21, 9 of 9 pages, plan file by hand) and Farm Modern (scratch copy 2026-11-21, 8 pages, plan file derived from the open project) (RV, FM in the steps).",
     "Tony, blueprint-mitch 2026-11-21 20:07Z (template LOCKED): page order, NEVER list, voucher pattern.",
     "Tony, blueprint-mitch 2026-11-21 21:45Z: study-set status mapping generate = building, package = sheets."
    ],
