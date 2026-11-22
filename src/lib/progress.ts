@@ -131,7 +131,7 @@ export function projectProgress(d: ProgressData): Progress {
     done.build = done.lock && (status === 'sheets' || status === 'done')
     done.sheets = done.build && status === 'done'
   } else if (flow === 'study') {
-    // generation runs in the model copy; packaging is the PDF + voucher for the listing
+    // generation runs in the open project; packaging is the PDF + voucher for the listing
     done.generate = done.lock && (phaseDone('generate') || status === 'done')
     done.package = done.generate && status === 'done'
   } else {
@@ -205,7 +205,7 @@ export function projectProgress(d: ProgressData): Progress {
             : 'after the frame build'
         : '',
     generate: status === 'building'
-      ? 'in progress — STUDY sheets in the model copy'
+      ? 'in progress — STUDY sheets in your open project'
       : phaseDone('generate') || status === 'done'
         ? 'complete'
         : 'not started',
@@ -234,7 +234,7 @@ export function projectProgress(d: ProgressData): Progress {
         who: 'blueprint',
         label: 'Waiting on the plan row',
         detail:
-          'Blueprint pushes one row: the plan and the study-set format version to confirm. No room scan, no decisions, no model changes.',
+          'Blueprint pushes one row: the plan and the study-set format version to confirm. No room scan, no decisions — new STUDY sheets are added to your open project, and the full set's own sheets are unchanged.',
         href: base,
       }
     } else if (frame) {
@@ -370,7 +370,7 @@ export function projectProgress(d: ProgressData): Progress {
       who: 'blueprint',
       label: status === 'building' ? 'Generation in progress' : 'Generation next',
       detail:
-        'STUDY layouts per level (red room dimensions, SF zone inset), elevations with blue heights, upsell page — generated in the model copy, then the automated diff against the study-set template.',
+        'STUDY layouts per level (red room dimensions, SF zone inset), elevations with blue heights, upsell page — generated in your open project, then the automated diff against the study-set template.',
       href: base,
     }
   } else if (current === 'package') {

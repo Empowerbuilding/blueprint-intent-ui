@@ -29,7 +29,7 @@ export type ProcessShape = { board: 'rooms' | 'frame'; has2d: boolean }
 //            from the plan model, no engineer set; the sheet set — framing plans, 3D views, takeoff — is
 //            generated, so it gets its own step)
 //   study  — board → review → lock → generate → package (the $99 study set: one plan row to confirm, then
-//            pure generation in the model copy — STUDY layouts, elevations, upsell page — then packaging
+//            pure generation in the open project — STUDY layouts, elevations, upsell page — then packaging
 //            for the Shopify listing. No decisions, no 2D outlines)
 export type FlowKey = 'rooms' | 'frame' | 'lite' | 'study'
 
