@@ -234,7 +234,7 @@ export function projectProgress(d: ProgressData): Progress {
         who: 'blueprint',
         label: 'Waiting on the plan row',
         detail:
-          'Blueprint pushes one row: the plan and the study-set format version to confirm. No room scan, no decisions — new STUDY sheets are added to your open project, and the full set's own sheets are unchanged.',
+          'Blueprint pushes one row: the plan and the study-set format version to confirm. No room scan, no decisions — new STUDY sheets are added to your open project, and the original full-set sheets are unchanged.',
         href: base,
       }
     } else if (frame) {
