@@ -198,7 +198,7 @@ export default async function ProjectPage({
             <span className="font-semibold">Decision gaps: {gaps.length} room{gaps.length === 1 ? '' : 's'} with evidence but no covering decision.</span>{' '}
             {gaps.filter((g) => g.noDecisions).length} have no decisions at all. These are the rooms the 3D build will
             skip pieces in — open the room and add the lines, or leave them out on purpose.{' '}
-            <span className="text-amber-400">(2026-11-14 pilot lesson: Bath 3's vanity shipped exactly this way.)</span>
+            <span className="text-amber-400">(2026-11-14 pilot lesson: Bath 3&apos;s vanity shipped exactly this way.)</span>
           </div>
         )}
         {fresh.totalStale > 0 && (

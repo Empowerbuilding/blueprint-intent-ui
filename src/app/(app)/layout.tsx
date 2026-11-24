@@ -11,12 +11,26 @@ import Link from 'next/link'
 // Per-page context (back links, titles, actions) lives in each page's PageHeader.
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env['NEXT_PUBLIC_SUPABASE_URL']
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']
+  const isPreview =
+    process.env.CANVAS_PREVIEW === '1' ||
+    process.env['CANVAS_PREVIEW'] === '1' ||
+    !supabaseUrl ||
+    !supabaseAnonKey
 
-  const email = user?.email || ''
+  let email = 'preview@barnhaussteelbuilders.com'
+  if (!isPreview) {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    email = user?.email || ''
+  }
+
   const tz = await viewerTimeZone()
-  const name = email.split('@')[0].replace(/[._]/g, ' ')
+  const name = isPreview ? 'Studio Preview' : email.split('@')[0].replace(/[._]/g, ' ')
 
   return (
     <div className="min-h-screen bg-bh-black text-white flex flex-col">
@@ -43,11 +57,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="text-xs text-slate-500 hidden md:block capitalize" title={email}>
               {name}
             </span>
-            <form action={signOut}>
-              <button className="rounded-lg px-3 py-1.5 text-slate-500 hover:text-white transition-colors">
-                Sign out
-              </button>
-            </form>
+            {!isPreview && (
+              <form action={signOut}>
+                <button className="rounded-lg px-3 py-1.5 text-slate-500 hover:text-white transition-colors">
+                  Sign out
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </header>

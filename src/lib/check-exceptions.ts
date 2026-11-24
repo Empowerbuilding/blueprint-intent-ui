@@ -2,10 +2,12 @@
 // drawing SLOT (room + outline type + label). Survives re-pushes of the slot, unlike an
 // outline-id-keyed ruling. Consulted by the push route (math) and the vision gate; the compiler
 // reads them via GET /api/check-exceptions (Blueprint's rulings.json is the id-exact interim form).
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 export type SlotException = { check_key: string; ruled_by: string; ruled_at: string; quote: string; measured?: string }
 
 export async function fetchSlotExceptions(
-  client: { from: (t: string) => any },
+  client: Pick<SupabaseClient, 'from'>,
   slot: { projectId: string; roomId: string; outlineType: string; label: string }
 ): Promise<Map<string, SlotException>> {
   const { data } = await client

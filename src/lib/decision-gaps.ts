@@ -4,6 +4,8 @@
 // missing the Bath 3 vanity (inspo said "double vanity against back wall"; no line existed).
 // Evidence suggests; only a person decides — but the app ASKS at board time instead of
 // surprising everyone after the 2D is drawn.
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 export type DecisionGap = {
   roomId: string
   sectionCode: string
@@ -25,7 +27,7 @@ function nounsIn(text: string): Set<string> {
   return hits
 }
 
-type SB = { from: (t: string) => any }
+type SB = Pick<SupabaseClient, 'from'>
 
 // #28 - decision freshness: active transcript-sourced lines whose meeting_date
 // predates the project's latest meeting. They stand only because no newer

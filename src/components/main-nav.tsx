@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-// Primary navigation — four areas, the current one highlighted.
+// Primary navigation — five areas, the current one highlighted.
 const ITEMS: { href: string; label: string; match: (path: string) => boolean }[] = [
   { href: '/', label: 'Decisions', match: (p) => p === '/' },
   { href: '/projects', label: 'Projects', match: (p) => p.startsWith('/projects') },
+  { href: '/canvas', label: 'Canvas', match: (p) => p.startsWith('/canvas') },
   { href: '/rulebook/checks', label: 'Rulebook', match: (p) => p.startsWith('/rulebook') },
   { href: '/blueprint', label: 'Blueprint', match: (p) => p.startsWith('/blueprint') },
 ]
