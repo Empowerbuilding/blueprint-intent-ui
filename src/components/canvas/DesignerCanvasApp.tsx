@@ -30,8 +30,11 @@ import {
 } from '@/lib/canvas-matrix'
 import { MiniHousePlan } from './MiniHousePlan'
 import { ArchitecturalStageSvg } from './ArchitecturalStageSvg'
+import { WholeHouseStageSvg } from './WholeHouseStageSvg'
 import { BayInspector } from './BayInspector'
 import { ShellModal, type StudioModalMode } from './ShellModal'
+
+type MobileStudioTab = 'house' | 'room' | 'bays'
 
 interface DesignerCanvasAppProps {
   supabaseProjects: CanvasProjectOption[]
@@ -99,7 +102,13 @@ export function DesignerCanvasApp({
   })
 
   const [theme, setTheme] = useState<CadTheme>(initialTheme)
-  const [layoutMode, setLayoutMode] = useState<StageLayoutMode>('split')
+  const [layoutMode, setLayoutMode] = useState<StageLayoutMode>(
+    initialRoomId ? 'split' : 'house'
+  )
+  const [activeLevel, setActiveLevel] = useState<1 | 2>(1)
+  const [mobileTab, setMobileTab] = useState<MobileStudioTab>(
+    initialRoomId ? 'room' : 'house'
+  )
   const [showDatums, setShowDatums] = useState<boolean>(true)
   const [showDimensions, setShowDimensions] = useState<boolean>(true)
   const [modalMode, setModalMode] = useState<StudioModalMode>(null)
@@ -145,7 +154,10 @@ export function DesignerCanvasApp({
     }
     setActiveProjectId(nextId)
     setUndoStack([])
-    const firstRoom = existing.rooms[0]
+    setActiveLevel(1)
+    setLayoutMode('house')
+    setMobileTab('house')
+    const firstRoom = existing.rooms.find((r) => (r.level ?? 1) === 1) ?? existing.rooms[0]
     if (firstRoom) {
       setActiveRoomId(firstRoom.id)
       setActiveWallId(firstRoom.walls[0]?.id ?? 'N')
@@ -214,9 +226,22 @@ export function DesignerCanvasApp({
     }
   }
 
+  const hasMultipleLevels = useMemo(
+    () => matrix.rooms.some((r) => r.level === 2),
+    [matrix.rooms]
+  )
+
+  const visibleLevelRooms = useMemo(
+    () =>
+      hasMultipleLevels
+        ? matrix.rooms.filter((r) => (r.level ?? 1) === activeLevel)
+        : matrix.rooms,
+    [activeLevel, hasMultipleLevels, matrix.rooms]
+  )
+
   const activeRoom = useMemo(
-    () => matrix.rooms.find((r) => r.id === activeRoomId) ?? matrix.rooms[0],
-    [activeRoomId, matrix.rooms]
+    () => matrix.rooms.find((r) => r.id === activeRoomId) ?? visibleLevelRooms[0] ?? matrix.rooms[0],
+    [activeRoomId, matrix.rooms, visibleLevelRooms]
   )
 
   const activeWall = useMemo(
@@ -246,13 +271,34 @@ export function DesignerCanvasApp({
     return { total: matrix.rooms.length, approved, draft, issueCount }
   }, [matrix])
 
+  const handleSelectLevel = (lvl: 1 | 2) => {
+    setActiveLevel(lvl)
+    const lvlRoom = matrix.rooms.find((r) => (r.level ?? 1) === lvl)
+    if (lvlRoom) {
+      setActiveRoomId(lvlRoom.id)
+      const w0 = lvlRoom.walls.find((w) => w.bays.length > 0) ?? lvlRoom.walls[0]
+      setActiveWallId(w0.id)
+      setSelectedBayId(w0.bays[0]?.id ?? null)
+    }
+  }
+
   const handleSelectRoom = (roomId: string) => {
     const nextRoom = matrix.rooms.find((r) => r.id === roomId)
     if (!nextRoom) return
+    if (nextRoom.level && nextRoom.level !== activeLevel) {
+      setActiveLevel(nextRoom.level)
+    }
     setActiveRoomId(roomId)
-    const nextWall = nextRoom.walls[0]
+    const nextWall = nextRoom.walls.find((w) => w.bays.length > 0) ?? nextRoom.walls[0]
     setActiveWallId(nextWall.id)
     setSelectedBayId(nextWall.bays[0]?.id ?? null)
+  }
+
+  const handleEnterRoomStudio = (roomId: string) => {
+    handleSelectRoom(roomId)
+    const isNarrow = typeof window !== 'undefined' && window.innerWidth < 1024
+    setLayoutMode(isNarrow ? 'elevation' : 'split')
+    setMobileTab('room')
   }
 
   const handleSelectWall = (wallId: WallDirection) => {
@@ -386,18 +432,19 @@ export function DesignerCanvasApp({
     return allFlex[0] ?? null
   }, [activeRoom.flexPlanBinding?.flexWallId, activeWall.flexBinding?.flexWallId, matrix.flexWalls])
 
-  const handleNudgeFlexWall = (deltaIn: number) => {
-    if (!activeFlexWall) return
+  const handleNudgeFlexWallById = (flexWallId: string, deltaIn: number) => {
+    const target = matrix.flexWalls[flexWallId]
+    if (!target) return
     const nextNudge = Math.max(
-      -activeFlexWall.maxNudgeIn,
-      Math.min(activeFlexWall.maxNudgeIn, snapHalfInch(activeFlexWall.nudgeIn + deltaIn))
+      -target.maxNudgeIn,
+      Math.min(target.maxNudgeIn, snapHalfInch(target.nudgeIn + deltaIn))
     )
     commitMatrix({
       ...matrix,
       flexWalls: {
         ...matrix.flexWalls,
-        [activeFlexWall.id]: {
-          ...activeFlexWall,
+        [flexWallId]: {
+          ...target,
           nudgeIn: nextNudge,
         },
       },
@@ -405,6 +452,11 @@ export function DesignerCanvasApp({
     setFeedback(
       `Partition nudged to ${nextNudge > 0 ? '+' : ''}${formatInchesOnly(nextNudge)} — both rooms & scribes updated.`
     )
+  }
+
+  const handleNudgeFlexWall = (deltaIn: number) => {
+    if (!activeFlexWall) return
+    handleNudgeFlexWallById(activeFlexWall.id, deltaIn)
   }
 
   // Export Clean Revit Build JSON & Vector Linework SVG
@@ -468,7 +520,7 @@ export function DesignerCanvasApp({
             data-testid="project-switcher"
             value={activeProjectId}
             onChange={(e) => handleSwitchProject(e.target.value)}
-            className="rounded-lg border border-bh-border bg-bh-black px-2.5 py-1 text-xs font-medium text-white focus:border-gold focus:outline-none max-w-[270px]"
+            className="rounded-lg border border-bh-border bg-bh-black px-2.5 py-1.5 text-xs font-medium text-white focus:border-gold focus:outline-none max-w-[270px]"
           >
             {customProjects.length > 0 && (
               <optgroup label="Session / Imported Houses">
@@ -497,11 +549,60 @@ export function DesignerCanvasApp({
             </optgroup>
           </select>
 
+          {/* Multi-Story Floor Switcher (L1 / L2) */}
+          {hasMultipleLevels && (
+            <div
+              className="inline-flex rounded-lg border border-gold/50 bg-bh-black p-0.5 text-xs"
+              role="tablist"
+              aria-label="Floor Level Switcher"
+            >
+              {([1, 2] as const).map((lvl) => (
+                <button
+                  key={lvl}
+                  type="button"
+                  data-testid={`top-floor-btn-${lvl}`}
+                  onClick={() => handleSelectLevel(lvl)}
+                  className={
+                    'rounded-md px-2.5 py-1 font-semibold transition-colors ' +
+                    (activeLevel === lvl
+                      ? 'bg-gold text-slate-950 shadow-sm'
+                      : 'text-slate-300 hover:text-white')
+                  }
+                >
+                  L{lvl}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Front-and-Center Whole House Floor Plan Quick Button */}
+          <button
+            type="button"
+            data-testid="btn-whole-house-center"
+            onClick={() => {
+              if (layoutMode === 'house') {
+                setLayoutMode('split')
+                setMobileTab('room')
+              } else {
+                setLayoutMode('house')
+                setMobileTab('house')
+              }
+            }}
+            className={
+              'rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap ' +
+              (layoutMode === 'house'
+                ? 'border-gold bg-gold text-slate-950 shadow-sm'
+                : 'border-gold/50 bg-gold/10 text-gold-light hover:bg-gold/20')
+            }
+          >
+            {layoutMode === 'house' ? 'Whole House Plan (Active)' : 'Whole House Plan'}
+          </button>
+
           <button
             type="button"
             data-testid="btn-new-house"
             onClick={() => setModalMode('new_house')}
-            className="rounded-lg border border-gold/50 bg-gold/10 px-2.5 py-1 text-xs font-semibold text-gold-light hover:bg-gold/20 transition-colors whitespace-nowrap"
+            className="hidden sm:inline-flex rounded-lg border border-gold/50 bg-gold/10 px-2.5 py-1 text-xs font-semibold text-gold-light hover:bg-gold/20 transition-colors whitespace-nowrap"
           >
             + New House
           </button>
@@ -510,7 +611,7 @@ export function DesignerCanvasApp({
             type="button"
             data-testid="btn-import-scan"
             onClick={() => fileInputRef.current?.click()}
-            className="btn-secondary-sm"
+            className="hidden md:inline-flex btn-secondary-sm"
             title="Import Revit room scan JSON or Canvas Build JSON"
           >
             Import Revit Scan (.json)
@@ -602,24 +703,87 @@ export function DesignerCanvasApp({
       </div>
 
       {/* ================================================================= */}
-      {/* 3-PANE STUDIO BODY                                                */}
+      {/* MOBILE TOUCH TAB BAR (< 1024px Phone & Tablet)                    */}
+      {/* ================================================================= */}
+      <div className="lg:hidden grid grid-cols-3 gap-1 border-b border-bh-border bg-bh-black px-3 py-1.5 shrink-0">
+        <button
+          type="button"
+          data-testid="mobile-tab-house"
+          onClick={() => {
+            setMobileTab('house')
+            setLayoutMode('house')
+          }}
+          className={
+            'min-h-[40px] rounded-lg text-xs font-semibold transition-colors ' +
+            (mobileTab === 'house'
+              ? 'bg-gold text-slate-950 shadow-sm'
+              : 'bg-bh-panel text-slate-300 border border-bh-border')
+          }
+        >
+          House Plan {hasMultipleLevels ? `(L${activeLevel})` : ''}
+        </button>
+        <button
+          type="button"
+          data-testid="mobile-tab-room"
+          onClick={() => {
+            setMobileTab('room')
+            if (layoutMode === 'house') setLayoutMode('elevation')
+          }}
+          className={
+            'min-h-[40px] rounded-lg text-xs font-semibold transition-colors truncate px-1.5 ' +
+            (mobileTab === 'room'
+              ? 'bg-gold text-slate-950 shadow-sm'
+              : 'bg-bh-panel text-slate-300 border border-bh-border')
+          }
+        >
+          Room: {activeRoom.number} {activeRoom.name}
+        </button>
+        <button
+          type="button"
+          data-testid="mobile-tab-bays"
+          onClick={() => setMobileTab('bays')}
+          className={
+            'min-h-[40px] rounded-lg text-xs font-semibold transition-colors ' +
+            (mobileTab === 'bays'
+              ? 'bg-gold text-slate-950 shadow-sm'
+              : 'bg-bh-panel text-slate-300 border border-bh-border')
+          }
+        >
+          Bays &amp; List ({visibleLevelRooms.length})
+        </button>
+      </div>
+
+      {/* ================================================================= */}
+      {/* 3-PANE STUDIO BODY (Responsive Desktop 3-Col / Mobile Full-Pane)  */}
       {/* ================================================================= */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* LEFT PANE (280px): Whole-House Mini-Floorplan, Room List, Shell Builder & Flex Wall */}
-        <aside className="w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-bh-border bg-bh-panel flex flex-col min-h-0">
+        {/* LEFT PANE (280px Desktop; shown inside 'Bays & List' tab on Mobile): Mini-Plan, Room List & Flex Wall */}
+        <aside
+          className={
+            (mobileTab === 'bays' ? 'flex ' : 'hidden lg:flex ') +
+            'w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-bh-border bg-bh-panel flex-col min-h-0'
+          }
+        >
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {/* Interactive Whole-House Mini-Floorplan */}
             <MiniHousePlan
               matrix={matrix}
+              activeLevel={activeLevel}
+              hasMultipleLevels={hasMultipleLevels}
               activeRoomId={activeRoom.id}
               onSelectRoom={handleSelectRoom}
+              onDoubleClickRoom={handleEnterRoomStudio}
+              onOpenWholeHouse={() => {
+                setLayoutMode('house')
+                setMobileTab('house')
+              }}
             />
 
             {/* Room List + Add Room / Edit Shell Action */}
             <div>
               <div className="flex items-center justify-between px-0.5 mb-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Rooms ({matrix.rooms.length})
+                  {hasMultipleLevels ? `L${activeLevel} Rooms (${visibleLevelRooms.length})` : `Rooms (${visibleLevelRooms.length})`}
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -634,7 +798,7 @@ export function DesignerCanvasApp({
               </div>
 
               <div className="space-y-1">
-                {matrix.rooms.map((rm) => {
+                {visibleLevelRooms.map((rm) => {
                   const isActive = rm.id === activeRoom.id
                   const rect = getEffectiveRoomRect(matrix, rm)
                   return (
@@ -643,6 +807,7 @@ export function DesignerCanvasApp({
                       type="button"
                       data-testid={`room-item-${rm.id}`}
                       onClick={() => handleSelectRoom(rm.id)}
+                      onDoubleClick={() => handleEnterRoomStudio(rm.id)}
                       className={
                         'w-full text-left rounded-lg border px-2.5 py-2 transition-colors ' +
                         (isActive
@@ -738,40 +903,73 @@ export function DesignerCanvasApp({
           </div>
         </aside>
 
-        {/* CENTER STAGE (Flex-1): Hardware-Accelerated Elevation + Synced Room Plan */}
-        <ArchitecturalStageSvg
-          matrix={matrix}
-          room={activeRoom}
-          wall={activeWall}
-          theme={theme}
-          layoutMode={layoutMode}
-          showDatums={showDatums}
-          showDimensions={showDimensions}
-          selectedBayId={selectedBayId}
-          onSelectBay={setSelectedBayId}
-          onChangeWall={handleSelectWall}
-          onChangeLayoutMode={setLayoutMode}
-          svgRef={svgRef}
-        />
+        {/* CENTER STAGE (Flex-1): Either Front-and-Center Whole-House Plan OR Room Studio */}
+        <div
+          className={
+            (mobileTab === 'house' || mobileTab === 'room' ? 'flex ' : 'hidden lg:flex ') +
+            'flex-1 flex-col min-w-0 min-h-[68dvh] lg:min-h-0'
+          }
+        >
+          {layoutMode === 'house' ? (
+            <WholeHouseStageSvg
+              matrix={matrix}
+              activeLevel={activeLevel}
+              hasMultipleLevels={hasMultipleLevels}
+              activeRoomId={activeRoom.id}
+              theme={theme}
+              layoutMode={layoutMode}
+              showDimensions={showDimensions}
+              onSelectLevel={handleSelectLevel}
+              onSelectRoom={handleSelectRoom}
+              onEnterRoomStudio={handleEnterRoomStudio}
+              onChangeLayoutMode={(nextMode) => {
+                setLayoutMode(nextMode)
+                if (nextMode !== 'house') setMobileTab('room')
+              }}
+              onNudgeFlexWall={handleNudgeFlexWallById}
+              svgRef={svgRef}
+            />
+          ) : (
+            <ArchitecturalStageSvg
+              matrix={matrix}
+              room={activeRoom}
+              wall={activeWall}
+              theme={theme}
+              layoutMode={layoutMode}
+              showDatums={showDatums}
+              showDimensions={showDimensions}
+              selectedBayId={selectedBayId}
+              onSelectBay={setSelectedBayId}
+              onChangeWall={handleSelectWall}
+              onChangeLayoutMode={(nextMode) => {
+                setLayoutMode(nextMode)
+                if (nextMode === 'house') setMobileTab('house')
+              }}
+              svgRef={svgRef}
+            />
+          )}
+        </div>
 
-        {/* RIGHT PANE (320px): Parametric Bay Inspector, Live Checks & Instant Design Bar */}
-        <BayInspector
-          room={activeRoom}
-          wall={activeWall}
-          selectedBay={selectedBay}
-          checks={roomChecks}
-          lastCommandFeedback={feedback}
-          onSelectBay={setSelectedBayId}
-          onUpdateBay={handleUpdateBay}
-          onChangeBayKind={handleChangeBayKind}
-          onMoveBay={handleMoveBay}
-          onDuplicateBay={handleDuplicateBay}
-          onDeleteBay={handleDeleteBay}
-          onAddBay={handleAddBay}
-          onSymmetrizeWall={handleSymmetrize}
-          onChangeRoomStatus={handleChangeRoomStatus}
-          onRunQuickCommand={handleRunQuickCommand}
-        />
+        {/* RIGHT PANE (320px Desktop; shown inside 'Bays & List' tab on Mobile): Parametric Bay Inspector */}
+        <div className={mobileTab === 'bays' ? 'block w-full lg:w-auto' : 'hidden lg:block'}>
+          <BayInspector
+            room={activeRoom}
+            wall={activeWall}
+            selectedBay={selectedBay}
+            checks={roomChecks}
+            lastCommandFeedback={feedback}
+            onSelectBay={setSelectedBayId}
+            onUpdateBay={handleUpdateBay}
+            onChangeBayKind={handleChangeBayKind}
+            onMoveBay={handleMoveBay}
+            onDuplicateBay={handleDuplicateBay}
+            onDeleteBay={handleDeleteBay}
+            onAddBay={handleAddBay}
+            onSymmetrizeWall={handleSymmetrize}
+            onChangeRoomStatus={handleChangeRoomStatus}
+            onRunQuickCommand={handleRunQuickCommand}
+          />
+        </div>
       </div>
 
       {/* Add Room / Edit Shell / New House Modal */}

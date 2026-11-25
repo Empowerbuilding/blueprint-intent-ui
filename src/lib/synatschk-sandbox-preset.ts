@@ -1,118 +1,210 @@
-// Auto-generated from live Revit Sandbox Scan (Read-Only)
+// Auto-generated unified Two-Story Sandbox HouseMatrix (L1 + L2)
 import type { HouseMatrix } from "./canvas-matrix"
 
-export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
-  "projectId": "sandbox-two-story-l1",
-  "projectName": "Synatschk Sandbox \u2014 Level 1 (2,227 sf \u00b7 15 Rooms)",
-  "stageLabel": "Sandbox D2 Matrix \u00b7 Level 1.0 (10 Flex Partitions \u00b7 42 Walls)",
+export const SYNATSCHK_TWO_STORY_SANDBOX: HouseMatrix = {
+  "projectId": "sandbox-two-story",
+  "projectName": "Synatschk Sandbox \u2014 Two-Story (3,120 sf \u00b7 L1 + L2)",
+  "stageLabel": "Sandbox D2 Matrix \u00b7 L1 (15 Rooms) + L2 (8 Rooms + Loft)",
   "flexWalls": {
     "fw-l1-5955643": {
       "id": "fw-l1-5955643",
-      "label": "Master Bedroom \u2194 Master Bath (17'-0\")",
+      "label": "Master Bedroom <-> Master Bath (17'-0\")",
       "roomAId": "112",
       "roomBId": "113",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5964196": {
       "id": "fw-l1-5964196",
-      "label": "Master Bath \u2194 Storage (16'-0\")",
+      "label": "Master Bath <-> Storage (16'-0\")",
       "roomAId": "113",
       "roomBId": "103",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5964317": {
       "id": "fw-l1-5964317",
-      "label": "Bath 2 \u2194 Bed 2 (12'-1\")",
+      "label": "Bath 2 <-> Bed 2 (12'-1\")",
       "roomAId": "110",
       "roomBId": "111",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5968133": {
       "id": "fw-l1-5968133",
-      "label": "Bath 2 \u2194 Mud Hall & Lockers (21'-4.5\")",
+      "label": "Bath 2 <-> Mud Hall & Lockers (21'-4.5\")",
       "roomAId": "110",
       "roomBId": "118",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5968295": {
       "id": "fw-l1-5968295",
-      "label": "Butler's Pantry \u2194 Kitchen (12'-1\")",
+      "label": "Butler's Pantry <-> Kitchen (12'-1\")",
       "roomAId": "107",
       "roomBId": "106",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5968759": {
       "id": "fw-l1-5968759",
-      "label": "Bed 2 \u2194 Butler's Pantry (12'-1\")",
+      "label": "Bed 2 <-> Butler's Pantry (12'-1\")",
       "roomAId": "111",
       "roomBId": "107",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5974780": {
       "id": "fw-l1-5974780",
-      "label": "Master Closet \u2194 Great Room (6'-2\")",
+      "label": "Master Closet <-> Great Room (6'-2\")",
       "roomAId": "114",
       "roomBId": "104",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5974883": {
       "id": "fw-l1-5974883",
-      "label": "Master Closet \u2194 Master Bath (12'-11.5\")",
+      "label": "Master Closet <-> Master Bath (12'-11.5\")",
       "roomAId": "114",
       "roomBId": "113",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5979108": {
       "id": "fw-l1-5979108",
-      "label": "Mud Hall & Lockers \u2194 Master Bedroom (15'-4\")",
+      "label": "Mud Hall & Lockers <-> Master Bedroom (15'-4\")",
       "roomAId": "118",
       "roomBId": "112",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-5996742": {
       "id": "fw-l1-5996742",
-      "label": "Butler's Pantry \u2194 Hall Closet (4'-11\")",
+      "label": "Butler's Pantry <-> Hall Closet (4'-11\")",
       "roomAId": "107",
       "roomBId": "120",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-6012573": {
       "id": "fw-l1-6012573",
-      "label": "Laundry \u2194 Bath 2 (12'-1\")",
+      "label": "Laundry <-> Bath 2 (12'-1\")",
       "roomAId": "109",
       "roomBId": "110",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
     },
     "fw-l1-6020381": {
       "id": "fw-l1-6020381",
-      "label": "Storage \u2194 Foyer & Coats (5'-2\")",
+      "label": "Storage <-> Foyer & Coats (5'-2\")",
       "roomAId": "103",
       "roomBId": "101",
       "nudgeIn": 0,
       "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      "studThicknessIn": 4.5,
+      "level": 1
+    },
+    "fw-l2-5981062": {
+      "id": "fw-l2-5981062",
+      "label": "Bed 3 <-> Loft (33'-8\")",
+      "roomAId": "202",
+      "roomBId": "201",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
+    },
+    "fw-l2-5981124": {
+      "id": "fw-l2-5981124",
+      "label": "Bath 3 <-> Bed 3 (16'-2\")",
+      "roomAId": "203",
+      "roomBId": "202",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
+    },
+    "fw-l2-5981229": {
+      "id": "fw-l2-5981229",
+      "label": "Bed 4 <-> Bath 3 (16'-2\")",
+      "roomAId": "205",
+      "roomBId": "203",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
+    },
+    "fw-l2-5981523": {
+      "id": "fw-l2-5981523",
+      "label": "Bath 3 <-> WIC 3 (Bed 3) (6'-0\")",
+      "roomAId": "203",
+      "roomBId": "204",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
+    },
+    "fw-l2-6001155": {
+      "id": "fw-l2-6001155",
+      "label": "Bath 4 <-> WIC 4 (Bed 4) (12'-1.5\")",
+      "roomAId": "206",
+      "roomBId": "207",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
+    },
+    "fw-l2-6003475": {
+      "id": "fw-l2-6003475",
+      "label": "WIC 4 (Bed 4) <-> Loft Closet (7'-10\")",
+      "roomAId": "207",
+      "roomBId": "209",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
+    },
+    "fw-l2-6019535": {
+      "id": "fw-l2-6019535",
+      "label": "Bath 3 <-> Bed 3 (2'-10.5\")",
+      "roomAId": "203",
+      "roomBId": "202",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
+    },
+    "fw-l2-6019636": {
+      "id": "fw-l2-6019636",
+      "label": "Bed 4 <-> Bath 3 (2'-10.5\")",
+      "roomAId": "205",
+      "roomBId": "203",
+      "nudgeIn": 0,
+      "maxNudgeIn": 6,
+      "studThicknessIn": 4.5,
+      "level": 2
     }
   },
   "rooms": [
@@ -120,7 +212,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "id": "101",
       "number": "101",
       "name": "Foyer & Coats",
-      "subtitle": "10'-0\" Flat Clg \u00b7 Bench, Hooks & Coat Closet",
+      "subtitle": "10'-0\" Flat Clg | Bench, Hooks & Coat Closet",
       "status": "draft",
       "planRect": {
         "xIn": 357.5,
@@ -129,7 +221,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 54.0
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (14'-4.5\" \u00d7 4'-6\" \u00b7 64.7 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (14'-4.5\" x 4'-6\" | 64.7 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -147,7 +239,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Foyer & Coats \u2014 North Wall (14'-4.5\")",
+          "title": "Foyer & Coats - North Wall (14'-4.5\")",
           "clearWidthIn": 172.6,
           "ceilingHeightIn": 120,
           "bays": [
@@ -162,7 +254,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=72\" \u00b7 H=96\" \u00b7 D=6\""
+              "revitParams": "W=72\" | H=96\" | D=6\""
             }
           ],
           "autoCenter": true,
@@ -171,7 +263,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Foyer & Coats \u2014 East Wall (4'-6\")",
+          "title": "Foyer & Coats - East Wall (4'-6\")",
           "clearWidthIn": 54.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -181,7 +273,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Foyer & Coats \u2014 South Wall (14'-4.5\")",
+          "title": "Foyer & Coats - South Wall (14'-4.5\")",
           "clearWidthIn": 172.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -191,7 +283,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Foyer & Coats \u2014 West Wall (4'-6\")",
+          "title": "Foyer & Coats - West Wall (4'-6\")",
           "clearWidthIn": 54.0,
           "ceilingHeightIn": 120,
           "bays": [
@@ -206,7 +298,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=84\" \u00b7 D=18\""
+              "revitParams": "W=48\" | H=84\" | D=18\""
             }
           ],
           "autoCenter": true,
@@ -270,13 +362,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-6020381",
         "role": "shift_west"
-      }
+      },
+      "level": 1
     },
     {
       "id": "103",
       "number": "103",
       "name": "Storage",
-      "subtitle": "10'-0\" Flat Clg \u00b7 Shelving",
+      "subtitle": "10'-0\" Flat Clg | Shelving",
       "status": "draft",
       "planRect": {
         "xIn": 291.8,
@@ -285,7 +378,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 54.0
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (5'-1\" \u00d7 4'-6\" \u00b7 22.9 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (5'-1\" x 4'-6\" | 22.9 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -303,7 +396,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Storage \u2014 North Wall (5'-1\")",
+          "title": "Storage - North Wall (5'-1\")",
           "clearWidthIn": 61.1,
           "ceilingHeightIn": 120,
           "bays": [
@@ -318,7 +411,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=54\" \u00b7 H=96\" \u00b7 D=16\""
+              "revitParams": "W=54\" | H=96\" | D=16\""
             }
           ],
           "autoCenter": true,
@@ -327,7 +420,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Storage \u2014 East Wall (4'-6\")",
+          "title": "Storage - East Wall (4'-6\")",
           "clearWidthIn": 54.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -337,7 +430,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Storage \u2014 South Wall (5'-1\")",
+          "title": "Storage - South Wall (5'-1\")",
           "clearWidthIn": 61.1,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -347,7 +440,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Storage \u2014 West Wall (4'-6\")",
+          "title": "Storage - West Wall (4'-6\")",
           "clearWidthIn": 54.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -372,13 +465,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5964196",
         "role": "shift_west"
-      }
+      },
+      "level": 1
     },
     {
       "id": "104",
       "number": "104",
       "name": "Great Room",
-      "subtitle": "20'-0\" Double-Height Open to Loft \u00b7 Wood Grain Tile",
+      "subtitle": "20'-0\" Double-Height Open to Loft | Wood Grain Tile",
       "status": "draft",
       "planRect": {
         "xIn": 333.5,
@@ -387,7 +481,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 255.5
       },
       "ceilingHeightIn": 240,
-      "ceilingLabel": "20'-0\" Ceiling (31'-6.5\" \u00d7 21'-3.5\" \u00b7 671.5 sf)",
+      "ceilingLabel": "20'-0\" Ceiling (31'-6.5\" x 21'-3.5\" | 671.5 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -405,7 +499,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Great Room \u2014 North Wall (31'-6.5\")",
+          "title": "Great Room - North Wall (31'-6.5\")",
           "clearWidthIn": 378.5,
           "ceilingHeightIn": 240,
           "bays": [
@@ -420,7 +514,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=66\" \u00b7 H=96\" \u00b7 D=18\""
+              "revitParams": "W=66\" | H=96\" | D=18\""
             },
             {
               "id": "bay-104-N-2",
@@ -433,7 +527,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=70\" \u00b7 H=240\" \u00b7 D=24\""
+              "revitParams": "W=70\" | H=240\" | D=24\""
             },
             {
               "id": "bay-104-N-3",
@@ -446,7 +540,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=66\" \u00b7 H=96\" \u00b7 D=18\""
+              "revitParams": "W=66\" | H=96\" | D=18\""
             }
           ],
           "autoCenter": true,
@@ -455,7 +549,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Great Room \u2014 East Wall (21'-3.5\")",
+          "title": "Great Room - East Wall (21'-3.5\")",
           "clearWidthIn": 255.5,
           "ceilingHeightIn": 240,
           "bays": [],
@@ -465,7 +559,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Great Room \u2014 South Wall (31'-6.5\")",
+          "title": "Great Room - South Wall (31'-6.5\")",
           "clearWidthIn": 378.5,
           "ceilingHeightIn": 240,
           "bays": [],
@@ -475,7 +569,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Great Room \u2014 West Wall (21'-3.5\")",
+          "title": "Great Room - West Wall (21'-3.5\")",
           "clearWidthIn": 255.5,
           "ceilingHeightIn": 240,
           "bays": [],
@@ -524,7 +618,8 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5974780",
         "role": "shift_west"
-      }
+      },
+      "level": 1
     },
     {
       "id": "105",
@@ -539,7 +634,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 205.2
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (11'-4\" \u00d7 17'-1\" \u00b7 193.7 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (11'-4\" x 17'-1\" | 193.7 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -557,7 +652,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Dining \u2014 North Wall (11'-4\")",
+          "title": "Dining - North Wall (11'-4\")",
           "clearWidthIn": 136.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -567,7 +662,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Dining \u2014 East Wall (17'-1\")",
+          "title": "Dining - East Wall (17'-1\")",
           "clearWidthIn": 205.2,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -577,7 +672,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Dining \u2014 South Wall (11'-4\")",
+          "title": "Dining - South Wall (11'-4\")",
           "clearWidthIn": 136.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -587,7 +682,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Dining \u2014 West Wall (17'-1\")",
+          "title": "Dining - West Wall (17'-1\")",
           "clearWidthIn": 205.2,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -612,13 +707,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
           "kind": "window",
           "swing": "none"
         }
-      ]
+      ],
+      "level": 1
     },
     {
       "id": "106",
       "number": "106",
       "name": "Kitchen",
-      "subtitle": "10'-0\" Clg \u00b7 6'-0\" Wood-Wrap Island + Built-In Hood Run",
+      "subtitle": "10'-0\" Clg | 6'-0\" Wood-Wrap Island + Built-In Hood Run",
       "status": "draft",
       "planRect": {
         "xIn": 341.5,
@@ -627,7 +723,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 140.5
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (19'-6.5\" \u00d7 11'-8.5\" \u00b7 228.8 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (19'-6.5\" x 11'-8.5\" | 228.8 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -645,7 +741,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Kitchen \u2014 North Wall (19'-6.5\")",
+          "title": "Kitchen - North Wall (19'-6.5\")",
           "clearWidthIn": 234.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -655,7 +751,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Kitchen \u2014 East Wall (11'-8.5\")",
+          "title": "Kitchen - East Wall (11'-8.5\")",
           "clearWidthIn": 140.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -665,7 +761,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Kitchen \u2014 South Wall (19'-6.5\")",
+          "title": "Kitchen - South Wall (19'-6.5\")",
           "clearWidthIn": 234.5,
           "ceilingHeightIn": 120,
           "bays": [
@@ -680,7 +776,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=36\" \u00b7 H=108\" \u00b7 D=24\""
+              "revitParams": "W=36\" | H=108\" | D=24\""
             },
             {
               "id": "bay-106-S-2",
@@ -693,7 +789,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=36\" \u00b7 D=24\""
+              "revitParams": "W=48\" | H=36\" | D=24\""
             },
             {
               "id": "bay-106-S-3",
@@ -707,7 +803,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasSconces": false,
               "hoodWidthIn": 48,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=108\" \u00b7 D=26\""
+              "revitParams": "W=48\" | H=108\" | D=26\""
             },
             {
               "id": "bay-106-S-4",
@@ -720,7 +816,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=36\" \u00b7 D=24\""
+              "revitParams": "W=48\" | H=36\" | D=24\""
             }
           ],
           "autoCenter": true,
@@ -729,7 +825,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Kitchen \u2014 West Wall (11'-8.5\")",
+          "title": "Kitchen - West Wall (11'-8.5\")",
           "clearWidthIn": 140.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -761,13 +857,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5968295",
         "role": "shift_west"
-      }
+      },
+      "level": 1
     },
     {
       "id": "107",
       "number": "107",
       "name": "Butler's Pantry",
-      "subtitle": "10'-0\" Clg \u00b7 Butler's Style Build-Out + MW",
+      "subtitle": "10'-0\" Clg | Butler's Style Build-Out + MW",
       "status": "draft",
       "planRect": {
         "xIn": 282.6,
@@ -776,7 +873,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 92.5
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (4'-6.5\" \u00d7 7'-8.5\" \u00b7 34.9 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (4'-6.5\" x 7'-8.5\" | 34.9 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -794,7 +891,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Butler's Pantry \u2014 North Wall (4'-6.5\")",
+          "title": "Butler's Pantry - North Wall (4'-6.5\")",
           "clearWidthIn": 54.4,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -804,7 +901,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Butler's Pantry \u2014 East Wall (7'-8.5\")",
+          "title": "Butler's Pantry - East Wall (7'-8.5\")",
           "clearWidthIn": 92.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -818,7 +915,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Butler's Pantry \u2014 South Wall (4'-6.5\")",
+          "title": "Butler's Pantry - South Wall (4'-6.5\")",
           "clearWidthIn": 54.4,
           "ceilingHeightIn": 120,
           "bays": [
@@ -833,7 +930,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=54\" \u00b7 H=108\" \u00b7 D=24\""
+              "revitParams": "W=54\" | H=108\" | D=24\""
             }
           ],
           "autoCenter": true,
@@ -842,7 +939,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Butler's Pantry \u2014 West Wall (7'-8.5\")",
+          "title": "Butler's Pantry - West Wall (7'-8.5\")",
           "clearWidthIn": 92.5,
           "ceilingHeightIn": 120,
           "bays": [
@@ -857,7 +954,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=84\" \u00b7 H=108\" \u00b7 D=18\""
+              "revitParams": "W=84\" | H=108\" | D=18\""
             }
           ],
           "autoCenter": true,
@@ -885,7 +982,8 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5968295",
         "role": "expand_east"
-      }
+      },
+      "level": 1
     },
     {
       "id": "108",
@@ -900,7 +998,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 190.8
       },
       "ceilingHeightIn": 240,
-      "ceilingLabel": "20'-0\" Ceiling (8'-0.5\" \u00d7 15'-11\" \u00b7 128.2 sf)",
+      "ceilingLabel": "20'-0\" Ceiling (8'-0.5\" x 15'-11\" | 128.2 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -918,7 +1016,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Stairs & Wet Bar \u2014 North Wall (8'-0.5\")",
+          "title": "Stairs & Wet Bar - North Wall (8'-0.5\")",
           "clearWidthIn": 96.7,
           "ceilingHeightIn": 240,
           "bays": [],
@@ -928,7 +1026,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Stairs & Wet Bar \u2014 East Wall (15'-11\")",
+          "title": "Stairs & Wet Bar - East Wall (15'-11\")",
           "clearWidthIn": 190.8,
           "ceilingHeightIn": 240,
           "bays": [],
@@ -938,7 +1036,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Stairs & Wet Bar \u2014 South Wall (8'-0.5\")",
+          "title": "Stairs & Wet Bar - South Wall (8'-0.5\")",
           "clearWidthIn": 96.7,
           "ceilingHeightIn": 240,
           "bays": [],
@@ -948,7 +1046,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Stairs & Wet Bar \u2014 West Wall (15'-11\")",
+          "title": "Stairs & Wet Bar - West Wall (15'-11\")",
           "clearWidthIn": 190.8,
           "ceilingHeightIn": 240,
           "bays": [
@@ -963,7 +1061,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": true,
               "hasSconces": true,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=96\" \u00b7 H=96\" \u00b7 D=24\""
+              "revitParams": "W=96\" | H=96\" | D=24\""
             }
           ],
           "autoCenter": true,
@@ -979,13 +1077,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
           "kind": "door",
           "swing": "in-left"
         }
-      ]
+      ],
+      "level": 1
     },
     {
       "id": "109",
       "number": "109",
       "name": "Laundry",
-      "subtitle": "10'-0\" Clg \u00b7 W/D Lifted 18\" + Vanity-Style Sink + Rod",
+      "subtitle": "10'-0\" Clg | W/D Lifted 18\" + Vanity-Style Sink + Rod",
       "status": "draft",
       "planRect": {
         "xIn": 4.0,
@@ -994,7 +1093,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 136.0
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (6'-4.5\" \u00d7 11'-4\" \u00b7 72.1 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (6'-4.5\" x 11'-4\" | 72.1 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1012,7 +1111,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Laundry \u2014 North Wall (6'-4.5\")",
+          "title": "Laundry - North Wall (6'-4.5\")",
           "clearWidthIn": 76.3,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1022,7 +1121,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Laundry \u2014 East Wall (11'-4\")",
+          "title": "Laundry - East Wall (11'-4\")",
           "clearWidthIn": 136.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1036,7 +1135,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Laundry \u2014 South Wall (6'-4.5\")",
+          "title": "Laundry - South Wall (6'-4.5\")",
           "clearWidthIn": 76.3,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1051,7 +1150,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": true,
               "hasSconces": true,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=42\" \u00b7 H=36\" \u00b7 D=22\""
+              "revitParams": "W=42\" | H=36\" | D=22\""
             }
           ],
           "autoCenter": true,
@@ -1060,7 +1159,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Laundry \u2014 West Wall (11'-4\")",
+          "title": "Laundry - West Wall (11'-4\")",
           "clearWidthIn": 136.0,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1075,7 +1174,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=66\" \u00b7 H=96\" \u00b7 D=30\""
+              "revitParams": "W=66\" | H=96\" | D=30\""
             },
             {
               "id": "bay-109-W-2",
@@ -1088,7 +1187,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=60\" \u00b7 H=96\" \u00b7 D=24\""
+              "revitParams": "W=60\" | H=96\" | D=24\""
             }
           ],
           "autoCenter": true,
@@ -1108,13 +1207,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-6012573",
         "role": "expand_east"
-      }
+      },
+      "level": 1
     },
     {
       "id": "110",
       "number": "110",
       "name": "Bath 2",
-      "subtitle": "10'-0\" Clg \u00b7 Vanity, WC & Sliding-Glass Tile Shower w/ Niche",
+      "subtitle": "10'-0\" Clg | Vanity, WC & Sliding-Glass Tile Shower w/ Niche",
       "status": "draft",
       "planRect": {
         "xIn": 84.8,
@@ -1123,7 +1223,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 138.6
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (5'-5\" \u00d7 11'-6.5\" \u00b7 62.5 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (5'-5\" x 11'-6.5\" | 62.5 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1141,7 +1241,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Bath 2 \u2014 North Wall (5'-5\")",
+          "title": "Bath 2 - North Wall (5'-5\")",
           "clearWidthIn": 64.9,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1151,7 +1251,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Bath 2 \u2014 East Wall (11'-6.5\")",
+          "title": "Bath 2 - East Wall (11'-6.5\")",
           "clearWidthIn": 138.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1165,7 +1265,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Bath 2 \u2014 South Wall (5'-5\")",
+          "title": "Bath 2 - South Wall (5'-5\")",
           "clearWidthIn": 64.9,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1180,7 +1280,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=60\" \u00b7 H=96\" \u00b7 D=36\""
+              "revitParams": "W=60\" | H=96\" | D=36\""
             }
           ],
           "autoCenter": true,
@@ -1189,7 +1289,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Bath 2 \u2014 West Wall (11'-6.5\")",
+          "title": "Bath 2 - West Wall (11'-6.5\")",
           "clearWidthIn": 138.6,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1204,7 +1304,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": true,
               "hasSconces": true,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=36\" \u00b7 H=36\" \u00b7 D=22\""
+              "revitParams": "W=36\" | H=36\" | D=22\""
             },
             {
               "id": "bay-110-W-2",
@@ -1217,7 +1317,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=32\" \u00b7 H=36\" \u00b7 D=28\""
+              "revitParams": "W=32\" | H=36\" | D=28\""
             }
           ],
           "autoCenter": true,
@@ -1253,13 +1353,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5964317",
         "role": "expand_east"
-      }
+      },
+      "level": 1
     },
     {
       "id": "111",
       "number": "111",
       "name": "Bed 2",
-      "subtitle": "10'-0\" Clg \u00b7 Reach-In Bench + Hanging Closet",
+      "subtitle": "10'-0\" Clg | Reach-In Bench + Hanging Closet",
       "status": "draft",
       "planRect": {
         "xIn": 154.3,
@@ -1268,7 +1369,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 138.6
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (10'-3.5\" \u00d7 11'-6.5\" \u00b7 119.1 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (10'-3.5\" x 11'-6.5\" | 119.1 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1286,7 +1387,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Bed 2 \u2014 North Wall (10'-3.5\")",
+          "title": "Bed 2 - North Wall (10'-3.5\")",
           "clearWidthIn": 123.7,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1301,7 +1402,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=72\" \u00b7 H=96\" \u00b7 D=24\""
+              "revitParams": "W=72\" | H=96\" | D=24\""
             }
           ],
           "autoCenter": true,
@@ -1310,7 +1411,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Bed 2 \u2014 East Wall (11'-6.5\")",
+          "title": "Bed 2 - East Wall (11'-6.5\")",
           "clearWidthIn": 138.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1320,7 +1421,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Bed 2 \u2014 South Wall (10'-3.5\")",
+          "title": "Bed 2 - South Wall (10'-3.5\")",
           "clearWidthIn": 123.7,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1330,7 +1431,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Bed 2 \u2014 West Wall (11'-6.5\")",
+          "title": "Bed 2 - West Wall (11'-6.5\")",
           "clearWidthIn": 138.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1379,13 +1480,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5964317",
         "role": "shift_west"
-      }
+      },
+      "level": 1
     },
     {
       "id": "112",
       "number": "112",
       "name": "Master Bedroom",
-      "subtitle": "10'-0\" Flat Clg \u00b7 Built-In Tall Cab & Shelves",
+      "subtitle": "10'-0\" Flat Clg | Built-In Tall Cab & Shelves",
       "status": "draft",
       "planRect": {
         "xIn": 4.0,
@@ -1394,7 +1496,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 181.0
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (14'-9.5\" \u00d7 15'-1\" \u00b7 223.2 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (14'-9.5\" x 15'-1\" | 223.2 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1412,7 +1514,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Master Bedroom \u2014 North Wall (14'-9.5\")",
+          "title": "Master Bedroom - North Wall (14'-9.5\")",
           "clearWidthIn": 177.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1422,7 +1524,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Master Bedroom \u2014 East Wall (15'-1\")",
+          "title": "Master Bedroom - East Wall (15'-1\")",
           "clearWidthIn": 181.0,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1437,7 +1539,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=120\" \u00b7 D=18\""
+              "revitParams": "W=48\" | H=120\" | D=18\""
             }
           ],
           "autoCenter": true,
@@ -1450,7 +1552,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Master Bedroom \u2014 South Wall (14'-9.5\")",
+          "title": "Master Bedroom - South Wall (14'-9.5\")",
           "clearWidthIn": 177.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1460,7 +1562,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Master Bedroom \u2014 West Wall (15'-1\")",
+          "title": "Master Bedroom - West Wall (15'-1\")",
           "clearWidthIn": 181.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1513,13 +1615,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5955643",
         "role": "expand_east"
-      }
+      },
+      "level": 1
     },
     {
       "id": "113",
       "number": "113",
       "name": "Master Bath",
-      "subtitle": "10'-0\" Clg \u00b7 Floor-Standing Double Vanity + Glass Shower",
+      "subtitle": "10'-0\" Clg | Floor-Standing Double Vanity + Glass Shower",
       "status": "draft",
       "planRect": {
         "xIn": 186.0,
@@ -1528,7 +1631,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 186.0
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (8'-5.5\" \u00d7 15'-6\" \u00b7 130.8 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (8'-5.5\" x 15'-6\" | 130.8 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1546,7 +1649,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Master Bath \u2014 North Wall (8'-5.5\")",
+          "title": "Master Bath - North Wall (8'-5.5\")",
           "clearWidthIn": 101.3,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1561,7 +1664,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=96\" \u00b7 H=108\" \u00b7 D=54\""
+              "revitParams": "W=96\" | H=108\" | D=54\""
             }
           ],
           "autoCenter": true,
@@ -1570,7 +1673,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Master Bath \u2014 East Wall (15'-6\")",
+          "title": "Master Bath - East Wall (15'-6\")",
           "clearWidthIn": 186.0,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1585,7 +1688,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": true,
               "hasSconces": true,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=84\" \u00b7 H=36\" \u00b7 D=22\""
+              "revitParams": "W=84\" | H=36\" | D=22\""
             }
           ],
           "autoCenter": true,
@@ -1594,7 +1697,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Master Bath \u2014 South Wall (8'-5.5\")",
+          "title": "Master Bath - South Wall (8'-5.5\")",
           "clearWidthIn": 101.3,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1609,7 +1712,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=36\" \u00b7 H=36\" \u00b7 D=28\""
+              "revitParams": "W=36\" | H=36\" | D=28\""
             }
           ],
           "autoCenter": true,
@@ -1618,7 +1721,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Master Bath \u2014 West Wall (15'-6\")",
+          "title": "Master Bath - West Wall (15'-6\")",
           "clearWidthIn": 186.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1651,13 +1754,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5955643",
         "role": "shift_west"
-      }
+      },
+      "level": 1
     },
     {
       "id": "114",
       "number": "114",
       "name": "Master Closet",
-      "subtitle": "10'-0\" Clg \u00b7 Built-Ins, Double/Long Hang, Cubbies & Drawers",
+      "subtitle": "10'-0\" Clg | Built-Ins, Double/Long Hang, Cubbies & Drawers",
       "status": "draft",
       "planRect": {
         "xIn": 186.0,
@@ -1666,7 +1770,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 69.5
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (12'-7\" \u00d7 5'-9.5\" \u00b7 72.8 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (12'-7\" x 5'-9.5\" | 72.8 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1684,7 +1788,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Master Closet \u2014 North Wall (12'-7\")",
+          "title": "Master Closet - North Wall (12'-7\")",
           "clearWidthIn": 151.0,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1699,7 +1803,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=96\" \u00b7 H=96\" \u00b7 D=24\""
+              "revitParams": "W=96\" | H=96\" | D=24\""
             },
             {
               "id": "bay-114-N-2",
@@ -1712,7 +1816,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=96\" \u00b7 D=20\""
+              "revitParams": "W=48\" | H=96\" | D=20\""
             }
           ],
           "autoCenter": true,
@@ -1721,7 +1825,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Master Closet \u2014 East Wall (5'-9.5\")",
+          "title": "Master Closet - East Wall (5'-9.5\")",
           "clearWidthIn": 69.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1735,7 +1839,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Master Closet \u2014 South Wall (12'-7\")",
+          "title": "Master Closet - South Wall (12'-7\")",
           "clearWidthIn": 151.0,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1750,7 +1854,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=144\" \u00b7 H=96\" \u00b7 D=24\""
+              "revitParams": "W=144\" | H=96\" | D=24\""
             }
           ],
           "autoCenter": true,
@@ -1759,7 +1863,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Master Closet \u2014 West Wall (5'-9.5\")",
+          "title": "Master Closet - West Wall (5'-9.5\")",
           "clearWidthIn": 69.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1780,13 +1884,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l1-5974780",
         "role": "expand_east"
-      }
+      },
+      "level": 1
     },
     {
       "id": "118",
       "number": "118",
       "name": "Mud Hall & Lockers",
-      "subtitle": "10'-0\" Clg \u00b7 Inspo Bench/Hooks + Tall Broom Cabinet",
+      "subtitle": "10'-0\" Clg | Inspo Bench/Hooks + Tall Broom Cabinet",
       "status": "draft",
       "planRect": {
         "xIn": 4.0,
@@ -1795,7 +1900,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 74.5
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (27'-5.5\" \u00d7 6'-2.5\" \u00b7 170.5 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (27'-5.5\" x 6'-2.5\" | 170.5 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1813,7 +1918,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Mud Hall & Lockers \u2014 North Wall (27'-5.5\")",
+          "title": "Mud Hall & Lockers - North Wall (27'-5.5\")",
           "clearWidthIn": 329.5,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1828,7 +1933,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=90\" \u00b7 H=108\" \u00b7 D=20\""
+              "revitParams": "W=90\" | H=108\" | D=20\""
             },
             {
               "id": "bay-118-N-2",
@@ -1841,7 +1946,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=30\" \u00b7 H=108\" \u00b7 D=20\""
+              "revitParams": "W=30\" | H=108\" | D=20\""
             }
           ],
           "autoCenter": true,
@@ -1850,7 +1955,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Mud Hall & Lockers \u2014 East Wall (6'-2.5\")",
+          "title": "Mud Hall & Lockers - East Wall (6'-2.5\")",
           "clearWidthIn": 74.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1860,7 +1965,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Mud Hall & Lockers \u2014 South Wall (27'-5.5\")",
+          "title": "Mud Hall & Lockers - South Wall (27'-5.5\")",
           "clearWidthIn": 329.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1870,7 +1975,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Mud Hall & Lockers \u2014 West Wall (6'-2.5\")",
+          "title": "Mud Hall & Lockers - West Wall (6'-2.5\")",
           "clearWidthIn": 74.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1895,13 +2000,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
           "kind": "door",
           "swing": "in-left"
         }
-      ]
+      ],
+      "level": 1
     },
     {
       "id": "120",
       "number": "120",
       "name": "Hall Closet",
-      "subtitle": "10'-0\" Clg \u00b7 Accent Wood Floor Piece",
+      "subtitle": "10'-0\" Clg | Accent Wood Floor Piece",
       "status": "draft",
       "planRect": {
         "xIn": 282.6,
@@ -1910,7 +2016,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         "depthIn": 41.6
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (4'-6.5\" \u00d7 3'-5.5\" \u00b7 15.7 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (4'-6.5\" x 3'-5.5\" | 15.7 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -1928,7 +2034,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Hall Closet \u2014 North Wall (4'-6.5\")",
+          "title": "Hall Closet - North Wall (4'-6.5\")",
           "clearWidthIn": 54.4,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1938,7 +2044,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Hall Closet \u2014 East Wall (3'-5.5\")",
+          "title": "Hall Closet - East Wall (3'-5.5\")",
           "clearWidthIn": 41.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1948,7 +2054,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Hall Closet \u2014 South Wall (4'-6.5\")",
+          "title": "Hall Closet - South Wall (4'-6.5\")",
           "clearWidthIn": 54.4,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -1958,7 +2064,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Hall Closet \u2014 West Wall (3'-5.5\")",
+          "title": "Hall Closet - West Wall (3'-5.5\")",
           "clearWidthIn": 41.6,
           "ceilingHeightIn": 120,
           "bays": [
@@ -1973,7 +2079,7 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=42\" \u00b7 H=96\" \u00b7 D=18\""
+              "revitParams": "W=42\" | H=96\" | D=18\""
             }
           ],
           "autoCenter": true,
@@ -1989,95 +2095,14 @@ export const SYNATSCHK_SANDBOX_L1_MATRIX: HouseMatrix = {
           "kind": "door",
           "swing": "in-left"
         }
-      ]
-    }
-  ]
-} as HouseMatrix
-
-export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
-  "projectId": "sandbox-two-story-l2",
-  "projectName": "Synatschk Sandbox \u2014 Level 2 (893 sf \u00b7 8 Rooms + Loft)",
-  "stageLabel": "Sandbox D2 Matrix \u00b7 Level 2.0 (7 Flex Partitions \u00b7 Open Void & Balcony)",
-  "flexWalls": {
-    "fw-l2-5981062": {
-      "id": "fw-l2-5981062",
-      "label": "Bed 3 \u2194 Loft (33'-8\")",
-      "roomAId": "202",
-      "roomBId": "201",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
+      ],
+      "level": 1
     },
-    "fw-l2-5981124": {
-      "id": "fw-l2-5981124",
-      "label": "Bath 3 \u2194 Bed 3 (16'-2\")",
-      "roomAId": "203",
-      "roomBId": "202",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
-    },
-    "fw-l2-5981229": {
-      "id": "fw-l2-5981229",
-      "label": "Bed 4 \u2194 Bath 3 (16'-2\")",
-      "roomAId": "205",
-      "roomBId": "203",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
-    },
-    "fw-l2-5981523": {
-      "id": "fw-l2-5981523",
-      "label": "Bath 3 \u2194 WIC 3 (Bed 3) (6'-0\")",
-      "roomAId": "203",
-      "roomBId": "204",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
-    },
-    "fw-l2-6001155": {
-      "id": "fw-l2-6001155",
-      "label": "Bath 4 \u2194 WIC 4 (Bed 4) (12'-1.5\")",
-      "roomAId": "206",
-      "roomBId": "207",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
-    },
-    "fw-l2-6003475": {
-      "id": "fw-l2-6003475",
-      "label": "WIC 4 (Bed 4) \u2194 Loft Closet (7'-10\")",
-      "roomAId": "207",
-      "roomBId": "209",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
-    },
-    "fw-l2-6019535": {
-      "id": "fw-l2-6019535",
-      "label": "Bath 3 \u2194 Bed 3 (2'-10.5\")",
-      "roomAId": "203",
-      "roomBId": "202",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
-    },
-    "fw-l2-6019636": {
-      "id": "fw-l2-6019636",
-      "label": "Bed 4 \u2194 Bath 3 (2'-10.5\")",
-      "roomAId": "205",
-      "roomBId": "203",
-      "nudgeIn": 0,
-      "maxNudgeIn": 6,
-      "studThicknessIn": 4.5
-    }
-  },
-  "rooms": [
     {
       "id": "201",
       "number": "201",
       "name": "Loft",
-      "subtitle": "10'-0\" Clg \u00b7 Wood Grain Tile \u00b7 Overlooks Great Room + Full-Glass Balcony Door",
+      "subtitle": "10'-0\" Clg | Wood Grain Tile | Overlooks Great Room + Full-Glass Balcony Door",
       "status": "draft",
       "planRect": {
         "xIn": 196.1,
@@ -2086,7 +2111,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 293.0
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (12'-1.5\" \u00d7 24'-5\" \u00b7 296.0 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (12'-1.5\" x 24'-5\" | 296.0 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2104,7 +2129,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Loft \u2014 North Wall (12'-1.5\")",
+          "title": "Loft - North Wall (12'-1.5\")",
           "clearWidthIn": 145.4,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2114,7 +2139,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Loft \u2014 East Wall (24'-5\")",
+          "title": "Loft - East Wall (24'-5\")",
           "clearWidthIn": 293.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2124,7 +2149,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Loft \u2014 South Wall (12'-1.5\")",
+          "title": "Loft - South Wall (12'-1.5\")",
           "clearWidthIn": 145.4,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2134,7 +2159,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Loft \u2014 West Wall (24'-5\")",
+          "title": "Loft - West Wall (24'-5\")",
           "clearWidthIn": 293.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2159,13 +2184,14 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l2-5981062",
         "role": "shift_west"
-      }
+      },
+      "level": 2
     },
     {
       "id": "202",
       "number": "202",
       "name": "Bed 3",
-      "subtitle": "10'-0\" Clg \u00b7 Built-In Bunk Wall + Casement Windows",
+      "subtitle": "10'-0\" Clg | Built-In Bunk Wall + Casement Windows",
       "status": "draft",
       "planRect": {
         "xIn": 4.0,
@@ -2174,7 +2200,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 175.0
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (15'-7.5\" \u00d7 14'-7\" \u00b7 228.0 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (15'-7.5\" x 14'-7\" | 228.0 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2192,7 +2218,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Bed 3 \u2014 North Wall (15'-7.5\")",
+          "title": "Bed 3 - North Wall (15'-7.5\")",
           "clearWidthIn": 187.7,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2202,7 +2228,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Bed 3 \u2014 East Wall (14'-7\")",
+          "title": "Bed 3 - East Wall (14'-7\")",
           "clearWidthIn": 175.0,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2217,7 +2243,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=84\" \u00b7 H=108\" \u00b7 D=42\""
+              "revitParams": "W=84\" | H=108\" | D=42\""
             }
           ],
           "autoCenter": true,
@@ -2230,7 +2256,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Bed 3 \u2014 South Wall (15'-7.5\")",
+          "title": "Bed 3 - South Wall (15'-7.5\")",
           "clearWidthIn": 187.7,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2240,7 +2266,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Bed 3 \u2014 West Wall (14'-7\")",
+          "title": "Bed 3 - West Wall (14'-7\")",
           "clearWidthIn": 175.0,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2301,13 +2327,14 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l2-5981062",
         "role": "expand_east"
-      }
+      },
+      "level": 2
     },
     {
       "id": "203",
       "number": "203",
       "name": "Bath 3",
-      "subtitle": "10'-0\" Clg \u00b7 'Like Master' Vanity + Curtain Tub/Shower",
+      "subtitle": "10'-0\" Clg | 'Like Master' Vanity + Curtain Tub/Shower",
       "status": "draft",
       "planRect": {
         "xIn": 4.0,
@@ -2316,7 +2343,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 67.7
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (10'-11.5\" \u00d7 5'-7.5\" \u00b7 61.9 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (10'-11.5\" x 5'-7.5\" | 61.9 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2334,7 +2361,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Bath 3 \u2014 North Wall (10'-11.5\")",
+          "title": "Bath 3 - North Wall (10'-11.5\")",
           "clearWidthIn": 131.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2344,7 +2371,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Bath 3 \u2014 East Wall (5'-7.5\")",
+          "title": "Bath 3 - East Wall (5'-7.5\")",
           "clearWidthIn": 67.7,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2358,7 +2385,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Bath 3 \u2014 South Wall (10'-11.5\")",
+          "title": "Bath 3 - South Wall (10'-11.5\")",
           "clearWidthIn": 131.6,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2373,7 +2400,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": true,
               "hasSconces": true,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=36\" \u00b7 D=22\""
+              "revitParams": "W=48\" | H=36\" | D=22\""
             },
             {
               "id": "bay-203-S-2",
@@ -2386,7 +2413,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=32\" \u00b7 H=36\" \u00b7 D=28\""
+              "revitParams": "W=32\" | H=36\" | D=28\""
             }
           ],
           "autoCenter": true,
@@ -2395,7 +2422,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Bath 3 \u2014 West Wall (5'-7.5\")",
+          "title": "Bath 3 - West Wall (5'-7.5\")",
           "clearWidthIn": 67.7,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2410,7 +2437,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=60\" \u00b7 H=96\" \u00b7 D=32\""
+              "revitParams": "W=60\" | H=96\" | D=32\""
             }
           ],
           "autoCenter": true,
@@ -2446,13 +2473,14 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l2-5981523",
         "role": "expand_east"
-      }
+      },
+      "level": 2
     },
     {
       "id": "204",
       "number": "204",
       "name": "WIC 3 (Bed 3)",
-      "subtitle": "10'-0\" Clg \u00b7 Shelving + Bench for Suitcase Drawers",
+      "subtitle": "10'-0\" Clg | Shelving + Bench for Suitcase Drawers",
       "status": "draft",
       "planRect": {
         "xIn": 140.2,
@@ -2461,7 +2489,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 67.7
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (4'-3.5\" \u00d7 5'-7.5\" \u00b7 24.2 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (4'-3.5\" x 5'-7.5\" | 24.2 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2479,7 +2507,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "WIC 3 (Bed 3) \u2014 North Wall (4'-3.5\")",
+          "title": "WIC 3 (Bed 3) - North Wall (4'-3.5\")",
           "clearWidthIn": 51.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2489,7 +2517,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "WIC 3 (Bed 3) \u2014 East Wall (5'-7.5\")",
+          "title": "WIC 3 (Bed 3) - East Wall (5'-7.5\")",
           "clearWidthIn": 67.7,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2504,7 +2532,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=60\" \u00b7 H=96\" \u00b7 D=20\""
+              "revitParams": "W=60\" | H=96\" | D=20\""
             }
           ],
           "autoCenter": true,
@@ -2513,7 +2541,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "WIC 3 (Bed 3) \u2014 South Wall (4'-3.5\")",
+          "title": "WIC 3 (Bed 3) - South Wall (4'-3.5\")",
           "clearWidthIn": 51.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2523,7 +2551,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "WIC 3 (Bed 3) \u2014 West Wall (5'-7.5\")",
+          "title": "WIC 3 (Bed 3) - West Wall (5'-7.5\")",
           "clearWidthIn": 67.7,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2548,13 +2576,14 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
       "flexPlanBinding": {
         "flexWallId": "fw-l2-5981523",
         "role": "shift_west"
-      }
+      },
+      "level": 2
     },
     {
       "id": "205",
       "number": "205",
       "name": "Bed 4",
-      "subtitle": "10'-0\" Clg \u00b7 Casement Windows + Hidden Mirror Door to WIC",
+      "subtitle": "10'-0\" Clg | Casement Windows + Hidden Mirror Door to WIC",
       "status": "draft",
       "planRect": {
         "xIn": 4.0,
@@ -2563,7 +2592,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 144.2
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (15'-7.5\" \u00d7 12'-0\" \u00b7 188.0 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (15'-7.5\" x 12'-0\" | 188.0 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2581,7 +2610,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Bed 4 \u2014 North Wall (15'-7.5\")",
+          "title": "Bed 4 - North Wall (15'-7.5\")",
           "clearWidthIn": 187.7,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2591,7 +2620,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Bed 4 \u2014 East Wall (12'-0\")",
+          "title": "Bed 4 - East Wall (12'-0\")",
           "clearWidthIn": 144.2,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2606,7 +2635,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=32\" \u00b7 H=84\" \u00b7 D=4\""
+              "revitParams": "W=32\" | H=84\" | D=4\""
             }
           ],
           "autoCenter": true,
@@ -2615,7 +2644,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Bed 4 \u2014 South Wall (15'-7.5\")",
+          "title": "Bed 4 - South Wall (15'-7.5\")",
           "clearWidthIn": 187.7,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2625,7 +2654,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Bed 4 \u2014 West Wall (12'-0\")",
+          "title": "Bed 4 - West Wall (12'-0\")",
           "clearWidthIn": 144.2,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2666,13 +2695,14 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
           "kind": "window",
           "swing": "none"
         }
-      ]
+      ],
+      "level": 2
     },
     {
       "id": "206",
       "number": "206",
       "name": "Bath 4",
-      "subtitle": "10'-0\" Clg \u00b7 'Like Master' Vanity + Sliding Glass Shower",
+      "subtitle": "10'-0\" Clg | 'Like Master' Vanity + Sliding Glass Shower",
       "status": "draft",
       "planRect": {
         "xIn": 196.1,
@@ -2681,7 +2711,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 68.3
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (11'-9\" \u00d7 5'-8.5\" \u00b7 66.8 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (11'-9\" x 5'-8.5\" | 66.8 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2699,7 +2729,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Bath 4 \u2014 North Wall (11'-9\")",
+          "title": "Bath 4 - North Wall (11'-9\")",
           "clearWidthIn": 140.9,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2709,7 +2739,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Bath 4 \u2014 East Wall (5'-8.5\")",
+          "title": "Bath 4 - East Wall (5'-8.5\")",
           "clearWidthIn": 68.3,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2724,7 +2754,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=96\" \u00b7 D=36\""
+              "revitParams": "W=48\" | H=96\" | D=36\""
             }
           ],
           "autoCenter": true,
@@ -2733,7 +2763,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Bath 4 \u2014 South Wall (11'-9\")",
+          "title": "Bath 4 - South Wall (11'-9\")",
           "clearWidthIn": 140.9,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2748,7 +2778,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": true,
               "hasSconces": true,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=48\" \u00b7 H=36\" \u00b7 D=22\""
+              "revitParams": "W=48\" | H=36\" | D=22\""
             },
             {
               "id": "bay-206-S-2",
@@ -2761,7 +2791,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=32\" \u00b7 H=36\" \u00b7 D=28\""
+              "revitParams": "W=32\" | H=36\" | D=28\""
             }
           ],
           "autoCenter": true,
@@ -2770,7 +2800,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Bath 4 \u2014 West Wall (5'-8.5\")",
+          "title": "Bath 4 - West Wall (5'-8.5\")",
           "clearWidthIn": 68.3,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2795,13 +2825,14 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
           "kind": "door",
           "swing": "in-left"
         }
-      ]
+      ],
+      "level": 2
     },
     {
       "id": "207",
       "number": "207",
       "name": "WIC 4 (Bed 4)",
-      "subtitle": "10'-0\" Clg \u00b7 Hidden Mirror Entry + Suitcase Drawer Bench",
+      "subtitle": "10'-0\" Clg | Hidden Mirror Entry + Suitcase Drawer Bench",
       "status": "draft",
       "planRect": {
         "xIn": 247.6,
@@ -2810,7 +2841,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 47.6
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (7'-5.5\" \u00d7 3'-11.5\" \u00b7 29.6 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (7'-5.5\" x 3'-11.5\" | 29.6 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2828,7 +2859,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "WIC 4 (Bed 4) \u2014 North Wall (7'-5.5\")",
+          "title": "WIC 4 (Bed 4) - North Wall (7'-5.5\")",
           "clearWidthIn": 89.4,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2843,7 +2874,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=84\" \u00b7 H=96\" \u00b7 D=20\""
+              "revitParams": "W=84\" | H=96\" | D=20\""
             }
           ],
           "autoCenter": true,
@@ -2852,7 +2883,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "WIC 4 (Bed 4) \u2014 East Wall (3'-11.5\")",
+          "title": "WIC 4 (Bed 4) - East Wall (3'-11.5\")",
           "clearWidthIn": 47.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2862,7 +2893,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "WIC 4 (Bed 4) \u2014 South Wall (7'-5.5\")",
+          "title": "WIC 4 (Bed 4) - South Wall (7'-5.5\")",
           "clearWidthIn": 89.4,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2872,7 +2903,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "WIC 4 (Bed 4) \u2014 West Wall (3'-11.5\")",
+          "title": "WIC 4 (Bed 4) - West Wall (3'-11.5\")",
           "clearWidthIn": 47.6,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2889,13 +2920,14 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
           "kind": "door",
           "swing": "in-left"
         }
-      ]
+      ],
+      "level": 2
     },
     {
       "id": "209",
       "number": "209",
       "name": "Loft Closet",
-      "subtitle": "10'-0\" Clg \u00b7 Double-Swing Doors + Shelving",
+      "subtitle": "10'-0\" Clg | Double-Swing Doors + Shelving",
       "status": "draft",
       "planRect": {
         "xIn": 247.6,
@@ -2904,7 +2936,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         "depthIn": 35.5
       },
       "ceilingHeightIn": 120,
-      "ceilingLabel": "10'-0\" Ceiling (7'-5.5\" \u00d7 2'-11.5\" \u00b7 22.1 sf)",
+      "ceilingLabel": "10'-0\" Ceiling (7'-5.5\" x 2'-11.5\" | 22.1 sf)",
       "wallThicknessIn": 4.5,
       "datums": [
         {
@@ -2922,7 +2954,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "N",
           "shortLabel": "N",
-          "title": "Loft Closet \u2014 North Wall (7'-5.5\")",
+          "title": "Loft Closet - North Wall (7'-5.5\")",
           "clearWidthIn": 89.4,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2932,7 +2964,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "E",
           "shortLabel": "E",
-          "title": "Loft Closet \u2014 East Wall (2'-11.5\")",
+          "title": "Loft Closet - East Wall (2'-11.5\")",
           "clearWidthIn": 35.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2942,7 +2974,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "S",
           "shortLabel": "S",
-          "title": "Loft Closet \u2014 South Wall (7'-5.5\")",
+          "title": "Loft Closet - South Wall (7'-5.5\")",
           "clearWidthIn": 89.4,
           "ceilingHeightIn": 120,
           "bays": [
@@ -2957,7 +2989,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
               "hasMirror": false,
               "hasSconces": false,
               "revitFamily": "Barnhaus_Parametric_Catalog.rfa",
-              "revitParams": "W=84\" \u00b7 H=96\" \u00b7 D=20\""
+              "revitParams": "W=84\" | H=96\" | D=20\""
             }
           ],
           "autoCenter": true,
@@ -2966,7 +2998,7 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
         {
           "id": "W",
           "shortLabel": "W",
-          "title": "Loft Closet \u2014 West Wall (2'-11.5\")",
+          "title": "Loft Closet - West Wall (2'-11.5\")",
           "clearWidthIn": 35.5,
           "ceilingHeightIn": 120,
           "bays": [],
@@ -2983,7 +3015,66 @@ export const SYNATSCHK_SANDBOX_L2_MATRIX: HouseMatrix = {
           "kind": "door",
           "swing": "in-left"
         }
-      ]
+      ],
+      "level": 2
+    }
+  ],
+  "outdoorZones": [
+    {
+      "id": "out-115",
+      "label": "CARPORT",
+      "level": 1,
+      "xIn": -260.0,
+      "yIn": 70.4,
+      "widthIn": 256.1,
+      "depthIn": 387.6
+    },
+    {
+      "id": "out-116",
+      "label": "PATIO EAST",
+      "level": 1,
+      "xIn": 720.0,
+      "yIn": 70.4,
+      "widthIn": 172.0,
+      "depthIn": 387.6
+    },
+    {
+      "id": "out-117",
+      "label": "PATIO SOUTH",
+      "level": 1,
+      "xIn": -260.0,
+      "yIn": 458.0,
+      "widthIn": 1152.0,
+      "depthIn": 184.1
+    },
+    {
+      "id": "out-119",
+      "label": "PORCH",
+      "level": 1,
+      "xIn": -260.0,
+      "yIn": -114.0,
+      "widthIn": 1152.0,
+      "depthIn": 184.4
+    },
+    {
+      "id": "out-208",
+      "label": "BALCONY",
+      "level": 2,
+      "xIn": 184.7,
+      "yIn": -114.4,
+      "widthIn": 347.4,
+      "depthIn": 172.3
+    }
+  ],
+  "voidZones": [
+    {
+      "id": "void-gr-l2",
+      "label": "OPEN TO GREAT ROOM & KITCHEN BELOW",
+      "level": 2,
+      "xIn": 341.5,
+      "yIn": 61.9,
+      "widthIn": 374.5,
+      "depthIn": 404.0
     }
   ]
 } as HouseMatrix

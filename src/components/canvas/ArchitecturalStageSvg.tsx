@@ -1963,8 +1963,16 @@ export function ArchitecturalStageSvg({
     >
       {/* Center Stage Sub-Toolbar: Wall Tabs + View Layout + Zoom */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-bh-border bg-bh-panel px-3 py-2 shrink-0">
-        {/* Wall Selector Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto" role="tablist" aria-label="Room Walls">
+        {/* Wall Selector Tabs + Back to Whole-House Plan Button */}
+        <div className="flex items-center gap-1.5 overflow-x-auto" role="tablist" aria-label="Room Walls">
+          <button
+            type="button"
+            data-testid="btn-back-whole-house"
+            onClick={() => onChangeLayoutMode('house')}
+            className="rounded-md border border-gold/50 bg-gold/10 px-2.5 py-1 text-xs font-semibold text-gold-light hover:bg-gold/20 transition-colors whitespace-nowrap"
+          >
+            ← Whole House
+          </button>
           {room.walls.map((w) => {
             const active = w.id === wall.id
             const effW = getEffectiveWallWidth(matrix, w)
@@ -1995,6 +2003,7 @@ export function ArchitecturalStageSvg({
           <div className="inline-flex rounded-lg border border-bh-border bg-bh-black p-0.5 text-[11px]">
             {(
               [
+                { id: 'house', label: 'Whole House' },
                 { id: 'split', label: 'Split: Elev + Plan' },
                 { id: 'elevation', label: 'Elevation' },
                 { id: 'plan', label: 'Room Plan' },

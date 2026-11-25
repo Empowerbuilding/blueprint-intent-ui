@@ -1,4 +1,4 @@
-import { SYNATSCHK_SANDBOX_L1_MATRIX, SYNATSCHK_SANDBOX_L2_MATRIX } from './synatschk-sandbox-preset'
+import { SYNATSCHK_TWO_STORY_SANDBOX } from './synatschk-sandbox-preset'
 // Reactive House Matrix — Single typed source of truth for the `/canvas`
 // Interactive Architectural Studio. Both the vector SVG viewport and the
 // deterministic rule/command engine read and mutate this immutable structure.
@@ -6,7 +6,7 @@ import { SYNATSCHK_SANDBOX_L1_MATRIX, SYNATSCHK_SANDBOX_L2_MATRIX } from './syna
 export type CadTheme = 'paper' | 'blueprint'
 export type RoomStatus = 'approved' | 'draft' | 'needs_review'
 export type WallDirection = 'N' | 'E' | 'S' | 'W' | 'Island'
-export type StageLayoutMode = 'split' | 'elevation' | 'plan'
+export type StageLayoutMode = 'house' | 'split' | 'elevation' | 'plan'
 
 export type BayKind =
   | 'drawer_stack'
@@ -100,9 +100,20 @@ export interface FlexWallSpec {
   label: string
   roomAId: string
   roomBId: string
+  level?: 1 | 2
   nudgeIn: number
   maxNudgeIn: number
   studThicknessIn: number
+}
+
+export interface HouseZoneRect {
+  id: string
+  label: string
+  level: 1 | 2
+  xIn: number
+  yIn: number
+  widthIn: number
+  depthIn: number
 }
 
 export interface RoomNode {
@@ -110,6 +121,7 @@ export interface RoomNode {
   number: string
   name: string
   subtitle: string
+  level?: 1 | 2
   status: RoomStatus
   planRect: {
     xIn: number
@@ -144,6 +156,8 @@ export interface HouseMatrix {
   stageLabel: string
   rooms: RoomNode[]
   flexWalls: Record<string, FlexWallSpec>
+  outdoorZones?: HouseZoneRect[]
+  voidZones?: HouseZoneRect[]
 }
 
 export interface ResolvedBayPlacement {
@@ -1036,16 +1050,10 @@ export interface CanvasProjectOption {
 
 export const CANVAS_PROJECT_PRESETS: CanvasProjectOption[] = [
   {
-    id: 'sandbox-two-story-l1',
-    name: 'Synatschk Sandbox — Level 1 (2,227 sf · 15 Rooms)',
+    id: 'sandbox-two-story',
+    name: 'Two-Story Sandbox — (3,120 sf · L1 + L2)',
     kind: 'preset',
-    subtitle: 'Real Revit Scan · 15 Rooms, 12 Flex Partitions, 6ft Island, Wet Bar, Mud & Master',
-  },
-  {
-    id: 'sandbox-two-story-l2',
-    name: 'Synatschk Sandbox — Level 2 (893 sf · 8 Rooms + Loft)',
-    kind: 'preset',
-    subtitle: 'Real Revit Scan · Loft + Balcony, Bed 3 Bunk, Bed 4 Hidden Mirror Door → WIC',
+    subtitle: 'Two-Story Revit Scan · L1 (15 Rooms) + L2 (8 Rooms + Loft) · 20 Reactive Flex Walls',
   },
   {
     id: 'hill-country-4200',
@@ -3144,11 +3152,8 @@ export function createMatrixForProjectSelection(
   optionId: string,
   optionName: string
 ): HouseMatrix {
-  if (optionId === 'sandbox-two-story-l1') {
-    return structuredClone(SYNATSCHK_SANDBOX_L1_MATRIX)
-  }
-  if (optionId === 'sandbox-two-story-l2') {
-    return structuredClone(SYNATSCHK_SANDBOX_L2_MATRIX)
+  if (optionId === 'sandbox-two-story' || optionId.startsWith('sandbox-two-story')) {
+    return structuredClone(SYNATSCHK_TWO_STORY_SANDBOX)
   }
   if (optionId === 'hill-country-4200') {
     return createHillCountrySampleMatrix(optionName, optionId)

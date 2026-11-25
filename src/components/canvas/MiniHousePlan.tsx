@@ -10,8 +10,12 @@ import {
 
 interface MiniHousePlanProps {
   matrix: HouseMatrix
+  activeLevel?: 1 | 2
+  hasMultipleLevels?: boolean
   activeRoomId: string
   onSelectRoom: (roomId: string) => void
+  onDoubleClickRoom?: (roomId: string) => void
+  onOpenWholeHouse?: () => void
 }
 
 const STATUS_STYLE: Record<
@@ -38,8 +42,19 @@ const STATUS_STYLE: Record<
   },
 }
 
-export function MiniHousePlan({ matrix, activeRoomId, onSelectRoom }: MiniHousePlanProps) {
-  const rects = matrix.rooms.map((room) => ({
+export function MiniHousePlan({
+  matrix,
+  activeLevel = 1,
+  hasMultipleLevels = false,
+  activeRoomId,
+  onSelectRoom,
+  onDoubleClickRoom,
+  onOpenWholeHouse,
+}: MiniHousePlanProps) {
+  const filteredRooms = hasMultipleLevels
+    ? matrix.rooms.filter((r) => (r.level ?? 1) === activeLevel)
+    : matrix.rooms
+  const rects = filteredRooms.map((room) => ({
     room,
     rect: getEffectiveRoomRect(matrix, room),
   }))
@@ -68,10 +83,20 @@ export function MiniHousePlan({ matrix, activeRoomId, onSelectRoom }: MiniHouseP
   return (
     <div className="rounded-lg border border-bh-border bg-[#0e1217] p-2 relative overflow-hidden">
       <div className="flex items-center justify-between px-1 pb-1.5 text-[10px] font-medium text-slate-400">
-        <span className="uppercase tracking-[0.16em] text-slate-400 font-semibold">
-          Whole-House Matrix
+        <span className="uppercase tracking-[0.14em] text-slate-400 font-semibold">
+          {hasMultipleLevels ? `Floor L${activeLevel} Matrix` : 'Whole-House Matrix'}
         </span>
-        <span className="text-[10px] text-slate-500 font-mono">Click room to jump</span>
+        {onOpenWholeHouse ? (
+          <button
+            type="button"
+            onClick={onOpenWholeHouse}
+            className="rounded bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold-light hover:bg-gold/25 transition-colors"
+          >
+            ⤢ Center Plan
+          </button>
+        ) : (
+          <span className="text-[10px] text-slate-500 font-mono">Click room to jump</span>
+        )}
       </div>
 
       <svg
@@ -141,6 +166,7 @@ export function MiniHousePlan({ matrix, activeRoomId, onSelectRoom }: MiniHouseP
               key={room.id}
               data-testid={`mini-room-${room.id}`}
               onClick={() => onSelectRoom(room.id)}
+              onDoubleClick={() => onDoubleClickRoom?.(room.id)}
               className="cursor-pointer transition-opacity hover:opacity-95"
             >
               {/* Outer selection halo */}
