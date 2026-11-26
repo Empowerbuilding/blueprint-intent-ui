@@ -14,6 +14,8 @@ import {
   formatInchesOnly,
   getEffectiveRoomRect,
   getPresetMeta,
+  isBathroomRoom,
+  propagateMasterBathStyleToHouse,
   parseImportedRevitScanJson,
   snapHalfInch,
   symmetrizeWallFlanks,
@@ -681,6 +683,26 @@ export function DesignerCanvasApp({
           >
             Dims {showDimensions ? 'ON' : 'OFF'}
           </button>
+
+          {isBathroomRoom(activeRoom) && (
+            <button
+              type="button"
+              data-testid="btn-sync-master-bath"
+              onClick={() => {
+                const res = propagateMasterBathStyleToHouse(matrix)
+                commitMatrix(res.matrix)
+                setFeedback(
+                  res.updatedRooms.length > 0
+                    ? `Synced Master Bath styling (21" depth, 4" splash, 96" mirror, 72" sconces) to ${res.updatedRooms.join(', ')}.`
+                    : 'Master Bath style already up to date.'
+                )
+              }}
+              className="rounded-lg border border-amber-600/70 bg-amber-950/50 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:border-amber-400 transition-colors"
+              title="Propagate Master Bath cabinetry, stone, mirror & sconce datums to all Guest & Powder Baths"
+            >
+              🛁 Sync Master → Guest Baths
+            </button>
+          )}
 
           <button
             type="button"

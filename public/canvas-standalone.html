@@ -67,7 +67,7 @@
   <!-- TOP BAR -->
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <div class="brand"><span class="brand-dot"></span>Barnhaus Canvas v4 <span style="font-size:10.5px;color:var(--emerald);font-weight:700;">⚡ Deubner Rules · 0ms</span></div>
+      <div class="brand"><span class="brand-dot"></span>Barnhaus Canvas v7 · Studio <span style="font-size:10.5px;color:var(--emerald);font-weight:700;">⚡ Deubner Rules · 0ms</span></div>
       <div class="pill-group" id="floorPills">
         <button class="pill-btn active" onclick="setLevel(1)">L1 · Main</button>
         <button class="pill-btn" onclick="setLevel(2)">L2 · Upper</button>
@@ -78,7 +78,7 @@
       <button class="chip-btn on" id="btnGrids" onclick="state.showGrids=!state.showGrids;renderAll()">⊞ Grids: ON</button>
       <button class="chip-btn notes-on" id="btnNotes" onclick="state.showNotes=!state.showNotes;renderAll()">📝 D1 Intent + Arrows: ON</button>
       <button class="chip-btn" id="btnTheme" onclick="state.theme=state.theme==='blueprint'?'paper':'blueprint';renderAll()">CAD: Blueprint</button>
-      <button class="chip-btn hide-mob" onclick="exportJson()">Export JSON</button>
+      <button class="chip-btn" style="border-color:#f59e0b;background:rgba(245,158,11,0.18);color:#fde68a;font-weight:700;" onclick="syncMasterBathToHouse()">🛁 Sync Master → Guest Baths</button> <button class="chip-btn" onclick="snapThreeInchSymmetry()">⚖️ 3"-Step</button> <button class="chip-btn hide-mob" onclick="exportJson()">Export JSON</button>
     </div>
   </div>
 
@@ -241,6 +241,282 @@ function openLightbox(src, cap) {
   document.getElementById('lightboxCap').textContent = cap;
   document.getElementById('lightbox').style.display = 'flex';
 }
+
+function isBathRoom(r) {
+  const t = ((r.name || '') + ' ' + (r.subtitle || '')).toLowerCase();
+  return t.includes('bath') || t.includes('powder') || t.includes('restroom');
+}
+function isMasterBathRoom(r) {
+  const n = (r.name || '').toLowerCase();
+  return isBathRoom(r) && (n.includes('master') || n.includes('primary'));
+}
+function syncMasterBathToHouse() {
+  const master = MATRIX.rooms.find(isMasterBathRoom);
+  if (!master) return;
+  const updated = [];
+  MATRIX.rooms.forEach(rm => {
+    if (!isBathRoom(rm) || rm.id === master.id) return;
+    updated.push(`${rm.number} ${rm.name}`);
+    rm.datums = [
+      { id: `d-${rm.id}-36`, affIn: 36, label: '36" STONE COUNTER' },
+      { id: `d-${rm.id}-40`, affIn: 40, label: '40" 4" STONE SPLASH' },
+      { id: `d-${rm.id}-48`, affIn: 48, label: '48" MIRROR BOTTOM' },
+      { id: `d-${rm.id}-72`, affIn: 72, label: '72" SCONCE MIDPOINT' },
+      { id: `d-${rm.id}-96`, affIn: 96, label: '96" DOOR-HEAD MIRROR' }
+    ];
+    rm.walls.forEach(w => {
+      const sinkIdx = w.bays.findIndex(b => b.kind === 'sink_base');
+      const hasStacks = w.bays.some(b => b.kind === 'drawer_stack');
+      if (sinkIdx >= 0 && !hasStacks) {
+        const otherW = w.bays.filter((_, idx) => idx !== sinkIdx).reduce((s, b) => s + b.widthIn, 0);
+        const avail = Math.min(72, Math.max(36, w.clearWidthIn - otherW - 6));
+        if (avail >= 54) {
+          const sinkW = avail >= 66 ? 30 : 24;
+          const drwW = Math.max(12, Math.floor((avail - sinkW) / 2 / 3) * 3);
+          const rest = w.bays.filter((_, idx) => idx !== sinkIdx);
+          w.bays = [
+            { id: `${rm.id}-${w.id}-vl`, kind: 'drawer_stack', label: `${drwW}" 3-Drw + Sconce (@72")`, widthIn: drwW, heightIn: 36, depthIn: 21, affIn: 0 },
+            { id: `${rm.id}-${w.id}-vs`, kind: 'sink_base', label: `${sinkW}" 2-Door Sink + Mirror (48"-96")`, widthIn: sinkW, heightIn: 36, depthIn: 21, affIn: 0, hasMirror: true },
+            { id: `${rm.id}-${w.id}-vr`, kind: 'drawer_stack', label: `${drwW}" 3-Drw + Sconce (@72")`, widthIn: drwW, heightIn: 36, depthIn: 21, affIn: 0 },
+            ...rest
+          ];
+        } else {
+          const sinkW = Math.max(24, Math.floor(avail / 3) * 3);
+          w.bays[sinkIdx] = {
+            ...w.bays[sinkIdx],
+            widthIn: sinkW,
+            depthIn: 21,
+            hasMirror: true,
+            hasSconces: true,
+            label: `${sinkW}" Shaker Vanity + Mirror (48"-96") + Sconces (@72")`
+          };
+        }
+      }
+    });
+    rm.subtitle = `Synced from 113 Master Bath · 21" Shaker · 4" Splash · 96" Mirror`;
+    if (rm.status === 'draft') rm.status = 'needs_review';
+  });
+  state.toast = `Synced Room 113 Master Bath styling to: ${updated.join(', ')}`;
+  renderAll();
+}
+function snapThreeInchSymmetry() {
+  const w = activeWall();
+  if (!w || w.bays.length === 0) return;
+  w.bays.forEach(b => {
+    if (['drawer_stack', 'sink_base', 'base_doors', 'tall_tower'].includes(b.kind)) {
+      b.widthIn = Math.max(12, Math.round(b.widthIn / 3) * 3);
+    }
+  });
+  if (w.bays.length >= 3 && w.bays[0].kind === w.bays[w.bays.length - 1].kind) {
+    const avg = Math.max(12, Math.round(((w.bays[0].widthIn + w.bays[w.bays.length - 1].widthIn) / 2) / 3) * 3);
+    w.bays[0].widthIn = avg;
+    w.bays[w.bays.length - 1].widthIn = avg;
+  }
+  state.toast = `Snapped ${w.shortLabel} cabinetry to 3" Barnhaus increments & symmetric flanks.`;
+  renderAll();
+}
+function evaluateWallGates(rm, w) {
+  const gates = [];
+  if (isBathRoom(rm)) {
+    const master = MATRIX.rooms.find(isMasterBathRoom);
+    if (isMasterBathRoom(rm)) {
+      gates.push({ st: 'PASS', lbl: 'Master Bath House Anchor', val: '1st in Sequence (Sets Style & Datums)' });
+    } else if (master && master.status === 'draft') {
+      gates.push({ st: 'WARN', lbl: 'Master-Bath-First Gate', val: `Solve ${master.number} Master Bath first` });
+    } else {
+      gates.push({ st: (rm.subtitle||'').includes('Synced') ? 'PASS' : 'INFO', lbl: 'Master Bath Style Sync', val: (rm.subtitle||'').includes('Synced') ? 'Synced to 113 Master Bath' : 'Click Sync Master → Guest Baths' });
+    }
+  }
+  const caseBays = w.bays.filter(b => ['drawer_stack', 'sink_base', 'base_doors'].includes(b.kind));
+  if (caseBays.length >= 3) {
+    const pal = caseBays.every((b, idx) => b.kind === caseBays[caseBays.length - 1 - idx].kind && Math.abs(b.widthIn - caseBays[caseBays.length - 1 - idx].widthIn) <= 0.5);
+    gates.push({
+      st: pal ? 'PASS' : 'WARN',
+      lbl: 'Vanity / Casework Symmetry',
+      val: pal ? `${caseBays.map(b => b.widthIn + '"').join(' | ')} (Δ 0")` : 'Click 3"-Step Symmetry'
+    });
+  }
+  const off3 = caseBays.filter(b => Math.abs((b.widthIn % 3)) > 0.1 && Math.abs((b.widthIn % 3) - 3) > 0.1);
+  if (caseBays.length > 0) {
+    gates.push({ st: off3.length === 0 ? 'PASS' : 'WARN', lbl: '3" Barnhaus Increment', val: off3.length === 0 ? 'All cabinets on 3" step' : `${off3.length} bay off 3" step` });
+  }
+  gates.push({ st: 'PASS', lbl: '96" Head & Z-Datum Lock', val: isBathRoom(rm) ? '36" Counter · 40" Splash · 72" Sconce · 96" Mirror' : `${w.ceilingHeightIn || 120}" Clg` });
+  return gates;
+}
+function renderBayArchSvg(b, bx, by, bw, bh, H, isBp, wallCol, txtMain, txtSub, isSel, rm) {
+  const stroke = isSel ? '#00e0ff' : (isBp ? '#cbd5e1' : '#1e293b');
+  const woodFill = isBp ? 'rgba(217,168,108,0.24)' : 'rgba(214,180,132,0.36)';
+  const stoneFill = isBp ? 'rgba(226,232,240,0.24)' : 'rgba(226,232,240,0.78)';
+  const glassFill = isBp ? 'rgba(56,189,248,0.16)' : 'rgba(186,230,253,0.40)';
+  const toeH = 4, slabH = 1.5;
+  const cx = bx + bw / 2;
+  const ey = aff => H - aff;
+  const isBath = isBathRoom(rm);
+  let g = '';
+
+  if (b.kind === 'scribe_panel') {
+    g += `<rect x="${bx}" y="${ey(36)}" width="${bw}" height="32" fill="${woodFill}" stroke="${stroke}" stroke-width="0.8"/>`;
+    return g;
+  }
+  if (b.kind === 'open_passage') {
+    const lbl = (b.label || '').toLowerCase();
+    if (lbl.includes('door') || lbl.includes('opening')) {
+      const dh = Math.min(H, b.heightIn || 96);
+      g += `<rect x="${bx}" y="${ey(dh)}" width="${bw}" height="${dh}" fill="rgba(15,23,42,0.18)" stroke="${stroke}" stroke-width="1.1" stroke-dasharray="${lbl.includes('curbless') ? '3 2' : 'none'}"/>`;
+      if (lbl.includes('pocket')) {
+        g += `<line x1="${bx + bw*0.55}" y1="${ey(dh)+2}" x2="${bx + bw*0.55}" y2="${ey(0)-1}" stroke="#fde047" stroke-width="1.1" stroke-dasharray="2 2"/>`;
+      }
+      g += `<text x="${cx}" y="${ey(dh/2)}" text-anchor="middle" fill="${txtSub}" font-size="4.6" font-weight="700">${b.label.slice(0,22)}</text>`;
+    } else if (lbl.includes('partition') || lbl.includes('cut')) {
+      g += `<rect x="${bx}" y="0" width="${bw}" height="${H}" fill="${isBp ? '#334155' : '#cbd5e1'}" stroke="${wallCol}" stroke-width="1.2"/>`;
+    } else if (lbl.includes('hook')) {
+      g += `<circle cx="${cx - 2.5}" cy="${ey(66)}" r="1.4" fill="#fde047"/><circle cx="${cx + 2.5}" cy="${ey(66)}" r="1.4" fill="#fde047"/>
+            <text x="${cx}" y="${ey(59)}" text-anchor="middle" fill="${txtSub}" font-size="4.0">HOOKS @66"</text>`;
+    }
+    return g;
+  }
+  if (b.kind === 'drawer_stack') {
+    const cabTop = ey(bh - slabH), cabBot = ey(toeH);
+    g += `<rect x="${bx}" y="${ey(toeH)}" width="${bw}" height="${toeH}" fill="rgba(15,23,42,0.55)" stroke="${stroke}" stroke-width="0.7"/>`;
+    g += `<rect x="${bx}" y="${cabTop}" width="${bw}" height="${cabBot - cabTop}" fill="${woodFill}" stroke="${stroke}" stroke-width="${isSel?1.5:1.0}"/>`;
+    g += `<rect x="${bx}" y="${ey(bh)}" width="${bw}" height="${slabH}" fill="${stoneFill}" stroke="${wallCol}" stroke-width="0.9"/>`;
+    if (isBath) {
+      g += `<rect x="${bx}" y="${ey(bh + 4)}" width="${bw}" height="4" fill="${stoneFill}" stroke="${stroke}" stroke-width="0.75"/>`;
+    }
+    const dTops = [bh - slabH, 23, 13.5, toeH];
+    for (let k = 0; k < 3; k++) {
+      const y1 = ey(dTops[k]) + 0.8, y2 = ey(dTops[k+1]) - 0.8;
+      if (y2 > y1 + 2) {
+        g += `<rect x="${bx+1.3}" y="${y1}" width="${Math.max(2, bw-2.6)}" height="${y2-y1}" fill="none" stroke="${stroke}" stroke-width="0.65"/>
+              <line x1="${cx-2.2}" y1="${(y1+y2)/2}" x2="${cx+2.2}" y2="${(y1+y2)/2}" stroke="#fde047" stroke-width="1.0"/>`;
+      }
+    }
+    const lbl = (b.label || '').toLowerCase();
+    if (lbl.includes('twin sconces') || lbl.includes('2 inner sconces')) {
+      [-3.8, 3.8].forEach(dx => {
+        g += `<circle cx="${cx+dx}" cy="${ey(72)}" r="1.5" fill="#eab308"/>
+              <rect x="${cx+dx-1.1}" y="${ey(81.5)}" width="2.2" height="19" rx="1" fill="#fef9c3" stroke="${wallCol}" stroke-width="0.7"/>`;
+      });
+    } else if (lbl.includes('sconce')) {
+      g += `<circle cx="${cx}" cy="${ey(72)}" r="1.6" fill="#eab308"/>
+            <rect x="${cx-1.2}" y="${ey(81.5)}" width="2.4" height="19" rx="1" fill="#fef9c3" stroke="${wallCol}" stroke-width="0.7"/>`;
+    }
+    return g;
+  }
+  if (b.kind === 'sink_base' || b.kind === 'base_doors') {
+    const cabTop = ey(bh - slabH), cabBot = ey(toeH);
+    g += `<rect x="${bx}" y="${ey(toeH)}" width="${bw}" height="${toeH}" fill="rgba(15,23,42,0.55)" stroke="${stroke}" stroke-width="0.7"/>`;
+    g += `<rect x="${bx}" y="${cabTop}" width="${bw}" height="${cabBot - cabTop}" fill="${woodFill}" stroke="${stroke}" stroke-width="${isSel?1.5:1.0}"/>`;
+    g += `<rect x="${bx}" y="${ey(bh)}" width="${bw}" height="${slabH}" fill="${stoneFill}" stroke="${wallCol}" stroke-width="0.9"/>`;
+    if (isBath && b.kind === 'sink_base') {
+      g += `<rect x="${bx}" y="${ey(bh + 4)}" width="${bw}" height="4" fill="${stoneFill}" stroke="${stroke}" stroke-width="0.75"/>`;
+    }
+    const railY = ey(bh - 7.5);
+    g += `<rect x="${bx+1.3}" y="${cabTop+0.9}" width="${Math.max(2, bw-2.6)}" height="${railY - cabTop - 1.5}" fill="none" stroke="${stroke}" stroke-width="0.65"/>`;
+    const halfW = (bw - 3.2) / 2;
+    if (halfW > 3) {
+      g += `<rect x="${bx+1.3}" y="${railY+0.6}" width="${halfW}" height="${cabBot - railY - 1.4}" fill="none" stroke="${stroke}" stroke-width="0.65"/>
+            <rect x="${cx+0.3}" y="${railY+0.6}" width="${halfW}" height="${cabBot - railY - 1.4}" fill="none" stroke="${stroke}" stroke-width="0.65"/>
+            <line x1="${cx-1.6}" y1="${railY+4}" x2="${cx-1.6}" y2="${railY+8}" stroke="#fde047" stroke-width="0.9"/>
+            <line x1="${cx+1.6}" y1="${railY+4}" x2="${cx+1.6}" y2="${railY+8}" stroke="#fde047" stroke-width="0.9"/>`;
+    }
+    if (b.kind === 'sink_base') {
+      const bowlW = Math.min(bw - 5, 17);
+      g += `<path d="M ${cx - bowlW/2} ${ey(bh-1.5)} L ${cx - bowlW/2 + 1.5} ${ey(bh-8)} L ${cx + bowlW/2 - 1.5} ${ey(bh-8)} L ${cx + bowlW/2} ${ey(bh-1.5)}" fill="none" stroke="#38bdf8" stroke-width="0.75" stroke-dasharray="2 1.5"/>`;
+      g += `<path d="M ${cx} ${ey(bh)} L ${cx} ${ey(bh+6.5)} Q ${cx+2.5} ${ey(bh+8)} ${cx+3.2} ${ey(bh+5)}" fill="none" stroke="${wallCol}" stroke-width="1.1"/>`;
+      if (isBath || b.hasMirror || (b.label || '').toLowerCase().includes('mirror')) {
+        const mw = Math.min(bw - 1, 32);
+        g += `<rect x="${cx - mw/2}" y="${ey(96)}" width="${mw}" height="48" rx="3.2" fill="${glassFill}" stroke="${wallCol}" stroke-width="1.35"/>
+              <line x1="${cx - mw/2 + 3}" y1="${ey(88)}" x2="${cx - mw/2 + 9}" y2="${ey(94)}" stroke="rgba(255,255,255,0.45)" stroke-width="0.9"/>`;
+        if (b.hasSconces) {
+          [-mw/2 - 4, mw/2 + 4].forEach(dx => {
+            g += `<circle cx="${cx+dx}" cy="${ey(72)}" r="1.5" fill="#eab308"/>
+                  <rect x="${cx+dx-1.1}" y="${ey(81.5)}" width="2.2" height="19" rx="1" fill="#fef9c3" stroke="${wallCol}" stroke-width="0.7"/>`;
+          });
+        }
+      }
+    }
+    return g;
+  }
+  if (b.kind === 'wet_room_glass') {
+    const lbl = (b.label || '').toLowerCase();
+    g += `<rect x="${bx}" y="${ey(Math.min(H, bh || 120))}" width="${bw}" height="${Math.min(H, bh || 120)}" fill="${glassFill}" stroke="#38bdf8" stroke-width="1.1"/>`;
+    if (lbl.includes('pony')) {
+      g += `<rect x="${bx}" y="${ey(48)}" width="${bw}" height="48" fill="${stoneFill}" stroke="${wallCol}" stroke-width="1.2"/>
+            <rect x="${bx}" y="${ey(120)}" width="${bw}" height="72" fill="${glassFill}" stroke="#7dd3fc" stroke-width="1.1"/>`;
+    }
+    if (lbl.includes('bench') || bw >= 52) {
+      const benchW = lbl.includes('101.3') ? bw : Math.min(bw * 0.34, 18);
+      g += `<rect x="${bx + bw - benchW}" y="${ey(18)}" width="${benchW}" height="2.5" fill="${stoneFill}" stroke="${wallCol}" stroke-width="1.0"/>`;
+    }
+    if (lbl.includes('transom')) {
+      const tw = Math.min(bw - 12, 76);
+      g += `<rect x="${cx - tw/2}" y="${ey(97)}" width="${tw}" height="24" fill="rgba(125,211,252,0.28)" stroke="${wallCol}" stroke-width="1.2"/>
+            <text x="${cx}" y="${ey(84)}" text-anchor="middle" fill="${txtMain}" font-size="4.8" font-weight="700">76"×24" PRIVACY TRANSOM (73"–97")</text>`;
+    }
+    if (lbl.includes('niche') && bw >= 24) {
+      const nw = Math.min(bw * 0.48, 26);
+      g += `<rect x="${cx - nw/2}" y="${ey(56)}" width="${nw}" height="14" fill="rgba(15,23,42,0.35)" stroke="${wallCol}" stroke-width="0.9"/>`;
+    }
+    if (lbl.includes('head')) {
+      g += `<line x1="${bx+8}" y1="${ey(84)}" x2="${bx+15}" y2="${ey(84)}" stroke="${wallCol}" stroke-width="1.4"/>
+            <circle cx="${bx+16}" cy="${ey(84)}" r="2" fill="#fde047"/>`;
+    }
+    if (lbl.includes('valve')) {
+      g += `<circle cx="${bx + 8}" cy="${ey(38)}" r="2.2" fill="#fde047" stroke="#080d16" stroke-width="0.6"/>
+            <text x="${bx + 8}" y="${ey(31)}" text-anchor="middle" fill="#fde047" font-size="4.2" font-weight="700">VALVE @38"</text>`;
+    }
+    return g;
+  }
+  if (b.kind === 'toilet_bay' || b.kind === 'toilet_alcove') {
+    g += `<rect x="${cx - 8.5}" y="${ey(29)}" width="17" height="12.5" rx="1.5" fill="${stoneFill}" stroke="${wallCol}" stroke-width="1.1"/>
+          <path d="M ${cx - 9.5} ${ey(16.5)} L ${cx + 9.5} ${ey(16.5)} L ${cx + 7} ${ey(0)} L ${cx - 7} ${ey(0)} Z" fill="${stoneFill}" stroke="${wallCol}" stroke-width="1.1"/>`;
+    if ((b.label || '').toLowerCase().includes('shelves')) {
+      [50, 66].forEach(z => {
+        g += `<rect x="${bx + 3}" y="${ey(z)}" width="${Math.max(10, bw - 6)}" height="1.8" fill="${woodFill}" stroke="${stroke}" stroke-width="0.8"/>`;
+      });
+    }
+    return g;
+  }
+  if (b.kind === 'tall_tower' || b.kind === 'fridge' || b.kind === 'tall_oven') {
+    const topAff = Math.min(H, (b.affIn || 0) + (b.heightIn || 96));
+    g += `<rect x="${bx}" y="${ey(toeH)}" width="${bw}" height="${toeH}" fill="rgba(15,23,42,0.55)" stroke="${stroke}" stroke-width="0.7"/>
+          <rect x="${bx}" y="${ey(topAff)}" width="${bw}" height="${topAff - toeH}" fill="${b.kind==='fridge' ? stoneFill : woodFill}" stroke="${stroke}" stroke-width="1.15"/>`;
+    [13.5, 23, 36, 96].forEach(z => {
+      if (z < topAff - 3) g += `<line x1="${bx+1.2}" y1="${ey(z)}" x2="${bx+bw-1.2}" y2="${ey(z)}" stroke="${stroke}" stroke-width="0.8"/>`;
+    });
+    if (topAff >= 84 && bw >= 18) {
+      g += `<line x1="${cx}" y1="${ey(Math.min(96, topAff))+1.2}" x2="${cx}" y2="${ey(36)-1.2}" stroke="${stroke}" stroke-width="0.75"/>`;
+    }
+    g += `<text x="${cx}" y="${ey(64)}" text-anchor="middle" fill="${txtMain}" font-size="4.8" font-weight="700">${b.label.slice(0,18)}</text>`;
+    return g;
+  }
+  if (b.kind === 'range_hood') {
+    g += `<rect x="${bx}" y="${ey(36)}" width="${bw}" height="36" fill="${stoneFill}" stroke="${wallCol}" stroke-width="1.2"/>
+          <line x1="${cx}" y1="${ey(30)}" x2="${cx}" y2="${ey(4)}" stroke="${stroke}" stroke-width="0.8"/>
+          <polygon points="${bx+2},${ey(66)} ${bx+bw-2},${ey(66)} ${bx+bw*0.78},${ey(H)} ${bx+bw*0.22},${ey(H)}" fill="${woodFill}" stroke="${wallCol}" stroke-width="1.25"/>
+          <text x="${cx}" y="${ey(20)}" text-anchor="middle" fill="${txtMain}" font-size="5.5" font-weight="700">48" PRO RANGE</text>`;
+    return g;
+  }
+  if (b.kind === 'fireplace_chase') {
+    g += `<rect x="${bx}" y="0" width="${bw}" height="${H}" fill="${stoneFill}" stroke="${wallCol}" stroke-width="1.4"/>
+          <rect x="${bx-2}" y="${ey(16)}" width="${bw+4}" height="16" fill="${stoneFill}" stroke="${wallCol}" stroke-width="1.2"/>
+          <rect x="${cx - Math.min(bw*0.36, 24)}" y="${ey(46)}" width="${Math.min(bw*0.72, 48)}" height="28" fill="#090d16" stroke="#f59e0b" stroke-width="1.2"/>
+          <rect x="${bx+4}" y="${ey(62)}" width="${bw-8}" height="5.5" fill="${woodFill}" stroke="${wallCol}" stroke-width="1.1"/>
+          <rect x="${cx - Math.min(bw*0.38, 32)}" y="${ey(108)}" width="${Math.min(bw*0.76, 64)}" height="36" rx="1.5" fill="#0f172a" stroke="#38bdf8" stroke-width="1.1"/>`;
+    return g;
+  }
+  const topAff = Math.min(H, (b.affIn || 0) + (b.heightIn || 84));
+  g += `<rect x="${bx}" y="${ey(topAff)}" width="${bw}" height="${topAff - (b.affIn||0)}" fill="rgba(217,168,108,0.10)" stroke="${stroke}" stroke-width="0.95"/>`;
+  [18, 36, 54, 70, 84].forEach(z => {
+    if (z < topAff - 2 && z > (b.affIn || 0)) {
+      g += `<rect x="${bx+1}" y="${ey(z)}" width="${bw-2}" height="1.6" fill="${woodFill}" stroke="${stroke}" stroke-width="0.65"/>`;
+    }
+  });
+  g += `<text x="${cx}" y="${ey(topAff/2)}" text-anchor="middle" fill="${txtMain}" font-size="4.8" font-weight="700">${b.label.slice(0,20)}</text>`;
+  return g;
+}
+
 function exportJson() {
   const blob = new Blob([JSON.stringify(MATRIX, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -595,7 +871,7 @@ function renderStage() {
     const rm = activeRoom();
     const w = activeWall();
     const W = w.clearWidthIn, H = w.ceilingHeightIn || 120;
-    const padL = 56, padR = 92, padT = 38, padB = 56;
+    const padL = 52, padR = 128, padT = 38, padB = 64;
     const totW = W + padL + padR, totH = H + padT + padB;
     const vw = totW / state.zoom, vh = totH / state.zoom;
     const vx = -padL + (totW - vw) / 2 - state.panX;
@@ -610,30 +886,38 @@ function renderStage() {
     let h = `<text x="0" y="-18" fill="${txtMain}" font-size="9.5" font-weight="700" font-family="monospace">${rm.number} ${rm.name.toUpperCase()} — ${w.shortLabel} WALL (${fmtFtIn(W)} CLEAR · DRAG HORIZONTAL LEVELS ↕ OR VERTICAL BAY HANDLES ◆ ↔)</text>
     <rect x="0" y="0" width="${W}" height="${H}" fill="${isBp ? '#0e1a2f' : '#ffffff'}" stroke="${wallCol}" stroke-width="2.6"/>`;
 
-    // Left & Right Symmetrical Scribe Zones (Deubner Rule: <= 6" symmetrical scribes!)
-    if (leftScribe > 0 && w.bays.length > 0) {
-      h += `<rect x="0" y="0" width="${leftScribe}" height="${H}" fill="rgba(148,163,184,0.06)"/>
-            <text x="${leftScribe/2}" y="${H + 14}" text-anchor="middle" fill="${leftScribe<=6?'#6ee7b7':'#fcd34d'}" font-size="6.5" font-family="monospace">${leftScribe}" SCRIBE</text>`;
+    // Left & Right Symmetrical Scribe Zones
+    const hasOpenFixture = w.bays.some(b => b.kind === 'toilet_bay' || b.kind === 'toilet_alcove' || b.kind === 'open_passage');
+    if (leftScribe >= 1.5 && w.bays.length > 0) {
+      const sLbl = (leftScribe <= 6 && !hasOpenFixture) ? `${leftScribe}" SCRIBE` : `${fmtFtIn(leftScribe)} CLEAR`;
+      const sCol = (leftScribe <= 6 || hasOpenFixture) ? '#6ee7b7' : '#fcd34d';
+      h += `<rect x="0" y="0" width="${leftScribe}" height="${H}" fill="rgba(148,163,184,0.04)"/>
+            <text x="${leftScribe/2}" y="${H + 11.5}" text-anchor="middle" fill="${sCol}" font-size="5.5" font-weight="700" font-family="monospace">${sLbl}</text>`;
     }
-    if (rightScribe > 0 && w.bays.length > 0) {
-      h += `<rect x="${W - rightScribe}" y="0" width="${rightScribe}" height="${H}" fill="rgba(148,163,184,0.06)"/>
-            <text x="${W - rightScribe/2}" y="${H + 14}" text-anchor="middle" fill="${rightScribe<=6?'#6ee7b7':'#fcd34d'}" font-size="6.5" font-family="monospace">${rightScribe}" SCRIBE</text>`;
+    if (rightScribe >= 1.5 && w.bays.length > 0) {
+      const sLbl = (rightScribe <= 6 && !hasOpenFixture) ? `${rightScribe}" SCRIBE` : `${fmtFtIn(rightScribe)} CLEAR`;
+      const sCol = (rightScribe <= 6 || hasOpenFixture) ? '#6ee7b7' : '#fcd34d';
+      h += `<rect x="${W - rightScribe}" y="0" width="${rightScribe}" height="${H}" fill="rgba(148,163,184,0.04)"/>
+            <text x="${W - rightScribe/2}" y="${H + 11.5}" text-anchor="middle" fill="${sCol}" font-size="5.5" font-weight="700" font-family="monospace">${sLbl}</text>`;
     }
 
     // Bays + Interactive Vertical Bay Dividers (◆ Drag Left/Right!)
-    const dividerXs = [];
+    const dividerXs = []; let narrowToggle = 0;
     w.bays.forEach((b, idx) => {
       const bx = curX, bw = b.widthIn, bh = Math.min(H, b.heightIn || 36);
       const by = H - bh - (b.affIn || 0);
       const isSel = idx === state.bayIdx;
       h += `<g data-click="1" onclick="state.bayIdx=${idx};renderAll()" style="cursor:pointer;">
-        <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${isSel ? 'rgba(0,224,255,0.2)' : 'rgba(234,179,8,0.14)'}" stroke="${isSel ? '#00e0ff' : wallCol}" stroke-width="${isSel ? 2.2 : 1.5}"/>
-        <line x1="${bx+2}" y1="${by+3.5}" x2="${bx+bw-2}" y2="${by+3.5}" stroke="${wallCol}" stroke-width="0.9"/>
-        <text x="${bx + bw/2}" y="${by + bh/2 - 2}" text-anchor="middle" fill="${txtMain}" font-size="6.8" font-weight="700">${b.label.slice(0, 22)}</text>
-        <text x="${bx + bw/2}" y="${by + bh/2 + 7}" text-anchor="middle" fill="${txtSub}" font-size="6.2" font-family="monospace">${fmtFtIn(bw)} × ${fmtFtIn(bh)}</text>
+        ${renderBayArchSvg(b, bx, by, bw, bh, H, isBp, wallCol, txtMain, txtSub, isSel, rm)}
+        <rect x="${bx}" y="0" width="${bw}" height="${H}" fill="${isSel ? 'rgba(0,224,255,0.08)' : 'transparent'}" stroke="${isSel ? '#00e0ff' : 'transparent'}" stroke-width="1.4"/>
       </g>`;
       h += `<line x1="${bx}" y1="${H + 18}" x2="${bx + bw}" y2="${H + 18}" stroke="#38bdf8" stroke-width="1"/>
-            <text x="${bx + bw/2}" y="${H + 27}" text-anchor="middle" fill="#7dd3fc" font-size="7" font-weight="700" font-family="monospace">${fmtFtIn(bw)}</text>`;
+            <line x1="${bx}" y1="${H + 15.5}" x2="${bx}" y2="${H + 20.5}" stroke="#38bdf8" stroke-width="0.9"/>`;
+      if (bw >= 4) {
+        const dimY = (bw < 18 && (narrowToggle++ % 2 === 1)) ? (H + 33.5) : (H + 26.2);
+        const dimTxt = bw < 14 ? `${Math.round(bw*10)/10}"` : fmtFtIn(bw);
+        h += `<text x="${bx + bw/2}" y="${dimY}" text-anchor="middle" fill="#7dd3fc" font-size="5.8" font-weight="700" font-family="monospace">${dimTxt}</text>`;
+      }
       curX += bw;
       if (idx < w.bays.length - 1) dividerXs.push({ idx, x: curX });
     });
@@ -647,22 +931,25 @@ function renderStage() {
       </g>`;
     });
 
-    // Render Draggable Horizontal Levels (Datums — Drag Up/Down ↕!)
-    (rm.datums || []).forEach((d, dIdx) => {
-      const dy = H - d.affIn;
-      if (dy < 0 || dy > H) return;
+    // Render Draggable Horizontal Levels (Datums — Drag Up/Down ↕ with collision-free leader pills!)
+    const sortedDatums = (rm.datums || []).map((d, dIdx) => ({ d, dIdx, dy: H - d.affIn })).filter(x => x.dy >= 0 && x.dy <= H).sort((a, b) => a.dy - b.dy);
+    let lastPillY = -999;
+    sortedDatums.forEach(({ d, dIdx, dy }) => {
+      const pillY = Math.max(dy, lastPillY + 12.2);
+      lastPillY = pillY;
       const colD = d.affIn >= 96 ? '#eab308' : (d.affIn === 36 ? '#38bdf8' : '#a78bfa');
       h += `<g data-datum-idx="${dIdx}" style="cursor:ns-resize;">
-        <line x1="-14" y1="${dy}" x2="${W + 14}" y2="${dy}" stroke="${colD}" stroke-width="1.3" stroke-dasharray="5 3"/>
-        <rect x="${W + 14}" y="${dy - 6.5}" width="72" height="13" rx="3" fill="rgba(16,24,39,0.94)" stroke="${colD}" stroke-width="1"/>
-        <text x="${W + 18}" y="${dy + 2.5}" fill="${colD}" font-size="6.4" font-weight="700" font-family="monospace">↕ ${d.label.slice(0, 16)}</text>
-        <rect x="-14" y="${dy - 6}" width="${W + 100}" height="12" fill="transparent"/>
+        <line x1="-10" y1="${dy}" x2="${W + 8}" y2="${dy}" stroke="${colD}" stroke-width="1.15" stroke-dasharray="5 3"/>
+        <line x1="${W + 8}" y1="${dy}" x2="${W + 14}" y2="${pillY}" stroke="${colD}" stroke-width="0.9"/>
+        <rect x="${W + 14}" y="${pillY - 5.6}" width="108" height="11.2" rx="2.8" fill="rgba(16,24,39,0.95)" stroke="${colD}" stroke-width="0.95"/>
+        <text x="${W + 17.5}" y="${pillY + 2.1}" fill="${colD}" font-size="5.3" font-weight="700" font-family="monospace">↕ ${d.label.slice(0, 26)}</text>
+        <rect x="-10" y="${dy - 5}" width="${W + 132}" height="10" fill="transparent"/>
       </g>`;
     });
 
     // Overall Clear Wall Dimension
-    h += `<line x1="0" y1="${H + 38}" x2="${W}" y2="${H + 38}" stroke="${wallCol}" stroke-width="1.3"/>
-          <text x="${W/2}" y="${H + 48}" text-anchor="middle" fill="${txtMain}" font-size="8.2" font-weight="700" font-family="monospace">${fmtFtIn(W)} CLEAR WALL</text>`;
+    h += `<line x1="0" y1="${H + 44}" x2="${W}" y2="${H + 44}" stroke="${wallCol}" stroke-width="1.3"/>
+          <text x="${W/2}" y="${H + 54}" text-anchor="middle" fill="${txtMain}" font-size="8.2" font-weight="700" font-family="monospace">${fmtFtIn(W)} CLEAR WALL</text>`;
     svg.innerHTML = h;
   }
 }
@@ -675,7 +962,18 @@ function renderInspector() {
   const clientThumbs = (MATRIX.clientInspoThumbs || {})[rm.id] || [];
   const roomNotes = (MATRIX.d1Notes || []).filter(n => n.targetRoomId === rm.id);
 
+  const gates = evaluateWallGates(rm, w);
   let html = `
+    ${state.toast ? `<div class="bay-card" style="border-color:#10b981;background:rgba(16,185,129,0.15);color:#a7f3d0;font-size:11.5px;font-weight:600;">✓ ${state.toast}</div>` : ''}
+    <div class="bay-card" style="border-color:rgba(16,185,129,0.45);">
+      <div class="sec-lbl" style="color:#6ee7b7;">✅ Barnhaus Rule &amp; Sequence Gates (${rm.number} ${rm.name})</div>
+      ${gates.map(g => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;margin-bottom:3px;border-radius:5px;background:var(--bg);font-size:11px;">
+          <span style="font-weight:600;color:var(--text);">${g.lbl}</span>
+          <span class="badge" style="background:${g.st==='PASS'?'rgba(16,185,129,0.22)':g.st==='WARN'?'rgba(245,158,11,0.24)':'rgba(56,189,248,0.2)'};color:${g.st==='PASS'?'#6ee7b7':g.st==='WARN'?'#fde68a':'#7dd3fc'};">${g.val}</span>
+        </div>`).join('')}
+      ${isBathRoom(rm) ? `<button class="chip-btn" style="width:100%;margin-top:5px;border-color:#f59e0b;background:rgba(245,158,11,0.18);color:#fde68a;font-weight:700;" onclick="syncMasterBathToHouse()">🛁 Sync Room 113 Master Bath Style → Guest Baths</button>` : ''}
+    </div>
     <!-- 1. VISUAL INSPIRATIONS: DRAFT 1 ENHANCED RENDERS + CLIENT FOLDER PHOTOS -->
     <div class="bay-card" style="border-color:rgba(234,179,8,0.45);">
       <div class="sec-lbl" style="color:var(--gold-lt);">🖼️ Visual Inspirations (D1 Enhanced Renders + Client Folder)</div>
@@ -731,6 +1029,27 @@ function renderInspector() {
 }
 
 renderAll();
+
+(function applyHashBoot() {
+  const h = (window.location.hash || '').replace(/^#/, '');
+  if (!h) return;
+  const params = new URLSearchParams(h);
+  if (params.get('sync') === '1') syncMasterBathToHouse();
+  const rmId = params.get('room');
+  if (rmId && MATRIX.rooms.some(r => r.id === rmId)) {
+    selectRoom(rmId, params.get('mode') !== 'house');
+    const r = activeRoom();
+    const wParam = params.get('wall');
+    if (wParam) {
+      const wi = r.walls.findIndex(w => w.id === wParam);
+      if (wi >= 0) state.wallIdx = wi;
+    } else {
+      const wi = r.walls.findIndex(w => w.bays && w.bays.length > 0);
+      if (wi >= 0) state.wallIdx = wi;
+    }
+    renderAll();
+  }
+})();
 </script>
 </body>
 </html>

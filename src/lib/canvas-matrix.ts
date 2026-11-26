@@ -575,10 +575,25 @@ export function evaluateRoomChecks(
     })
   }
 
-  // 2. Focal & Flanking Symmetry
+  // 2. Focal & Flanking / Palindrome Double-Vanity Symmetry
   const groupBays = getCaseworkGroupBays(wall.bays)
+  const isPalindrome =
+    groupBays.length >= 3 &&
+    groupBays.every(
+      (b, idx) =>
+        b.kind === groupBays[groupBays.length - 1 - idx].kind &&
+        Math.abs(b.widthIn - groupBays[groupBays.length - 1 - idx].widthIn) <= 0.5
+    )
   const focalIdx = findFocalBayIndex(groupBays)
-  if (focalIdx > 0 && focalIdx < groupBays.length - 1) {
+  if (isPalindrome) {
+    checks.push({
+      id: 'symmetry',
+      label: 'Focal & Double-Bay Symmetry',
+      status: 'pass',
+      measured: `${groupBays.map((b) => formatInchesOnly(b.widthIn)).join(' · ')} (Δ 0")`,
+      detail: `Exact palindrome symmetry across ${groupBays.length} bays.`,
+    })
+  } else if (focalIdx > 0 && focalIdx < groupBays.length - 1) {
     const leftFlank = groupBays.slice(0, focalIdx)
     const rightFlank = groupBays.slice(focalIdx + 1)
     const leftSum = snapHalfInch(leftFlank.reduce((s, b) => s + b.widthIn, 0))
@@ -706,17 +721,197 @@ export function evaluateRoomChecks(
       measured: '12" Mantel Clr · 18" Hearth',
       detail: '72×8×6 oak mantel at 62" AFF sits 12" clear above 50" firebox opening.',
     })
+  } else if (isBathroomRoom(room)) {
+    const masterRoom = matrix.rooms.find((r) => isMasterBathroomRoom(r))
+    if (isMasterBathroomRoom(room)) {
+      checks.push({
+        id: 'bath-sequence',
+        label: 'Master Bath House Anchor',
+        status: 'pass',
+        measured: '1st in Sequence (Sets Style)',
+        detail: 'Master Bath establishes house-wide vanity millwork, 21" depth, 4" stone splash, 96" mirror head & 72" sconces.',
+      })
+    } else if (masterRoom && masterRoom.status === 'draft') {
+      checks.push({
+        id: 'bath-sequence',
+        label: 'Master Bath Sequence Gate',
+        status: 'warn',
+        measured: `Solve ${masterRoom.id} First`,
+        detail: `Lock ${masterRoom.id} ${masterRoom.name} before Guest/Powder Baths so styling propagates cleanly (Lesson 367ec0ca).`,
+      })
+    } else if (masterRoom) {
+      checks.push({
+        id: 'bath-sequence',
+        label: 'Master Bath Style Sync',
+        status: 'pass',
+        measured: `Anchored to ${masterRoom.id}`,
+        detail: `Inherits ${masterRoom.id} cabinetry, stone counter + 4" splash, 96" mirror head & 72" sconce datums.`,
+      })
+    }
+    const wcBay = room.walls.flatMap((w) => w.bays).find((b) => b.kind === 'toilet_bay')
+    const offStepBays = wall.bays.filter(
+      (b) =>
+        (b.kind === 'drawer_stack' || b.kind === 'sink_base' || b.kind === 'base_doors' || b.kind === 'tall_tower') &&
+        Math.abs((b.widthIn % 3) - 0) > 0.05 &&
+        Math.abs((b.widthIn % 3) - 3) > 0.05
+    )
+    const wcOk = !wcBay || wcBay.widthIn >= 30
+    checks.push({
+      id: 'clearance',
+      label: 'Barnhaus Bath Code & Datums',
+      status: !wcOk ? 'fail' : offStepBays.length > 0 ? 'warn' : 'pass',
+      measured: wcBay
+        ? `WC ${formatInchesOnly(wcBay.widthIn)} · 96" Mirror · 72" Sconce`
+        : '21" Depth · 4" Splash · 96" Mirror',
+      detail: !wcOk
+        ? `WC bay ${formatInchesOnly(wcBay!.widthIn)} < 30" minimum (15" centerline code clearance).`
+        : offStepBays.length > 0
+          ? `${offStepBays.length} cabinet bay(s) off 3" Barnhaus width increment.`
+          : '21" vanity depth (22" counter), separate 4" stone splash, 48"–96" mirrors & 72" linear sconces.',
+    })
   } else {
     checks.push({
       id: 'clearance',
-      label: 'Wet Room & Sconce Geometry',
+      label: 'Millwork & Datum Clearances',
       status: 'pass',
-      measured: 'Sconces @ 66" · 1/8" Glass',
-      detail: '42×48 mirror centered @ 66" AFF w/ flanking sconces; steam glass to 120" clg.',
+      measured: `${formatArchInches(wall.ceilingHeightIn)} Clg`,
+      detail: 'All fixtures and millwork clear door swings and Barnhaus datum lines.',
     })
   }
 
   return checks
+}
+
+export function isBathroomRoom(room: Pick<RoomNode, 'name' | 'subtitle'>): boolean {
+  const txt = `${room.name} ${room.subtitle || ''}`.toLowerCase()
+  return txt.includes('bath') || txt.includes('powder') || txt.includes('restroom')
+}
+
+export function isMasterBathroomRoom(room: Pick<RoomNode, 'name' | 'subtitle'>): boolean {
+  const nm = room.name.toLowerCase()
+  return isBathroomRoom(room) && (nm.includes('master') || nm.includes('primary'))
+}
+
+export function propagateMasterBathStyleToHouse(matrix: HouseMatrix): {
+  matrix: HouseMatrix
+  updatedRooms: string[]
+} {
+  const master = matrix.rooms.find((r) => isMasterBathroomRoom(r))
+  if (!master) return { matrix, updatedRooms: [] }
+
+  const masterSink = master.walls.flatMap((w) => w.bays).find((b) => b.kind === 'sink_base')
+  const masterStack = master.walls.flatMap((w) => w.bays).find((b) => b.kind === 'drawer_stack')
+  const styleNote =
+    masterSink?.revitParams ??
+    'Rift White Oak Shaker · 21"D (22" Stone Slab + Separate 4" Splash) · 4" Wood Toe Kick · 48"–96" Mirror · 72" Sconces'
+  const updatedRooms: string[] = []
+
+  const nextRooms = matrix.rooms.map((room) => {
+    if (!isBathroomRoom(room) || room.id === master.id) return room
+    updatedRooms.push(`${room.id} ${room.name}`)
+
+    const syncedDatums = [
+      { id: `d-${room.id}-36`, affIn: 36, label: '36" STONE COUNTER' },
+      { id: `d-${room.id}-40`, affIn: 40, label: '40" SEPARATE 4" SPLASH' },
+      { id: `d-${room.id}-48`, affIn: 48, label: '48" MIRROR BOTTOM' },
+      { id: `d-${room.id}-72`, affIn: 72, label: '72" LINEAR SCONCE MID' },
+      { id: `d-${room.id}-96`, affIn: 96, label: '96" DOOR-HEAD MIRROR TOP' },
+    ]
+
+    const totalExistingBays = room.walls.reduce((sum, w) => sum + w.bays.length, 0)
+    let nextWalls = room.walls.map((w) => ({
+      ...w,
+      bays: w.bays.map((b) => {
+        if (b.kind === 'sink_base' || b.kind === 'drawer_stack' || b.kind === 'base_doors') {
+          return {
+            ...b,
+            depthIn: 21,
+            fullHeightSplash: false,
+            revitParams: `${b.revitParams} · Synced from ${master.id}: ${styleNote}`,
+            ...(b.kind === 'sink_base' ? { hasMirror: true, hasSconces: true } : { drawerCount: 3 as const }),
+          }
+        }
+        return b
+      }),
+    }))
+
+    // If secondary Guest/Powder Bath shell has no millwork bays yet, compose a 3"-step vanity from Master style!
+    if (totalExistingBays === 0 && nextWalls.length > 0) {
+      const sortedByClear = [...nextWalls].sort(
+        (a, b) => getEffectiveWallWidth(matrix, b) - getEffectiveWallWidth(matrix, a)
+      )
+      const targetWall = sortedByClear[0]
+      const clearW = getEffectiveWallWidth(matrix, targetWall)
+      const isPowder = room.name.toLowerCase().includes('powder')
+      let composedBays: CaseworkBay[] = []
+
+      if (isPowder || clearW < 58) {
+        const sinkW = clearW >= 42 ? 36 : clearW >= 34 ? 30 : 24
+        composedBays = [
+          {
+            ...createBayFromPreset('sink_base', `${room.id}-${targetWall.id}-vs`, sinkW),
+            label: isPowder ? `${sinkW}" Powder Vanity` : `${sinkW}" Single Vanity`,
+            depthIn: 21,
+            fullHeightSplash: false,
+            hasMirror: true,
+            hasSconces: true,
+            revitFamily: masterSink?.revitFamily ?? 'BH_Vanity_SinkBase_2Door_Shaker',
+            revitParams: `Synced from ${master.id} Master Bath · ${sinkW}"W × 21"D × 36"H · 4" Stone Splash · 48"–96" Mirror · 72" Sconces`,
+          },
+        ]
+      } else {
+        const avail = Math.min(72, clearW - 3)
+        const sinkW = avail >= 66 ? 36 : 30
+        const rawStack = Math.floor((avail - sinkW) / 2 / 3) * 3
+        const stackW = Math.max(12, Math.min(18, rawStack))
+        composedBays = [
+          {
+            ...createBayFromPreset('drawer_stack', `${room.id}-${targetWall.id}-vl`, stackW),
+            label: `${stackW}" 3-Drawer`,
+            depthIn: 21,
+            drawerCount: 3,
+            fullHeightSplash: false,
+            revitFamily: masterStack?.revitFamily ?? 'BH_Vanity_3Drawer_Shaker',
+            revitParams: `Synced from ${master.id} Master Bath · ${stackW}"W × 21"D × 36"H · 4" Wood Toe Kick`,
+          },
+          {
+            ...createBayFromPreset('sink_base', `${room.id}-${targetWall.id}-vs`, sinkW),
+            label: `${sinkW}" Sink Base`,
+            depthIn: 21,
+            fullHeightSplash: false,
+            hasMirror: true,
+            hasSconces: true,
+            revitFamily: masterSink?.revitFamily ?? 'BH_Vanity_SinkBase_2Door_Shaker',
+            revitParams: `Synced from ${master.id} Master Bath · ${sinkW}"W × 21"D × 36"H · 4" Stone Splash · 48"–96" Mirror · 72" Sconces`,
+          },
+          {
+            ...createBayFromPreset('drawer_stack', `${room.id}-${targetWall.id}-vr`, stackW),
+            label: `${stackW}" 3-Drawer`,
+            depthIn: 21,
+            drawerCount: 3,
+            fullHeightSplash: false,
+            revitFamily: masterStack?.revitFamily ?? 'BH_Vanity_3Drawer_Shaker',
+            revitParams: `Synced from ${master.id} Master Bath · ${stackW}"W × 21"D × 36"H · 4" Wood Toe Kick`,
+          },
+        ]
+      }
+
+      nextWalls = nextWalls.map((w) => (w.id === targetWall.id ? { ...w, bays: composedBays } : w))
+    }
+
+    return {
+      ...room,
+      subtitle: `Synced from ${master.id} Master Bath · 21" Vanity · 4" Splash · 96" Mirror`,
+      status: room.status === 'draft' ? ('needs_review' as RoomStatus) : room.status,
+      datums: syncedDatums,
+      walls: nextWalls,
+    }
+  })
+
+  return {
+    matrix: { ...matrix, rooms: nextRooms },
+    updatedRooms,
+  }
 }
 
 export function symmetrizeWallFlanks(wall: WallEdge, clearWidthIn: number): WallEdge {
@@ -847,6 +1042,50 @@ export function applyQuickCommand(
         message: `Shared partition nudged to ${nextNudge > 0 ? '+' : ''}${formatInchesOnly(nextNudge)} — adjacent rooms & scribes re-solved.`,
         selectedBayId,
       }
+    }
+  }
+
+  // 1b. Propagate Master Bath styling across all Guest/Powder Baths
+  if (
+    (cmd.includes('sync') || cmd.includes('propagate') || cmd.includes('apply')) &&
+    cmd.includes('master')
+  ) {
+    const res = propagateMasterBathStyleToHouse(matrix)
+    return {
+      matrix: res.matrix,
+      message:
+        res.updatedRooms.length > 0
+          ? `Synced Master Bath millwork, 21" depth, 4" stone splash, 96" mirror head & 72" sconces to: ${res.updatedRooms.join(', ')}.`
+          : 'No secondary Guest/Powder Baths found to sync.',
+      selectedBayId,
+    }
+  }
+
+  // 1c. 5-Bay Master Double Vanity builder: e.g. "double vanity", "master vanity"
+  if (cmd.includes('double vanity') || cmd.includes('master vanity')) {
+    const avail = Math.max(78, clearWidthIn - 2.5)
+    const sinkW = avail >= 90 ? 24 : 21
+    const centerW = avail >= 84 ? 18 : 15
+    const outerW = Math.max(12, Math.floor((avail - sinkW * 2 - centerW) / 2 / 3) * 3)
+    const mk = (kind: BayKind, suffix: string, wIn: number, lbl: string): CaseworkBay => ({
+      ...createBayFromPreset(kind, `${wall.id}-${suffix}`, wIn),
+      label: lbl,
+      depthIn: 21,
+      drawerCount: 3,
+      fullHeightSplash: false,
+      ...(kind === 'sink_base' ? { hasMirror: true, hasSconces: true } : {}),
+    })
+    const nextBays = [
+      mk('drawer_stack', 'dvl', outerW, `${outerW}" 3-Drawer`),
+      mk('sink_base', 'dvs1', sinkW, `${sinkW}" Sink 1`),
+      mk('drawer_stack', 'dvc', centerW, `${centerW}" Center 3-Drw`),
+      mk('sink_base', 'dvs2', sinkW, `${sinkW}" Sink 2`),
+      mk('drawer_stack', 'dvr', outerW, `${outerW}" 3-Drawer`),
+    ]
+    return {
+      matrix: updateWallInMatrix(matrix, room.id, wall.id, { ...wall, bays: nextBays }),
+      message: `Built 5-bay symmetrical double vanity (${outerW}" | ${sinkW}" | ${centerW}" | ${sinkW}" | ${outerW}" = ${outerW * 2 + sinkW * 2 + centerW}").`,
+      selectedBayId: nextBays[1].id,
     }
   }
 
@@ -2987,22 +3226,39 @@ export function buildRoomFromTemplate(params: {
     }
     subtitle = 'Cooking Wall, Tall Towers & Prep Island'
   } else if (params.template === 'bathroom_vanity') {
-    const hasWetRoom = w >= 120
+    const isMaster = params.name.toLowerCase().includes('master') || params.name.toLowerCase().includes('primary')
+    const hasWetRoom = w >= 138
     const wetW = hasWetRoom ? 60 : 0
-    const vanSpan = w - wetW - 6
-    const sinkW = vanSpan >= 66 ? 36 : 30
-    const drwW = Math.max(12, snapHalfInch((Math.min(76, vanSpan) - sinkW) / 2))
-    northBays = [
-      createBayFromPreset('drawer_stack', `${params.id}-vl`, drwW),
-      createBayFromPreset('sink_base', `${params.id}-vs`, sinkW),
-      createBayFromPreset('drawer_stack', `${params.id}-vr`, drwW),
-      ...(hasWetRoom ? [createBayFromPreset('wet_room_glass', `${params.id}-wet`, wetW, clg)] : []),
-    ]
-    subtitle = 'Symmetric Oak Vanity, 66" Sconces & Wet Zone'
+    const vanSpan = w - wetW - 3
+    if (isMaster || vanSpan >= 84) {
+      const sinkW = vanSpan >= 92 ? 24 : 21
+      const centerW = 18
+      const outerW = Math.max(12, Math.floor((Math.min(96, vanSpan) - sinkW * 2 - centerW) / 2 / 3) * 3)
+      northBays = [
+        { ...createBayFromPreset('drawer_stack', `${params.id}-vl`, outerW), depthIn: 21, fullHeightSplash: false },
+        { ...createBayFromPreset('sink_base', `${params.id}-vs1`, sinkW), depthIn: 21, fullHeightSplash: false },
+        { ...createBayFromPreset('drawer_stack', `${params.id}-vc`, centerW), depthIn: 21, fullHeightSplash: false },
+        { ...createBayFromPreset('sink_base', `${params.id}-vs2`, sinkW), depthIn: 21, fullHeightSplash: false },
+        { ...createBayFromPreset('drawer_stack', `${params.id}-vr`, outerW), depthIn: 21, fullHeightSplash: false },
+        ...(hasWetRoom ? [createBayFromPreset('wet_room_glass', `${params.id}-wet`, wetW, clg)] : []),
+      ]
+      subtitle = '5-Bay Master Double Vanity · 4" Splash · 96" Mirror Head · 72" Sconces'
+    } else {
+      const sinkW = vanSpan >= 66 ? 36 : 30
+      const drwW = Math.max(12, Math.floor((Math.min(72, vanSpan) - sinkW) / 2 / 3) * 3)
+      northBays = [
+        { ...createBayFromPreset('drawer_stack', `${params.id}-vl`, drwW), depthIn: 21, fullHeightSplash: false },
+        { ...createBayFromPreset('sink_base', `${params.id}-vs`, sinkW), depthIn: 21, fullHeightSplash: false },
+        { ...createBayFromPreset('drawer_stack', `${params.id}-vr`, drwW), depthIn: 21, fullHeightSplash: false },
+        ...(hasWetRoom ? [createBayFromPreset('wet_room_glass', `${params.id}-wet`, wetW, clg)] : []),
+      ]
+      subtitle = 'Symmetric 21" Vanity · 4" Stone Splash · 96" Mirror Head · 72" Sconces'
+    }
     datums = [
-      { id: `d-${params.id}-36`, affIn: 36, label: '36" COUNTER' },
-      { id: `d-${params.id}-66`, affIn: 66, label: '66" MIRROR / SCONCE CL' },
-      { id: `d-${params.id}-90`, affIn: 90, label: '90" MIRROR TOP' },
+      { id: `d-${params.id}-36`, affIn: 36, label: '36" STONE COUNTER' },
+      { id: `d-${params.id}-40`, affIn: 40, label: '40" SEPARATE 4" SPLASH' },
+      { id: `d-${params.id}-72`, affIn: 72, label: '72" LINEAR SCONCE MID' },
+      { id: `d-${params.id}-96`, affIn: 96, label: '96" DOOR-HEAD MIRROR TOP' },
     ]
   } else if (params.template === 'walk_in_closet') {
     const bayCount = Math.max(3, Math.min(5, Math.floor((w - 6) / 30)))

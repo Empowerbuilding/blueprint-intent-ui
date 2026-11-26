@@ -627,12 +627,25 @@ function ElevationBayGraphic({
             <line x1={cx + 14} y1={ey(bay.heightIn + 2.5)} x2={cx + 23} y2={ey(bay.heightIn + 2.5)} />
           </g>
 
-          {/* 42"x48" Black-Frame Mirror centered @ 66" AFF (42" to 90" AFF) */}
+          {/* Separate 4" Stone Lip Backsplash (36" to 40" AFF) when not full-height tile */}
+          {!bay.fullHeightSplash && (
+            <rect
+              x={x}
+              y={ey(bay.heightIn + 4)}
+              width={w}
+              height={4 * S}
+              fill={palette.slabFill}
+              stroke={palette.primaryStroke}
+              strokeWidth="1.05"
+            />
+          )}
+
+          {/* Barnhaus Rounded-Corner Mirror locked to 96" Door Head (48" to 96" AFF) */}
           {bay.hasMirror &&
             (() => {
-              const mirrorW = (bay.widthIn >= 36 ? 42 : bay.widthIn - 2) * S
-              const mirrorBottomAff = 42
-              const mirrorTopAff = 90
+              const mirrorW = Math.min(bay.widthIn, 36) * S
+              const mirrorBottomAff = 48
+              const mirrorTopAff = 96
               const mx = cx - mirrorW / 2
               const my = ey(mirrorTopAff)
               const mh = ey(mirrorBottomAff) - my
@@ -643,7 +656,7 @@ function ElevationBayGraphic({
                     y={my}
                     width={mirrorW}
                     height={mh}
-                    rx="3"
+                    rx="8"
                     fill={palette.glassFill}
                     stroke={palette.cutStroke}
                     strokeWidth="2.2"
@@ -653,6 +666,7 @@ function ElevationBayGraphic({
                     y={my + 4}
                     width={mirrorW - 8}
                     height={mh - 8}
+                    rx="5"
                     fill="none"
                     stroke={palette.fineStroke}
                     strokeWidth="0.7"
@@ -662,27 +676,26 @@ function ElevationBayGraphic({
               )
             })()}
 
-          {/* Flanking Architectural Tube Sconces centered @ 66" AFF */}
+          {/* Flanking Vertical Linear Tube Sconces centered @ 72" AFF Midpoint (62"–82" AFF) */}
           {bay.hasSconces &&
             (() => {
-              const sconceCenterY = ey(66)
-              const sconceOffset = ((bay.widthIn >= 36 ? 42 : bay.widthIn) / 2 + 8) * S
-              const sconceH = 16 * S
-              const sconceW = 2.8 * S
+              const sconceCenterY = ey(72)
+              const mirrorHalfIn = Math.min(bay.widthIn, 36) / 2
+              const sconceOffset = (mirrorHalfIn + 5.5) * S
+              const sconceH = 19 * S
+              const sconceW = 2.6 * S
               return [-1, 1].map((side) => {
                 const sx = cx + side * sconceOffset
                 return (
                   <g key={side}>
-                    {/* Brass/Black Wall Backplate @ 66" CL */}
                     <circle
                       cx={sx}
                       cy={sconceCenterY}
-                      r="5"
+                      r="4.5"
                       fill={palette.steelFill}
                       stroke={palette.cutStroke}
                       strokeWidth="1.1"
                     />
-                    {/* Vertical Opal Diffuser Tube */}
                     <rect
                       x={sx - sconceW / 2}
                       y={sconceCenterY - sconceH / 2}
@@ -1497,16 +1510,27 @@ function ElevationBayGraphic({
                 stroke={palette.cutStroke}
                 strokeWidth="1.6"
               />
-              {/* 4" Curb */}
-              <rect
-                x={x}
-                y={ey(4)}
-                width={w}
-                height={4 * S}
-                fill={palette.slabFill}
-                stroke={palette.primaryStroke}
-                strokeWidth="1.2"
-              />
+              {/* Curbless Recessed Threshold (when affIn === 0) or 48" Tiled Pony Wall (when withLowerBase) */}
+              {bay.withLowerBase && bay.lowerBaseHeightIn ? (
+                <rect
+                  x={x}
+                  y={ey(bay.lowerBaseHeightIn)}
+                  width={Math.min(w * 0.54, 42 * S)}
+                  height={bay.lowerBaseHeightIn * S}
+                  fill={palette.slabFill}
+                  stroke={palette.cutStroke}
+                  strokeWidth="1.5"
+                />
+              ) : (
+                <line
+                  x1={x}
+                  y1={ey(0)}
+                  x2={x + w}
+                  y2={ey(0)}
+                  stroke={palette.cutStroke}
+                  strokeWidth="2.2"
+                />
+              )}
               {/* 14"x50" Recessed Shower Niche */}
               <rect
                 x={x + w * 0.22}
@@ -1731,9 +1755,9 @@ function ElevationBayGraphic({
       {/* Selection & Hover Hit Box + Resize Handle Badges */}
       <rect
         x={x}
-        y={Math.min(yTop, bay.hasMirror ? ey(90) : yTop)}
+        y={Math.min(yTop, bay.hasMirror ? ey(96) : yTop)}
         width={w}
-        height={ey(0) - Math.min(yTop, bay.hasMirror ? ey(90) : yTop)}
+        height={ey(0) - Math.min(yTop, bay.hasMirror ? ey(96) : yTop)}
         fill={isSelected ? palette.selectFill : 'transparent'}
         stroke={
           isSelected
