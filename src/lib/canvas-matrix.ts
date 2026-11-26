@@ -152,6 +152,7 @@ export interface RoomCheck {
 
 export interface D1PlanNote {
   id: string
+  revitId?: number
   level: 1 | 2
   text: string
   textBoxRoom: string
