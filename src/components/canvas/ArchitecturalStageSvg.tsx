@@ -569,23 +569,55 @@ function ElevationBayGraphic({
       onMouseLeave={() => onHover(null)}
       className="cursor-pointer"
     >
-      {/* Full-Height Bookmatched Quartzite Slab Splash behind bay when enabled */}
-      {bay.fullHeightSplash && (
+      {/* Separate 4" Stone Alcove Lip (36"–40" AFF) + Full-Height Porcelain Tile to Ceiling (40"–Clg, zero gaps!) */}
+      {(bay.kind === 'drawer_stack' ||
+        bay.kind === 'base_doors' ||
+        bay.kind === 'sink_base' ||
+        bay.kind === 'scribe_panel') && (
         <g className="pointer-events-none">
+          {bay.fullHeightSplash && (
+            <g>
+              <rect
+                x={x}
+                y={ey(wall.ceilingHeightIn)}
+                width={w}
+                height={ey(bay.heightIn + 4) - ey(wall.ceilingHeightIn)}
+                fill={palette.slabFill}
+                opacity="0.34"
+              />
+              {/* 24" Large-Format Stacked Porcelain Tile Courses (40" to Ceiling) */}
+              {[60, 84, 108].filter((aff) => aff < wall.ceilingHeightIn && aff > bay.heightIn + 4).map((aff) => (
+                <line
+                  key={aff}
+                  x1={x}
+                  y1={ey(aff)}
+                  x2={x + w}
+                  y2={ey(aff)}
+                  stroke={palette.fineStroke}
+                  strokeWidth="0.65"
+                  opacity="0.45"
+                />
+              ))}
+              <line
+                x1={cx}
+                y1={ey(wall.ceilingHeightIn)}
+                x2={cx}
+                y2={ey(bay.heightIn + 4)}
+                stroke={palette.fineStroke}
+                strokeWidth="0.55"
+                opacity="0.32"
+              />
+            </g>
+          )}
+          {/* Crisp 4" Separate Stone Backsplash Lip (36" to 40" AFF) */}
           <rect
             x={x}
-            y={ey(wall.ceilingHeightIn)}
+            y={ey(bay.heightIn + 4)}
             width={w}
-            height={ey(bay.heightIn) - ey(wall.ceilingHeightIn)}
+            height={4 * S}
             fill={palette.slabFill}
-            opacity="0.32"
-          />
-          <path
-            d={`M ${x + w * 0.15} ${ey(bay.heightIn)} Q ${x + w * 0.55} ${ey((bay.heightIn + wall.ceilingHeightIn) / 2)} ${x + w * 0.85} ${ey(wall.ceilingHeightIn)}`}
-            fill="none"
-            stroke={palette.dashedStroke}
-            strokeWidth="0.6"
-            opacity="0.35"
+            stroke={palette.primaryStroke}
+            strokeWidth="1.1"
           />
         </g>
       )}
@@ -594,8 +626,76 @@ function ElevationBayGraphic({
       {bay.kind === 'drawer_stack' &&
         renderLowerCabinetCarcase(bay.heightIn, 'drawers', bay.drawerCount ?? 3)}
 
-      {/* 2. BASE DOORS */}
+      {/* 2. BASE DOORS & SCRIBE FILLER PANEL */}
       {bay.kind === 'base_doors' && renderLowerCabinetCarcase(bay.heightIn, 'doors')}
+      {bay.kind === 'scribe_panel' && (
+        <g>
+          <rect
+            x={x - 1}
+            y={ey(bay.heightIn)}
+            width={w + 2}
+            height={1.5 * S}
+            fill={palette.slabFill}
+            stroke={palette.cutStroke}
+            strokeWidth="1.25"
+          />
+          <rect
+            x={x}
+            y={ey(bay.heightIn - 1.5)}
+            width={w}
+            height={(bay.heightIn - 5.5) * S}
+            fill={palette.oakFill}
+            stroke={palette.primaryStroke}
+            strokeWidth="1.1"
+          />
+          <rect
+            x={x}
+            y={ey(4)}
+            width={w}
+            height={4 * S}
+            fill="rgba(15, 23, 42, 0.16)"
+            stroke={palette.fineStroke}
+            strokeWidth="0.8"
+          />
+        </g>
+      )}
+
+      {/* 2B. INTERIOR CUT WALL PARTITION / PONY WALL + OPTIONAL GLASS ABOVE */}
+      {bay.kind === 'wall_partition' && (
+        <g>
+          {bay.heightIn < wall.ceilingHeightIn && (
+            <rect
+              x={x}
+              y={ey(wall.ceilingHeightIn)}
+              width={w}
+              height={ey(bay.heightIn) - ey(wall.ceilingHeightIn)}
+              fill={palette.glassFill}
+              stroke={palette.cutStroke}
+              strokeWidth="1.35"
+            />
+          )}
+          <rect
+            x={x}
+            y={ey(bay.heightIn)}
+            width={w}
+            height={bay.heightIn * S}
+            fill="url(#cad-wall-poche)"
+            stroke={palette.cutStroke}
+            strokeWidth="1.8"
+          />
+          {bay.heightIn < wall.ceilingHeightIn && (
+            <rect
+              x={x - 1}
+              y={ey(bay.heightIn)}
+              width={w + 2}
+              height={1.5 * S}
+              fill={palette.slabFill}
+              stroke={palette.cutStroke}
+              strokeWidth="1.35"
+            />
+          )}
+        </g>
+      )}
 
       {/* 3. SINK BASE + UNDERMOUNT BOWL + FAUCET + OPTIONAL MIRROR & SCONCES @ 66" AFF */}
       {bay.kind === 'sink_base' && (
@@ -626,19 +726,6 @@ function ElevationBayGraphic({
             <line x1={cx + 18} y1={ey(bay.heightIn)} x2={cx + 18} y2={ey(bay.heightIn + 2.5)} />
             <line x1={cx + 14} y1={ey(bay.heightIn + 2.5)} x2={cx + 23} y2={ey(bay.heightIn + 2.5)} />
           </g>
-
-          {/* Separate 4" Stone Lip Backsplash (36" to 40" AFF) when not full-height tile */}
-          {!bay.fullHeightSplash && (
-            <rect
-              x={x}
-              y={ey(bay.heightIn + 4)}
-              width={w}
-              height={4 * S}
-              fill={palette.slabFill}
-              stroke={palette.primaryStroke}
-              strokeWidth="1.05"
-            />
-          )}
 
           {/* Barnhaus Rounded-Corner Mirror locked to 96" Door Head (48" to 96" AFF) */}
           {bay.hasMirror &&
@@ -1490,28 +1577,119 @@ function ElevationBayGraphic({
         </g>
       )}
 
-      {/* 9. FULL-HEIGHT 1/8" GLASS STEAM / WET ROOM */}
+      {/* 9. FULL-HEIGHT 1/8" GLASS SHOWER / WET ROOM OR ALCOVE TUB W/ CURTAIN + EXPOSED LUXURY SHOWER COLUMN */}
       {bay.kind === 'wet_room_glass' &&
         (() => {
           const doorW = Math.min(w * 0.46, 28 * S)
           const benchW = 18 * S
           const benchH = 18 * S
-          const nicheW = Math.min(w * 0.25, 14 * S)
-          const nicheH = Math.min(h * 0.42, 50 * S)
+          const nicheW = Math.min(w * 0.24, 14 * S)
+          const nicheH = Math.min(h * 0.36, 36 * S)
+          const colX = x + Math.min(Math.max(22 * S, w * 0.32), w - 20 * S)
+          const rainCx = colX + 12 * S
+          const rainHalfW = 6 * S // 12" Dia Ultra-Thin Rain Head
           return (
             <g>
-              {/* Subtle large-format porcelain tile background lines */}
+              {/* Full-height large-format porcelain tile field */}
               <rect
                 x={x}
                 y={yTop}
                 width={w}
                 height={h}
-                fill={palette.glassFill}
+                fill={bay.hasTubCurtain ? palette.slabFill : palette.glassFill}
+                fillOpacity={bay.hasTubCurtain ? 0.36 : 1}
                 stroke={palette.cutStroke}
                 strokeWidth="1.6"
               />
-              {/* Curbless Recessed Threshold (when affIn === 0) or 48" Tiled Pony Wall (when withLowerBase) */}
-              {bay.withLowerBase && bay.lowerBaseHeightIn ? (
+              {[24, 48, 60, 84, 108]
+                .filter((aff) => aff < wall.ceilingHeightIn)
+                .map((aff) => (
+                  <line
+                    key={aff}
+                    x1={x}
+                    y1={ey(aff)}
+                    x2={x + w}
+                    y2={ey(aff)}
+                    stroke={palette.fineStroke}
+                    strokeWidth="0.6"
+                    opacity="0.4"
+                  />
+                ))}
+
+              {/* Alcove Apron Tub (when hasTubCurtain) OR Tiled Pony Wall / Curbless Threshold */}
+              {bay.hasTubCurtain ? (
+                <g>
+                  {/* 18"H Architectural Rectangular Alcove Tub */}
+                  <rect
+                    x={x}
+                    y={ey(18)}
+                    width={w}
+                    height={18 * S}
+                    fill={palette.bg}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.8"
+                  />
+                  <rect
+                    x={x + 6}
+                    y={ey(16)}
+                    width={w - 12}
+                    height={13 * S}
+                    rx="3"
+                    fill="none"
+                    stroke={palette.fineStroke}
+                    strokeWidth="0.9"
+                  />
+                  {/* Tub Filler Spout @ 24" AFF */}
+                  <rect
+                    x={colX - 4}
+                    y={ey(24.5)}
+                    width={12}
+                    height={5}
+                    rx="1.5"
+                    fill={palette.steelFill}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.1"
+                  />
+                  {/* 84" AFF Shower Curtain Rod + Pleated Linen Curtain (NO GLASS per client!) */}
+                  <line
+                    x1={x}
+                    y1={ey(84)}
+                    x2={x + w}
+                    y2={ey(84)}
+                    stroke={palette.cutStroke}
+                    strokeWidth="2.1"
+                  />
+                  {(() => {
+                    const cw = Math.min(w * 0.34, 22 * S)
+                    const cxStart = x + w - cw - 4
+                    return (
+                      <g>
+                        <rect
+                          x={cxStart}
+                          y={ey(83.5)}
+                          width={cw}
+                          height={66.5 * S}
+                          fill={palette.bg}
+                          fillOpacity="0.82"
+                          stroke={palette.primaryStroke}
+                          strokeWidth="1.1"
+                        />
+                        {[0.2, 0.4, 0.6, 0.8].map((f) => (
+                          <line
+                            key={f}
+                            x1={cxStart + cw * f}
+                            y1={ey(83.5)}
+                            x2={cxStart + cw * f}
+                            y2={ey(17)}
+                            stroke={palette.fineStroke}
+                            strokeWidth="0.75"
+                          />
+                        ))}
+                      </g>
+                    )
+                  })()}
+                </g>
+              ) : bay.withLowerBase && bay.lowerBaseHeightIn ? (
                 <rect
                   x={x}
                   y={ey(bay.lowerBaseHeightIn)}
@@ -1531,10 +1709,11 @@ function ElevationBayGraphic({
                   strokeWidth="2.2"
                 />
               )}
-              {/* 14"x50" Recessed Shower Niche */}
+
+              {/* Recessed Tiled Shower Niche */}
               <rect
-                x={x + w * 0.22}
-                y={ey(86)}
+                x={x + w * 0.62}
+                y={ey(78)}
                 width={nicheW}
                 height={nicheH}
                 fill={palette.bg}
@@ -1542,57 +1721,139 @@ function ElevationBayGraphic({
                 strokeWidth="1.15"
               />
               <line
-                x1={x + w * 0.22}
-                y1={ey(62)}
-                x2={x + w * 0.22 + nicheW}
-                y2={ey(62)}
+                x1={x + w * 0.62}
+                y1={ey(60)}
+                x2={x + w * 0.62 + nicheW}
+                y2={ey(60)}
                 stroke={palette.fineStroke}
                 strokeWidth="1"
               />
-              {/* 18" Floating Stone Steam Bench */}
-              {bay.widthIn >= 48 && (
-                <rect
-                  x={x + w - benchW - 2}
-                  y={ey(18)}
-                  width={benchW}
-                  height={3 * S}
-                  fill={palette.slabFill}
-                  stroke={palette.cutStroke}
-                  strokeWidth="1.3"
-                />
+
+              {/* 18" Floating Stone Bench (Walk-in showers >= 48", not tub) */}
+              {!bay.hasTubCurtain && bay.widthIn >= 48 && (
+                <g>
+                  <rect
+                    x={x + w - benchW - 2}
+                    y={ey(18)}
+                    width={benchW}
+                    height={3 * S}
+                    fill={palette.slabFill}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.3"
+                  />
+                  <line
+                    x1={x + w - benchW}
+                    y1={ey(15)}
+                    x2={x + w - benchW}
+                    y2={ey(4)}
+                    stroke={palette.dashedStroke}
+                    strokeWidth="0.9"
+                    strokeDasharray="3 3"
+                  />
+                </g>
               )}
-              {bay.widthIn >= 48 && (
-                <line
-                  x1={x + w - benchW}
-                  y1={ey(15)}
-                  x2={x + w - benchW}
-                  y2={ey(4)}
-                  stroke={palette.dashedStroke}
-                  strokeWidth="0.9"
-                  strokeDasharray="3 3"
-                />
+
+              {/* LUXURY EXPOSED THERMOSTATIC SHOWER COLUMN (SH-COL: 42" Mixer -> 88" Riser -> 12" Rain Head @ 84" + Handshower) */}
+              {bay.hasShowerColumn !== false && (
+                <g>
+                  {/* 42" AFF Horizontal Thermostatic Bar Mixer w/ Dual Knurled Controls */}
+                  <rect
+                    x={colX - 22}
+                    y={ey(43.2)}
+                    width={44}
+                    height={9}
+                    rx="3"
+                    fill={palette.steelFill}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.45"
+                  />
+                  <circle cx={colX - 15} cy={ey(42)} r="3.2" fill={palette.bg} stroke={palette.cutStroke} strokeWidth="1.1" />
+                  <circle cx={colX + 15} cy={ey(42)} r="3.2" fill={palette.bg} stroke={palette.cutStroke} strokeWidth="1.1" />
+                  {/* Exposed Rigid Vertical Column Riser (42" to 88" AFF) + Gooseneck Arch to 84" Rain Head */}
+                  <path
+                    d={`M ${colX} ${ey(43.2)} L ${colX} ${ey(86.5)} Q ${colX} ${ey(89)} ${colX + 10} ${ey(89)} L ${rainCx - 6} ${ey(89)} Q ${rainCx} ${ey(89)} ${rainCx} ${ey(84.8)}`}
+                    fill="none"
+                    stroke={palette.cutStroke}
+                    strokeWidth="2.1"
+                  />
+                  {/* Upper Wall Standoff Tie-Back @ 76" AFF */}
+                  <circle cx={colX} cy={ey(76)} r="3" fill={palette.steelFill} stroke={palette.cutStroke} strokeWidth="1.1" />
+                  {/* 12" Ultra-Thin Round Rain Head @ 84" AFF Spray Face */}
+                  <rect
+                    x={rainCx - rainHalfW}
+                    y={ey(84.8)}
+                    width={rainHalfW * 2}
+                    height={5}
+                    rx="2"
+                    fill={palette.steelFill}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.45"
+                  />
+                  {/* Subtle Architectural Rain Spray Ticks */}
+                  {[-14, -7, 0, 7, 14].map((dx) => (
+                    <line
+                      key={dx}
+                      x1={rainCx + dx}
+                      y1={ey(83)}
+                      x2={rainCx + dx}
+                      y2={ey(79)}
+                      stroke={palette.dashedStroke}
+                      strokeWidth="0.75"
+                      strokeDasharray="2 2"
+                    />
+                  ))}
+                  {/* Sliding Handshower Cradle @ 58" AFF + Cylindrical Wand + Curved Flexible Hose */}
+                  <rect
+                    x={colX - 5}
+                    y={ey(59)}
+                    width={10}
+                    height={5}
+                    rx="1.5"
+                    fill={palette.steelFill}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1"
+                  />
+                  <rect
+                    x={colX + 7}
+                    y={ey(64)}
+                    width={5.5}
+                    height={22}
+                    rx="2"
+                    fill={palette.steelFill}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.2"
+                  />
+                  <path
+                    d={`M ${colX - 4} ${ey(41)} Q ${colX + 2} ${ey(33)} ${colX + 9.5} ${ey(58.5)}`}
+                    fill="none"
+                    stroke={palette.primaryStroke}
+                    strokeWidth="1.15"
+                  />
+                </g>
               )}
-              {/* Ceiling Rain Head + Thermostatic Valve */}
-              <line x1={x + 28} y1={yTop} x2={x + 28} y2={yTop + 14} stroke={palette.cutStroke} strokeWidth="1.4" />
-              <line x1={x + 16} y1={yTop + 14} x2={x + 40} y2={yTop + 14} stroke={palette.cutStroke} strokeWidth="2.2" />
-              {/* Hinged 28" Frameless 1/8" Steam Glass Door + D-Pull */}
-              <line
-                x1={x + doorW}
-                y1={yTop}
-                x2={x + doorW}
-                y2={ey(4)}
-                stroke={palette.cutStroke}
-                strokeWidth="1.35"
-              />
-              <line
-                x1={x + doorW - 10}
-                y1={ey(46)}
-                x2={x + doorW - 10}
-                y2={ey(34)}
-                stroke={palette.cutStroke}
-                strokeWidth="2"
-              />
-              <GlassGlint x={x} y={yTop} w={w} h={benchH * 4} color={palette.glassGlint} />
+
+              {/* Frameless 1/8" Glass Door + D-Pull (only when NOT tub curtain!) */}
+              {!bay.hasTubCurtain && (
+                <g>
+                  <line
+                    x1={x + doorW}
+                    y1={yTop}
+                    x2={x + doorW}
+                    y2={ey(4)}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.35"
+                  />
+                  <line
+                    x1={x + doorW - 10}
+                    y1={ey(46)}
+                    x2={x + doorW - 10}
+                    y2={ey(34)}
+                    stroke={palette.cutStroke}
+                    strokeWidth="2"
+                  />
+                  <GlassGlint x={x} y={yTop} w={w} h={benchH * 4} color={palette.glassGlint} />
+                </g>
+              )}
             </g>
           )
         })()}
@@ -1689,49 +1950,144 @@ function ElevationBayGraphic({
 
       {bay.kind === 'door' && (
         <g>
-          <rect
-            x={x - 10}
-            y={yTop - 10}
-            width={w + 20}
-            height={h + 10}
-            fill="none"
-            stroke={palette.fineStroke}
-            strokeWidth="0.95"
-          />
-          <rect
-            x={x}
-            y={yTop}
-            width={w}
-            height={h}
-            fill={bay.widthIn >= 96 ? 'none' : palette.oakFill}
-            stroke={palette.cutStroke}
-            strokeWidth="1.6"
-          />
-          {bay.widthIn < 96 && (
-            <>
-              <line
-                x1={x + w - 14}
-                y1={ey(36)}
-                x2={x + w - 6}
-                y2={ey(36)}
+          {bay.hasHiddenMirrorDoor ? (
+            /* Flush Concealed Full-Height Hidden Mirror Door (Bath 4 -> WIC 4 per D1 note!) */
+            <g>
+              <rect
+                x={x}
+                y={yTop}
+                width={w}
+                height={h}
+                fill={palette.glassFill}
                 stroke={palette.cutStroke}
                 strokeWidth="2"
               />
-              <path
-                d={`M ${x} ${yTop} L ${x + w} ${yTop + h / 2} L ${x} ${yBottom}`}
+              <rect
+                x={x + 4}
+                y={yTop + 4}
+                width={w - 8}
+                height={h - 8}
                 fill="none"
                 stroke={palette.dashedStroke}
-                strokeWidth="0.75"
-                strokeDasharray="5 4"
+                strokeWidth="0.85"
+                strokeDasharray="4 2"
               />
-            </>
+              <GlassGlint x={x} y={yTop} w={w} h={h} color={palette.glassGlint} />
+              <text
+                x={cx}
+                y={ey(52)}
+                textAnchor="middle"
+                fill={palette.subText}
+                fontSize="8.5"
+                fontWeight="700"
+                fontFamily="ui-monospace, monospace"
+              >
+                HIDDEN MIRROR DOOR
+              </text>
+            </g>
+          ) : (
+            <g>
+              <rect
+                x={x - 10}
+                y={yTop - 10}
+                width={w + 20}
+                height={h + 10}
+                fill="none"
+                stroke={palette.fineStroke}
+                strokeWidth="0.95"
+              />
+              <rect
+                x={x}
+                y={yTop}
+                width={w}
+                height={h}
+                fill={bay.widthIn >= 96 ? 'none' : palette.oakFill}
+                stroke={palette.cutStroke}
+                strokeWidth="1.6"
+              />
+              {bay.widthIn < 96 && (
+                <>
+                  <line
+                    x1={x + w - 14}
+                    y1={ey(36)}
+                    x2={x + w - 6}
+                    y2={ey(36)}
+                    stroke={palette.cutStroke}
+                    strokeWidth="2"
+                  />
+                  <path
+                    d={`M ${x} ${yTop} L ${x + w} ${yTop + h / 2} L ${x} ${yBottom}`}
+                    fill="none"
+                    stroke={palette.dashedStroke}
+                    strokeWidth="0.75"
+                    strokeDasharray="5 4"
+                  />
+                </>
+              )}
+            </g>
           )}
         </g>
       )}
 
-      {/* 11. WATER CLOSET BAY */}
+      {/* 11. WATER CLOSET BAY + OPTIONAL 24"W OVER-TOILET SHAKER CABINET (OC-1, Bath 2!) */}
       {bay.kind === 'toilet_bay' && (
         <g>
+          {/* Optional 24"W x 12"D x 36"H Over-Toilet 2-Door Shaker Cabinet (60" to 96" AFF) */}
+          {bay.hasOverToiletCabinet &&
+            (() => {
+              const ocW = Math.min(w - 8, 24 * S)
+              const ocH = 36 * S
+              const ocX = cx - ocW / 2
+              const ocY = ey(96)
+              const dw = (ocW - 9) / 2
+              return (
+                <g>
+                  <rect
+                    x={ocX}
+                    y={ocY}
+                    width={ocW}
+                    height={ocH}
+                    fill={palette.oakFill}
+                    stroke={palette.primaryStroke}
+                    strokeWidth="1.35"
+                  />
+                  <rect
+                    x={ocX + 3}
+                    y={ocY + 3}
+                    width={dw}
+                    height={ocH - 6}
+                    fill="none"
+                    stroke={palette.fineStroke}
+                    strokeWidth="0.9"
+                  />
+                  <rect
+                    x={ocX + 6 + dw}
+                    y={ocY + 3}
+                    width={dw}
+                    height={ocH - 6}
+                    fill="none"
+                    stroke={palette.fineStroke}
+                    strokeWidth="0.9"
+                  />
+                  <line
+                    x1={cx - 3.5}
+                    y1={ey(66)}
+                    x2={cx - 3.5}
+                    y2={ey(62)}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.6"
+                  />
+                  <line
+                    x1={cx + 3.5}
+                    y1={ey(66)}
+                    x2={cx + 3.5}
+                    y2={ey(62)}
+                    stroke={palette.cutStroke}
+                    strokeWidth="1.6"
+                  />
+                </g>
+              )
+            })()}
           {/* Skirted WC Tank + Comfort Bowl */}
           <rect
             x={cx - 18}
@@ -1749,6 +2105,34 @@ function ElevationBayGraphic({
             stroke={palette.cutStroke}
             strokeWidth="1.35"
           />
+        </g>
+      )}
+
+      {/* 12. ARCHITECTURAL COMPONENT TAG CALLOUT PILL (e.g. V-S1, SH-COL, TUB-1, OC-1) */}
+      {bay.tag && (
+        <g className="pointer-events-none">
+          <rect
+            x={cx - Math.max(19, bay.tag.length * 3.8)}
+            y={ey(8.5)}
+            width={Math.max(38, bay.tag.length * 7.6)}
+            height={14}
+            rx="3"
+            fill={palette.bg}
+            fillOpacity="0.92"
+            stroke={palette.datumStroke}
+            strokeWidth="0.95"
+          />
+          <text
+            x={cx}
+            y={ey(8.5) + 10}
+            textAnchor="middle"
+            fill={palette.datumText}
+            fontSize="8.5"
+            fontWeight="700"
+            fontFamily="ui-monospace, monospace"
+          >
+            {bay.tag}
+          </text>
         </g>
       )}
 
@@ -2371,9 +2755,47 @@ export function ArchitecturalStageSvg({
                   )
                 })}
 
-              {/* Left & Right Wall Scribe Hatch Fillers when Casework Wall */}
+              {/* Left & Right Wall Scribe Hatch Fillers (+ Continuous 4" Lip & Full-Height Tile when Vanity Splash Active!) */}
               {wall.isCaseworkWall !== false && layout.leftScribeIn > 0 && (
                 <g className="pointer-events-none">
+                  {wall.bays.some((b) => b.fullHeightSplash) && (
+                    <>
+                      <rect
+                        x={0}
+                        y={0}
+                        width={layout.leftScribeIn * S}
+                        height={ey(40)}
+                        fill={palette.slabFill}
+                        opacity="0.34"
+                      />
+                      <rect
+                        x={(clearWidthIn - layout.rightScribeIn) * S}
+                        y={0}
+                        width={layout.rightScribeIn * S}
+                        height={ey(40)}
+                        fill={palette.slabFill}
+                        opacity="0.34"
+                      />
+                      <rect
+                        x={0}
+                        y={ey(40)}
+                        width={layout.leftScribeIn * S}
+                        height={4 * S}
+                        fill={palette.slabFill}
+                        stroke={palette.primaryStroke}
+                        strokeWidth="1"
+                      />
+                      <rect
+                        x={(clearWidthIn - layout.rightScribeIn) * S}
+                        y={ey(40)}
+                        width={layout.rightScribeIn * S}
+                        height={4 * S}
+                        fill={palette.slabFill}
+                        stroke={palette.primaryStroke}
+                        strokeWidth="1"
+                      />
+                    </>
+                  )}
                   <rect
                     x={0}
                     y={ey(36)}

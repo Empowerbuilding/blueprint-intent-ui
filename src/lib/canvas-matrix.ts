@@ -27,9 +27,12 @@ export type BayKind =
   | 'window'
   | 'door'
   | 'toilet_bay'
+  | 'wall_partition'
+  | 'scribe_panel'
 
 export interface CaseworkBay {
   id: string
+  tag?: string
   kind: BayKind
   label: string
   widthIn: number
@@ -43,6 +46,10 @@ export interface CaseworkBay {
   hasMirror?: boolean
   hasSconces?: boolean
   fullHeightSplash?: boolean
+  hasShowerColumn?: boolean
+  hasTubCurtain?: boolean
+  hasOverToiletCabinet?: boolean
+  hasHiddenMirrorDoor?: boolean
   hoodWidthIn?: number
   revitFamily: string
   revitParams: string
@@ -236,6 +243,26 @@ export const BAY_PRESETS: BayPresetMeta[] = [
     revitParams: 'Width · Bowl_CL · Faucet_Set',
   },
   {
+    kind: 'scribe_panel',
+    label: 'Oak Scribe / Filler Panel',
+    defaultWidthIn: 1.5,
+    defaultHeightIn: 36,
+    defaultDepthIn: 21,
+    defaultAffIn: 0,
+    revitFamily: 'Barnhaus_Vanity_Scribe_Filler.rfa',
+    revitParams: 'Width · Height=36" · Depth=21"',
+  },
+  {
+    kind: 'wall_partition',
+    label: 'Interior Partition / Pony Wall',
+    defaultWidthIn: 4.5,
+    defaultHeightIn: 120,
+    defaultDepthIn: 24,
+    defaultAffIn: 0,
+    revitFamily: 'Basic Wall: Interior - 4 1/2" Partition',
+    revitParams: 'Thickness=4.5" · Height',
+  },
+  {
     kind: 'floating_shelves',
     label: 'Floating Oak Shelves (3)',
     defaultWidthIn: 60,
@@ -394,6 +421,14 @@ export function getPresetMeta(kind: BayKind): BayPresetMeta {
 export function snapHalfInch(value: number): number {
   if (!Number.isFinite(value)) return 0
   return Math.round(value * 2) / 2
+}
+
+// 1/4-inch Matrix Wall Shift: snaps complementary .25 / .75 / scan-tenth fractions to clean whole inches
+export function snapWholeInchQuarterShift(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  const frac = Math.abs(value - Math.round(value))
+  if (frac <= 0.42) return Math.round(value)
+  return snapHalfInch(value)
 }
 
 export function formatInchesOnly(inches: number): string {
@@ -767,7 +802,7 @@ export function evaluateRoomChecks(
         ? `WC bay ${formatInchesOnly(wcBay!.widthIn)} < 30" minimum (15" centerline code clearance).`
         : offStepBays.length > 0
           ? `${offStepBays.length} cabinet bay(s) off 3" Barnhaus width increment.`
-          : '21" vanity depth (22" counter), separate 4" stone splash, 48"–96" mirrors & 72" linear sconces.',
+          : '21" vanity depth, 4" stone lip + full-height tile to clg, 48"–96" mirrors, 72" sconces & SH-COL column.',
     })
   } else {
     checks.push({
@@ -812,24 +847,46 @@ export function propagateMasterBathStyleToHouse(matrix: HouseMatrix): {
 
     const syncedDatums = [
       { id: `d-${room.id}-36`, affIn: 36, label: '36" STONE COUNTER' },
-      { id: `d-${room.id}-40`, affIn: 40, label: '40" SEPARATE 4" SPLASH' },
+      { id: `d-${room.id}-40`, affIn: 40, label: '40" 4" LIP + TILE TO CLG' },
       { id: `d-${room.id}-48`, affIn: 48, label: '48" MIRROR BOTTOM' },
       { id: `d-${room.id}-72`, affIn: 72, label: '72" LINEAR SCONCE MID' },
+      { id: `d-${room.id}-88`, affIn: 88, label: '88" SHOWER COL RISER' },
       { id: `d-${room.id}-96`, affIn: 96, label: '96" DOOR-HEAD MIRROR TOP' },
     ]
 
     const totalExistingBays = room.walls.reduce((sum, w) => sum + w.bays.length, 0)
+    let drwIdx = 0
+    let snkIdx = 0
     let nextWalls = room.walls.map((w) => ({
       ...w,
+      clearWidthIn: snapWholeInchQuarterShift(w.clearWidthIn),
       bays: w.bays.map((b) => {
         if (b.kind === 'sink_base' || b.kind === 'drawer_stack' || b.kind === 'base_doors') {
+          const autoTag =
+            b.tag ??
+            (b.kind === 'sink_base'
+              ? `V-S${++snkIdx}`
+              : b.kind === 'drawer_stack'
+                ? `V-D${++drwIdx}`
+                : 'V-B1')
           return {
             ...b,
+            tag: autoTag,
             depthIn: 21,
-            fullHeightSplash: false,
+            fullHeightSplash: true,
             revitParams: `${b.revitParams} · Synced from ${master.id}: ${styleNote}`,
             ...(b.kind === 'sink_base' ? { hasMirror: true, hasSconces: true } : { drawerCount: 3 as const }),
           }
+        }
+        if (b.kind === 'wet_room_glass') {
+          return {
+            ...b,
+            tag: b.tag ?? (b.hasTubCurtain ? 'TUB-1' : 'SH-COL'),
+            hasShowerColumn: b.hasShowerColumn ?? true,
+          }
+        }
+        if (b.kind === 'toilet_bay') {
+          return { ...b, tag: b.tag ?? 'WC-1' }
         }
         return b
       }),
@@ -1273,6 +1330,7 @@ export function exportRevitBuildContract(matrix: HouseMatrix) {
             overflowIn: layout.overflowIn,
             bays: layout.placements.map((p) => ({
               id: p.bay.id,
+              tag: p.bay.tag ?? null,
               kind: p.bay.kind,
               label: p.bay.label,
               xStartIn: p.xStartIn,

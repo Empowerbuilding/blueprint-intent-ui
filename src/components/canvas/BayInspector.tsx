@@ -156,7 +156,8 @@ export function BayInspector({
                       : 'bg-bh-black/80 text-slate-400 border-bh-border hover:text-white')
                   }
                 >
-                  #{idx + 1} · {formatInchesOnly(b.widthIn)}
+                  {b.tag ? `${b.tag} · ` : `#${idx + 1} · `}
+                  {formatInchesOnly(b.widthIn)}
                 </button>
               )
             })}
@@ -164,22 +165,38 @@ export function BayInspector({
 
           {selectedBay ? (
             <div className="space-y-2.5 pt-1 border-t border-bh-border/70">
-              {/* Preset Kind Dropdown */}
-              <div>
-                <label className="block text-[10px] font-medium text-slate-400 mb-1">
-                  Architectural Bay Kind
-                </label>
-                <select
-                  value={selectedBay.kind}
-                  onChange={(e) => onChangeBayKind(selectedBay.id, e.target.value as BayKind)}
-                  className="w-full rounded-md border border-bh-border bg-bh-black px-2.5 py-1.5 text-xs text-white focus:border-gold focus:outline-none"
-                >
-                  {BAY_PRESETS.map((p) => (
-                    <option key={p.kind} value={p.kind}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
+              {/* Preset Kind Dropdown + Component Tag */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-medium text-slate-400 mb-1">
+                    Architectural Bay Kind
+                  </label>
+                  <select
+                    value={selectedBay.kind}
+                    onChange={(e) => onChangeBayKind(selectedBay.id, e.target.value as BayKind)}
+                    className="w-full rounded-md border border-bh-border bg-bh-black px-2.5 py-1.5 text-xs text-white focus:border-gold focus:outline-none"
+                  >
+                    {BAY_PRESETS.map((p) => (
+                      <option key={p.kind} value={p.kind}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-medium text-slate-400 mb-1">
+                    Comp. Tag
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="V-S1"
+                    value={selectedBay.tag ?? ''}
+                    onChange={(e) =>
+                      onUpdateBay(selectedBay.id, { tag: e.target.value.toUpperCase() || undefined })
+                    }
+                    className="w-full rounded-md border border-bh-border bg-bh-black px-2 py-1.5 font-mono text-xs text-amber-300 focus:border-gold focus:outline-none"
+                  />
+                </div>
               </div>
 
               {/* Width Stepper + 0.5"-Snapped Input */}
@@ -257,27 +274,37 @@ export function BayInspector({
                 </div>
               </div>
 
-              {/* Contextual Toggles (Mirror/Sconces on Sink, Lower Base on Shelves) */}
-              {selectedBay.kind === 'sink_base' && (
+              {/* Contextual Toggles (Mirror/Sconces/Tile, Shower Column/Tub Curtain, Over-WC Cab) */}
+              {(selectedBay.kind === 'sink_base' ||
+                selectedBay.kind === 'drawer_stack' ||
+                selectedBay.kind === 'base_doors') && (
                 <div className="flex flex-wrap gap-2 pt-0.5 text-[11px] text-slate-300">
-                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selectedBay.hasMirror)}
-                      onChange={(e) => onUpdateBay(selectedBay.id, { hasMirror: e.target.checked })}
-                      className="accent-amber-500"
-                    />
-                    42×48 Mirror
-                  </label>
-                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selectedBay.hasSconces)}
-                      onChange={(e) => onUpdateBay(selectedBay.id, { hasSconces: e.target.checked })}
-                      className="accent-amber-500"
-                    />
-                    Sconces @ 66&quot;
-                  </label>
+                  {selectedBay.kind === 'sink_base' && (
+                    <>
+                      <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selectedBay.hasMirror)}
+                          onChange={(e) =>
+                            onUpdateBay(selectedBay.id, { hasMirror: e.target.checked })
+                          }
+                          className="accent-amber-500"
+                        />
+                        48–96&quot; Mirror
+                      </label>
+                      <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selectedBay.hasSconces)}
+                          onChange={(e) =>
+                            onUpdateBay(selectedBay.id, { hasSconces: e.target.checked })
+                          }
+                          className="accent-amber-500"
+                        />
+                        Sconces @ 72&quot;
+                      </label>
+                    </>
+                  )}
                   <label className="inline-flex items-center gap-1.5 cursor-pointer">
                     <input
                       type="checkbox"
@@ -287,7 +314,50 @@ export function BayInspector({
                       }
                       className="accent-amber-500"
                     />
-                    Slab Splash
+                    4&quot; Lip + Tile to Clg
+                  </label>
+                </div>
+              )}
+
+              {selectedBay.kind === 'wet_room_glass' && (
+                <div className="flex flex-wrap gap-2 pt-0.5 text-[11px] text-slate-300">
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedBay.hasShowerColumn !== false}
+                      onChange={(e) =>
+                        onUpdateBay(selectedBay.id, { hasShowerColumn: e.target.checked })
+                      }
+                      className="accent-amber-500"
+                    />
+                    SH-COL Exposed Column
+                  </label>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selectedBay.hasTubCurtain)}
+                      onChange={(e) =>
+                        onUpdateBay(selectedBay.id, { hasTubCurtain: e.target.checked })
+                      }
+                      className="accent-amber-500"
+                    />
+                    Alcove Tub + Curtain
+                  </label>
+                </div>
+              )}
+
+              {selectedBay.kind === 'toilet_bay' && (
+                <div className="flex flex-wrap gap-2 pt-0.5 text-[11px] text-slate-300">
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selectedBay.hasOverToiletCabinet)}
+                      onChange={(e) =>
+                        onUpdateBay(selectedBay.id, { hasOverToiletCabinet: e.target.checked })
+                      }
+                      className="accent-amber-500"
+                    />
+                    24&quot; Over-Toilet Cab (OC-1)
                   </label>
                 </div>
               )}
