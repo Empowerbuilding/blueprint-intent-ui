@@ -1,10 +1,10 @@
-// Auto-generated unified Two-Story Sandbox HouseMatrix (L1 + L2)
+// Auto-generated unified Two-Story Sandbox HouseMatrix (L1 + L2 + 58 Leader-Solved D1 Notes)
 import type { HouseMatrix } from "./canvas-matrix"
 
 export const SYNATSCHK_TWO_STORY_SANDBOX: HouseMatrix = {
   "projectId": "sandbox-two-story",
-  "projectName": "Synatschk Sandbox \u2014 Two-Story (3,120 sf \u00b7 L1 + L2)",
-  "stageLabel": "Sandbox D2 Matrix \u00b7 L1 (15 Rooms) + L2 (8 Rooms + Loft)",
+  "projectName": "Two-Story Sandbox \u2014 (3,120 sf \u00b7 L1 + L2)",
+  "stageLabel": "Sandbox D2 Matrix \u00b7 L1 (15 Rooms) + L2 (8 Rooms) \u00b7 58 Leader-Solved D1 Notes",
   "flexWalls": {
     "fw-l1-5955643": {
       "id": "fw-l1-5955643",
@@ -3075,6 +3075,1168 @@ export const SYNATSCHK_TWO_STORY_SANDBOX: HouseMatrix = {
       "yIn": 61.9,
       "widthIn": 374.5,
       "depthIn": 404.0
+    }
+  ],
+  "d1Notes": [
+    {
+      "id": "n-5951346",
+      "revitId": 5951346,
+      "level": 1,
+      "text": "Fireplace",
+      "textBoxRoom": "104",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        638.9,
+        113.7
+      ],
+      "tipXYIn": [
+        638.9,
+        113.7
+      ]
+    },
+    {
+      "id": "n-6012852",
+      "revitId": 6012852,
+      "level": 1,
+      "text": "Lockers / Bench",
+      "textBoxRoom": "118",
+      "targetRoomId": "118",
+      "targetRoomName": "Mud Hall",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        42.0,
+        289.1
+      ],
+      "tipXYIn": [
+        80.3,
+        264.5
+      ]
+    },
+    {
+      "id": "n-6015881",
+      "revitId": 6015881,
+      "level": 1,
+      "text": "Bar Space, Wine Fridge, Small sink, Ice, etc, UC fridge, open shelving above",
+      "textBoxRoom": "104",
+      "targetRoomId": "108",
+      "targetRoomName": "Stairs",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        350.0,
+        144.0
+      ],
+      "tipXYIn": [
+        298.9,
+        133.8
+      ]
+    },
+    {
+      "id": "n-6037236",
+      "revitId": 6037236,
+      "level": 1,
+      "text": "MW",
+      "textBoxRoom": "107",
+      "targetRoomId": "107",
+      "targetRoomName": "Pantry",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        311.5,
+        445.9
+      ],
+      "tipXYIn": [
+        311.5,
+        445.9
+      ]
+    },
+    {
+      "id": "n-6037268",
+      "revitId": 6037268,
+      "level": 1,
+      "text": "base cabinet drawers",
+      "textBoxRoom": "106",
+      "targetRoomId": "106",
+      "targetRoomName": "Kitchen",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        480.0,
+        402.5
+      ],
+      "tipXYIn": [
+        522.4,
+        373.8
+      ]
+    },
+    {
+      "id": "n-6037298",
+      "revitId": 6037298,
+      "level": 1,
+      "text": "Ice Machine",
+      "textBoxRoom": "106",
+      "targetRoomId": "106",
+      "targetRoomName": "Kitchen",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        354.2,
+        399.3
+      ],
+      "tipXYIn": [
+        416.6,
+        373.3
+      ]
+    },
+    {
+      "id": "n-6037301",
+      "revitId": 6037301,
+      "level": 1,
+      "text": "built in hood",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "106",
+      "targetRoomName": "Kitchen",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        495.8,
+        485.4
+      ],
+      "tipXYIn": [
+        474.6,
+        452.8
+      ]
+    },
+    {
+      "id": "n-6037304",
+      "revitId": 6037304,
+      "level": 1,
+      "text": "upper cabinets",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "106",
+      "targetRoomName": "Kitchen",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        428.2,
+        479.9
+      ],
+      "tipXYIn": [
+        408.5,
+        454.7
+      ]
+    },
+    {
+      "id": "n-6037306",
+      "revitId": 6037306,
+      "level": 1,
+      "text": "upper cabinets",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "106",
+      "targetRoomName": "Kitchen",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        548.9,
+        503.5
+      ],
+      "tipXYIn": [
+        536.9,
+        454.1
+      ]
+    },
+    {
+      "id": "n-6037309",
+      "revitId": 6037309,
+      "level": 1,
+      "text": "accent floor piece with wood",
+      "textBoxRoom": "104",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        419.7,
+        280.6
+      ],
+      "tipXYIn": [
+        343.4,
+        322.0
+      ]
+    },
+    {
+      "id": "n-6037386",
+      "revitId": 6037386,
+      "level": 1,
+      "text": "wood wrap",
+      "textBoxRoom": "104",
+      "targetRoomId": "106",
+      "targetRoomName": "Kitchen",
+      "hasLeader": true,
+      "method": "leader_arrowhead+domain_guard(kitchen)",
+      "confidence": "flagged_retargeted",
+      "boxXYIn": [
+        416.8,
+        300.9
+      ],
+      "tipXYIn": [
+        393.4,
+        329.5
+      ]
+    },
+    {
+      "id": "n-6037438",
+      "revitId": 6037438,
+      "level": 1,
+      "text": "Furniture",
+      "textBoxRoom": "105",
+      "targetRoomId": "105",
+      "targetRoomName": "Dining",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        656.7,
+        444.8
+      ],
+      "tipXYIn": [
+        656.7,
+        444.8
+      ]
+    },
+    {
+      "id": "n-6037454",
+      "revitId": 6037454,
+      "level": 1,
+      "text": "build out butlers style",
+      "textBoxRoom": "107",
+      "targetRoomId": "107",
+      "targetRoomName": "Pantry",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        287.5,
+        381.7
+      ],
+      "tipXYIn": [
+        287.5,
+        381.7
+      ]
+    },
+    {
+      "id": "n-6037476",
+      "revitId": 6037476,
+      "level": 1,
+      "text": "thick floating shelves, cab at bottom",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        594.6,
+        5.1
+      ],
+      "tipXYIn": [
+        557.5,
+        70.7
+      ]
+    },
+    {
+      "id": "n-6037514",
+      "revitId": 6037514,
+      "level": 1,
+      "text": "hearth run across",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        747.2,
+        65.3
+      ],
+      "tipXYIn": [
+        690.3,
+        91.8
+      ]
+    },
+    {
+      "id": "n-6037516",
+      "revitId": 6037516,
+      "level": 1,
+      "text": "thick mantle, TV above",
+      "textBoxRoom": "104",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        416.6,
+        101.5
+      ],
+      "tipXYIn": [
+        590.2,
+        89.9
+      ]
+    },
+    {
+      "id": "n-6037519",
+      "revitId": 6037519,
+      "level": 1,
+      "text": "wood burning, gas start",
+      "textBoxRoom": "104",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        529.3,
+        121.0
+      ],
+      "tipXYIn": [
+        605.1,
+        88.2
+      ]
+    },
+    {
+      "id": "n-6037625",
+      "revitId": 6037625,
+      "level": 1,
+      "text": "wine fridge",
+      "textBoxRoom": "104",
+      "targetRoomId": "108",
+      "targetRoomName": "Stairs",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        357.8,
+        69.1
+      ],
+      "tipXYIn": [
+        306.6,
+        86.5
+      ]
+    },
+    {
+      "id": "n-6037965",
+      "revitId": 6037965,
+      "level": 1,
+      "text": "shelving",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "103",
+      "targetRoomName": "Storage",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        271.1,
+        -57.2
+      ],
+      "tipXYIn": [
+        333.6,
+        28.0
+      ]
+    },
+    {
+      "id": "n-6037968",
+      "revitId": 6037968,
+      "level": 1,
+      "text": "bench, hooks",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "101",
+      "targetRoomName": "Foyer",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        416.8,
+        -36.2
+      ],
+      "tipXYIn": [
+        369.7,
+        14.3
+      ]
+    },
+    {
+      "id": "n-6037972",
+      "revitId": 6037972,
+      "level": 1,
+      "text": "van to ground, sep mirrors, lights between like inspo",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -86.4,
+        -39.6
+      ],
+      "tipXYIn": [
+        275.6,
+        69.7
+      ]
+    },
+    {
+      "id": "n-6037975",
+      "revitId": 6037975,
+      "level": 1,
+      "text": "lin tall cab",
+      "textBoxRoom": "112",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        116.2,
+        103.0
+      ],
+      "tipXYIn": [
+        198.4,
+        125.9
+      ]
+    },
+    {
+      "id": "n-6037994",
+      "revitId": 6037994,
+      "level": 1,
+      "text": "shelves",
+      "textBoxRoom": "112",
+      "targetRoomId": "112",
+      "targetRoomName": "Master",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        116.2,
+        179.4
+      ],
+      "tipXYIn": [
+        191.5,
+        164.9
+      ]
+    },
+    {
+      "id": "n-6038066",
+      "revitId": 6038066,
+      "level": 1,
+      "text": "glass above pony wall",
+      "textBoxRoom": "113",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        186.2,
+        82.9
+      ],
+      "tipXYIn": [
+        269.1,
+        60.0
+      ]
+    },
+    {
+      "id": "n-6038085",
+      "revitId": 6038085,
+      "level": 1,
+      "text": "valves",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        255.9,
+        -33.0
+      ],
+      "tipXYIn": [
+        245.5,
+        56.5
+      ]
+    },
+    {
+      "id": "n-6038179",
+      "revitId": 6038179,
+      "level": 1,
+      "text": "bench",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        240.5,
+        -65.5
+      ],
+      "tipXYIn": [
+        233.6,
+        9.2
+      ]
+    },
+    {
+      "id": "n-6038182",
+      "revitId": 6038182,
+      "level": 1,
+      "text": "niche",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        339.0,
+        -39.6
+      ],
+      "tipXYIn": [
+        269.7,
+        54.1
+      ]
+    },
+    {
+      "id": "n-6038238",
+      "revitId": 6038238,
+      "level": 1,
+      "text": "center drain",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        161.5,
+        46.9
+      ],
+      "tipXYIn": [
+        239.0,
+        38.1
+      ]
+    },
+    {
+      "id": "n-6038241",
+      "revitId": 6038241,
+      "level": 1,
+      "text": "valves normal",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "110",
+      "targetRoomName": "Bath 2",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        20.6,
+        485.4
+      ],
+      "tipXYIn": [
+        94.9,
+        446.7
+      ]
+    },
+    {
+      "id": "n-6038329",
+      "revitId": 6038329,
+      "level": 1,
+      "text": "sliding glass",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "110",
+      "targetRoomName": "Bath 2",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        131.2,
+        517.1
+      ],
+      "tipXYIn": [
+        113.1,
+        424.1
+      ]
+    },
+    {
+      "id": "n-6038332",
+      "revitId": 6038332,
+      "level": 1,
+      "text": "niche",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "110",
+      "targetRoomName": "Bath 2",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        131.2,
+        485.4
+      ],
+      "tipXYIn": [
+        148.2,
+        443.5
+      ]
+    },
+    {
+      "id": "n-6038335",
+      "revitId": 6038335,
+      "level": 1,
+      "text": "like master van",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "110",
+      "targetRoomName": "Bath 2",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -101.4,
+        310.5
+      ],
+      "tipXYIn": [
+        101.6,
+        348.5
+      ]
+    },
+    {
+      "id": "n-6038712",
+      "revitId": 6038712,
+      "level": 1,
+      "text": "built ins, hanging, cubbies drawers",
+      "textBoxRoom": "114",
+      "targetRoomId": "114",
+      "targetRoomName": "M Closet",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        204.4,
+        203.0
+      ],
+      "tipXYIn": [
+        238.3,
+        237.8
+      ]
+    },
+    {
+      "id": "n-6038715",
+      "revitId": 6038715,
+      "level": 1,
+      "text": "bench, hanging above",
+      "textBoxRoom": "118",
+      "targetRoomId": "118",
+      "targetRoomName": "Mud Hall",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        207.4,
+        292.5
+      ],
+      "tipXYIn": [
+        324.3,
+        337.7
+      ]
+    },
+    {
+      "id": "n-6038734",
+      "revitId": 6038734,
+      "level": 1,
+      "text": "like inspo bench hooks",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "118",
+      "targetRoomName": "Mud Hall",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -111.9,
+        216.5
+      ],
+      "tipXYIn": [
+        69.2,
+        265.7
+      ]
+    },
+    {
+      "id": "n-6038737",
+      "revitId": 6038737,
+      "level": 1,
+      "text": "base cabs, upper cabs, shelf with rod",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "109",
+      "targetRoomName": "Laundry",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -188.7,
+        409.7
+      ],
+      "tipXYIn": [
+        13.5,
+        416.7
+      ]
+    },
+    {
+      "id": "n-6038740",
+      "revitId": 6038740,
+      "level": 1,
+      "text": "lift up 18\"",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "109",
+      "targetRoomName": "Laundry",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -111.9,
+        372.4
+      ],
+      "tipXYIn": [
+        16.7,
+        368.3
+      ]
+    },
+    {
+      "id": "n-6038783",
+      "revitId": 6038783,
+      "level": 1,
+      "text": "tall cab brooms",
+      "textBoxRoom": "118",
+      "targetRoomId": "118",
+      "targetRoomName": "Mud Hall",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        136.3,
+        276.3
+      ],
+      "tipXYIn": [
+        112.3,
+        265.0
+      ]
+    },
+    {
+      "id": "n-6038831",
+      "revitId": 6038831,
+      "level": 1,
+      "text": "wood grain tile",
+      "textBoxRoom": "104",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        446.4,
+        227.6
+      ],
+      "tipXYIn": [
+        446.4,
+        227.6
+      ]
+    },
+    {
+      "id": "n-6038835",
+      "revitId": 6038835,
+      "level": 1,
+      "text": "shower tile",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "113",
+      "targetRoomName": "M Bath",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        76.4,
+        -4.3
+      ],
+      "tipXYIn": [
+        192.5,
+        34.0
+      ]
+    },
+    {
+      "id": "n-6038837",
+      "revitId": 6038837,
+      "level": 1,
+      "text": "shower tile",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "110",
+      "targetRoomName": "Bath 2",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        69.9,
+        503.5
+      ],
+      "tipXYIn": [
+        113.8,
+        453.7
+      ]
+    },
+    {
+      "id": "n-6038840",
+      "revitId": 6038840,
+      "level": 1,
+      "text": "floating with thick treads",
+      "textBoxRoom": "104",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        450.5,
+        194.6
+      ],
+      "tipXYIn": [
+        359.6,
+        213.8
+      ]
+    },
+    {
+      "id": "n-6038844",
+      "revitId": 6038844,
+      "level": 1,
+      "text": "dark counter wood cab",
+      "textBoxRoom": "104",
+      "targetRoomId": "104",
+      "targetRoomName": "Great Room",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        594.6,
+        280.6
+      ],
+      "tipXYIn": [
+        594.6,
+        280.6
+      ]
+    },
+    {
+      "id": "n-6019955",
+      "revitId": 6019955,
+      "level": 2,
+      "text": "Double Swing",
+      "textBoxRoom": "201",
+      "targetRoomId": "209",
+      "targetRoomName": "Closet",
+      "hasLeader": true,
+      "method": "leader_arrowhead+domain_guard(closet)",
+      "confidence": "flagged_retargeted",
+      "boxXYIn": [
+        255.5,
+        262.3
+      ],
+      "tipXYIn": [
+        290.0,
+        295.2
+      ]
+    },
+    {
+      "id": "n-6020208",
+      "revitId": 6020208,
+      "level": 2,
+      "text": "Casement",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "205",
+      "targetRoomName": "Bed 4",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -96.6,
+        352.2
+      ],
+      "tipXYIn": [
+        -9.5,
+        358.6
+      ]
+    },
+    {
+      "id": "n-6020210",
+      "revitId": 6020210,
+      "level": 2,
+      "text": "Casement",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "205",
+      "targetRoomName": "Bed 4",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -96.6,
+        403.2
+      ],
+      "tipXYIn": [
+        -9.5,
+        409.6
+      ]
+    },
+    {
+      "id": "n-6020219",
+      "revitId": 6020219,
+      "level": 2,
+      "text": "Casement",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "202",
+      "targetRoomName": "Bed 3",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -96.6,
+        206.2
+      ],
+      "tipXYIn": [
+        -9.5,
+        212.6
+      ]
+    },
+    {
+      "id": "n-6020228",
+      "revitId": 6020228,
+      "level": 2,
+      "text": "Casement",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "202",
+      "targetRoomName": "Bed 3",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -96.6,
+        95.2
+      ],
+      "tipXYIn": [
+        -9.5,
+        101.6
+      ]
+    },
+    {
+      "id": "n-6020270",
+      "revitId": 6020270,
+      "level": 2,
+      "text": "Bunk",
+      "textBoxRoom": "202",
+      "targetRoomId": "202",
+      "targetRoomName": "Bed 3",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        149.4,
+        108.3
+      ],
+      "tipXYIn": [
+        149.4,
+        108.3
+      ]
+    },
+    {
+      "id": "n-6036724",
+      "revitId": 6036724,
+      "level": 2,
+      "text": "full glass",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "201",
+      "targetRoomName": "Loft",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "review",
+      "boxXYIn": [
+        313.2,
+        10.1
+      ],
+      "tipXYIn": [
+        260.2,
+        35.2
+      ]
+    },
+    {
+      "id": "n-6038849",
+      "revitId": 6038849,
+      "level": 2,
+      "text": "shelving",
+      "textBoxRoom": "201",
+      "targetRoomId": "201",
+      "targetRoomName": "Loft",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        203.1,
+        243.6
+      ],
+      "tipXYIn": [
+        270.0,
+        311.7
+      ]
+    },
+    {
+      "id": "n-6038943",
+      "revitId": 6038943,
+      "level": 2,
+      "text": "wood grain tile",
+      "textBoxRoom": "201",
+      "targetRoomId": "201",
+      "targetRoomName": "Loft",
+      "hasLeader": false,
+      "method": "text_box",
+      "confidence": "medium",
+      "boxXYIn": [
+        241.6,
+        174.9
+      ],
+      "tipXYIn": [
+        241.6,
+        174.9
+      ]
+    },
+    {
+      "id": "n-6038947",
+      "revitId": 6038947,
+      "level": 2,
+      "text": "like master",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "206",
+      "targetRoomName": "Bath 4",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        267.3,
+        488.8
+      ],
+      "tipXYIn": [
+        248.7,
+        456.4
+      ]
+    },
+    {
+      "id": "n-6038949",
+      "revitId": 6038949,
+      "level": 2,
+      "text": "hidden mirror door",
+      "textBoxRoom": "205",
+      "targetRoomId": "206",
+      "targetRoomName": "Bath 4",
+      "hasLeader": true,
+      "method": "leader_arrowhead+domain_guard(bath)",
+      "confidence": "flagged_retargeted",
+      "boxXYIn": [
+        116.8,
+        332.8
+      ],
+      "tipXYIn": [
+        217.0,
+        361.3
+      ]
+    },
+    {
+      "id": "n-6038952",
+      "revitId": 6038952,
+      "level": 2,
+      "text": "sliding glass",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "206",
+      "targetRoomName": "Bath 4",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        385.4,
+        417.5
+      ],
+      "tipXYIn": [
+        296.4,
+        422.0
+      ]
+    },
+    {
+      "id": "n-6038954",
+      "revitId": 6038954,
+      "level": 2,
+      "text": "curtain",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "203",
+      "targetRoomName": "Bath 3",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -65.4,
+        268.2
+      ],
+      "tipXYIn": [
+        32.0,
+        272.7
+      ]
+    },
+    {
+      "id": "n-6038973",
+      "revitId": 6038973,
+      "level": 2,
+      "text": "like master",
+      "textBoxRoom": "OUTSIDE",
+      "targetRoomId": "203",
+      "targetRoomName": "Bath 3",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        -106.8,
+        294.5
+      ],
+      "tipXYIn": [
+        80.1,
+        306.2
+      ]
+    },
+    {
+      "id": "n-6038976",
+      "revitId": 6038976,
+      "level": 2,
+      "text": "shelving, bench for suitecase drawers",
+      "textBoxRoom": "202",
+      "targetRoomId": "202",
+      "targetRoomName": "Bed 3",
+      "hasLeader": true,
+      "method": "leader_arrowhead",
+      "confidence": "high",
+      "boxXYIn": [
+        80.6,
+        174.9
+      ],
+      "tipXYIn": [
+        171.9,
+        253.7
+      ]
     }
   ]
 } as HouseMatrix

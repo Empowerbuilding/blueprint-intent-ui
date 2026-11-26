@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Barnhaus Design Canvas — Instant Sandbox Studio</title>
+<style>
+  :root {
+    --bg: #080d16;
+    --panel: #101827;
+    --card: #172236;
+    --border: #263652;
+    --gold: #eab308;
+    --gold-lt: #fde047;
+    --cyan: #00e0ff;
+    --emerald: #10b981;
+    --amber: #f59e0b;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; height: 100dvh; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  button, select { font: inherit; cursor: pointer; }
+  .app { display: flex; flex-direction: column; height: 100dvh; }
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); z-index: 10; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .brand-dot { width: 10px; height: 10px; border-radius: 2px; background: var(--gold); }
+  .pill-group { display: inline-flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 2px; gap: 2px; }
+  .pill-btn { border: 0; background: transparent; color: var(--muted); padding: 6px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; min-height: 32px; }
+  .pill-btn.active { background: var(--gold); color: #090d16; font-weight: 700; }
+  .chip-btn { border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; min-height: 34px; }
+  .chip-btn.on { border-color: #0284c7; background: rgba(2,132,199,0.22); color: #7dd3fc; }
+  .chip-btn.notes-on { border-color: var(--emerald); background: rgba(16,185,129,0.18); color: #6ee7b7; }
+  .chip-btn.gold { border-color: var(--gold); background: var(--gold); color: #090d16; font-weight: 700; }
+
+  .mob-tabs { display: none; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px 10px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .mob-tab { border: 1px solid var(--border); background: var(--panel); color: var(--muted); border-radius: 8px; min-height: 40px; font-size: 12px; font-weight: 700; padding: 4px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mob-tab.active { background: var(--gold); color: #090d16; border-color: var(--gold); }
+
+  .body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+  .left-pane { width: 280px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 10px; gap: 8px; }
+  .center-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+  .right-pane { width: 330px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 12px; gap: 12px; }
+
+  .subbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 12px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  .stage-wrap { flex: 1; position: relative; min-height: 0; overflow: hidden; touch-action: none; user-select: none; }
+  .stage-svg { width: 100%; height: 100%; display: block; }
+
+  .float-card { position: absolute; left: 12px; right: 12px; bottom: 12px; max-width: 620px; margin-left: auto; background: rgba(16,24,39,0.95); border: 1px solid rgba(234,179,8,0.55); border-radius: 12px; padding: 10px 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.55); backdrop-filter: blur(8px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .room-row { width: 100%; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); margin-bottom: 5px; }
+  .room-row.active { border-color: var(--cyan); background: rgba(0,224,255,0.12); }
+  .sec-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .note-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 9px; font-size: 12px; margin-bottom: 6px; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; font-family: ui-monospace, monospace; }
+  .badge-ldr { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+  .badge-ret { background: rgba(245,158,11,0.22); color: #fcd34d; }
+  .bay-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 12px; }
+
+  @media (max-width: 1023px) {
+    .mob-tabs { display: grid; }
+    .left-pane, .right-pane, .center-pane { display: none; width: 100%; border: 0; }
+    .body[data-mob="house"] .center-pane,
+    .body[data-mob="room"] .center-pane { display: flex; }
+    .body[data-mob="notes"] .right-pane { display: flex; }
+    .hide-mob { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div class="brand"><span class="brand-dot"></span>Barnhaus Canvas <span style="font-size:11px;color:var(--emerald);font-weight:600;">⚡ 0ms Local</span></div>
+      <div class="pill-group" id="floorPills">
+        <button class="pill-btn active" onclick="setLevel(1)">L1 · Main</button>
+        <button class="pill-btn" onclick="setLevel(2)">L2 · Upper</button>
+      </div>
+      <button class="chip-btn gold" id="btnHouseMode" onclick="toggleHouseMode()">🏠 Whole House</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <button class="chip-btn notes-on" id="btnNotes" onclick="toggleNotes()">📝 D1 Notes + Arrows: ON</button>
+      <button class="chip-btn" id="btnTheme" onclick="toggleTheme()">CAD: Blueprint</button>
+      <button class="chip-btn hide-mob" onclick="exportJson()">Export JSON</button>
+    </div>
+  </div>
+
+  <!-- MOBILE 3-TAB BAR -->
+  <div class="mob-tabs">
+    <button class="mob-tab active" id="mtab-house" onclick="setMobTab('house')">🏠 House Plan</button>
+    <button class="mob-tab" id="mtab-room" onclick="setMobTab('room')">📐 Room Elev</button>
+    <button class="mob-tab" id="mtab-notes" onclick="setMobTab('notes')">📝 Notes &amp; Bays</button>
+  </div>
+
+  <!-- MAIN STUDIO BODY -->
+  <div class="body" id="studioBody" data-mob="house">
+    <!-- LEFT: ROOMS LIST (Desktop) -->
+    <aside class="left-pane" id="leftRoomList"></aside>
+
+    <!-- CENTER: INTERACTIVE SVG STAGE -->
+    <main class="center-pane">
+      <div class="subbar" id="stageSubbar"></div>
+      <div class="stage-wrap" id="stageWrap">
+        <svg class="stage-svg" id="stageSvg"></svg>
+        <div class="float-card" id="floatRoomCard"></div>
+      </div>
+    </main>
+
+    <!-- RIGHT: D1 LEADER-TARGETED NOTES + PARAMETRIC BAYS -->
+    <aside class="right-pane" id="rightInspector"></aside>
+  </div>
+</div>
+
+<script>
+const MATRIX = {"projectId": "sandbox-two-story", "projectName": "Two-Story Sandbox \u2014 (3,120 sf \u00b7 L1 + L2)", "stageLabel": "Sandbox D2 Matrix \u00b7 L1 (15 Rooms) + L2 (8 Rooms) \u00b7 58 Leader-Solved D1 Notes", "flexWalls": {"fw-l1-5955643": {"id": "fw-l1-5955643", "label": "Master Bedroom <-> Master Bath (17'-0\")", "roomAId": "112", "roomBId": "113", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5964196": {"id": "fw-l1-5964196", "label": "Master Bath <-> Storage (16'-0\")", "roomAId": "113", "roomBId": "103", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5964317": {"id": "fw-l1-5964317", "label": "Bath 2 <-> Bed 2 (12'-1\")", "roomAId": "110", "roomBId": "111", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5968133": {"id": "fw-l1-5968133", "label": "Bath 2 <-> Mud Hall & Lockers (21'-4.5\")", "roomAId": "110", "roomBId": "118", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5968295": {"id": "fw-l1-5968295", "label": "Butler's Pantry <-> Kitchen (12'-1\")", "roomAId": "107", "roomBId": "106", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5968759": {"id": "fw-l1-5968759", "label": "Bed 2 <-> Butler's Pantry (12'-1\")", "roomAId": "111", "roomBId": "107", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5974780": {"id": "fw-l1-5974780", "label": "Master Closet <-> Great Room (6'-2\")", "roomAId": "114", "roomBId": "104", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5974883": {"id": "fw-l1-5974883", "label": "Master Closet <-> Master Bath (12'-11.5\")", "roomAId": "114", "roomBId": "113", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5979108": {"id": "fw-l1-5979108", "label": "Mud Hall & Lockers <-> Master Bedroom (15'-4\")", "roomAId": "118", "roomBId": "112", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-5996742": {"id": "fw-l1-5996742", "label": "Butler's Pantry <-> Hall Closet (4'-11\")", "roomAId": "107", "roomBId": "120", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-6012573": {"id": "fw-l1-6012573", "label": "Laundry <-> Bath 2 (12'-1\")", "roomAId": "109", "roomBId": "110", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l1-6020381": {"id": "fw-l1-6020381", "label": "Storage <-> Foyer & Coats (5'-2\")", "roomAId": "103", "roomBId": "101", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 1}, "fw-l2-5981062": {"id": "fw-l2-5981062", "label": "Bed 3 <-> Loft (33'-8\")", "roomAId": "202", "roomBId": "201", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}, "fw-l2-5981124": {"id": "fw-l2-5981124", "label": "Bath 3 <-> Bed 3 (16'-2\")", "roomAId": "203", "roomBId": "202", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}, "fw-l2-5981229": {"id": "fw-l2-5981229", "label": "Bed 4 <-> Bath 3 (16'-2\")", "roomAId": "205", "roomBId": "203", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}, "fw-l2-5981523": {"id": "fw-l2-5981523", "label": "Bath 3 <-> WIC 3 (Bed 3) (6'-0\")", "roomAId": "203", "roomBId": "204", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}, "fw-l2-6001155": {"id": "fw-l2-6001155", "label": "Bath 4 <-> WIC 4 (Bed 4) (12'-1.5\")", "roomAId": "206", "roomBId": "207", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}, "fw-l2-6003475": {"id": "fw-l2-6003475", "label": "WIC 4 (Bed 4) <-> Loft Closet (7'-10\")", "roomAId": "207", "roomBId": "209", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}, "fw-l2-6019535": {"id": "fw-l2-6019535", "label": "Bath 3 <-> Bed 3 (2'-10.5\")", "roomAId": "203", "roomBId": "202", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}, "fw-l2-6019636": {"id": "fw-l2-6019636", "label": "Bed 4 <-> Bath 3 (2'-10.5\")", "roomAId": "205", "roomBId": "203", "nudgeIn": 0, "maxNudgeIn": 6, "studThicknessIn": 4.5, "level": 2}}, "rooms": [{"id": "101", "number": "101", "name": "Foyer & Coats", "subtitle": "10'-0\" Flat Clg | Bench, Hooks & Coat Closet", "status": "draft", "planRect": {"xIn": 357.5, "yIn": 4.0, "widthIn": 172.6, "depthIn": 54.0}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (14'-4.5\" x 4'-6\" | 64.7 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-101-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-101-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Foyer & Coats - North Wall (14'-4.5\")", "clearWidthIn": 172.6, "ceilingHeightIn": 120, "bays": [{"id": "bay-101-N-1", "kind": "door", "label": "Double Entry Door", "widthIn": 72, "heightIn": 96, "depthIn": 6, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=72\" | H=96\" | D=6\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "Foyer & Coats - East Wall (4'-6\")", "clearWidthIn": 54.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Foyer & Coats - South Wall (14'-4.5\")", "clearWidthIn": 172.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Foyer & Coats - West Wall (4'-6\")", "clearWidthIn": 54.0, "ceilingHeightIn": 120, "bays": [{"id": "bay-101-W-2", "kind": "base_doors", "label": "Entry Bench + Hooks", "widthIn": 48, "heightIn": 84, "depthIn": 18, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=84\" | D=18\""}], "autoCenter": true, "isCaseworkWall": true, "flexBinding": {"flexWallId": "fw-l1-6020381", "polarity": -1}}], "planOpenings": [{"id": "op-5953856-101", "wall": "N", "offsetIn": 52.5, "widthIn": 78, "kind": "door", "swing": "in-left"}, {"id": "op-5959763-101", "wall": "S", "offsetIn": 39.5, "widthIn": 104, "kind": "door", "swing": "in-left"}, {"id": "op-6020460-101", "wall": "S", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-5981750-101", "wall": "N", "offsetIn": 22.5, "widthIn": 24, "kind": "window", "swing": "none"}, {"id": "op-5981901-101", "wall": "N", "offsetIn": 136.5, "widthIn": 24, "kind": "window", "swing": "none"}, {"id": "op-5997868-101", "wall": "E", "offsetIn": 14.8, "widthIn": 24, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l1-6020381", "role": "shift_west"}, "level": 1}, {"id": "103", "number": "103", "name": "Storage", "subtitle": "10'-0\" Flat Clg | Shelving", "status": "draft", "planRect": {"xIn": 291.8, "yIn": 4.0, "widthIn": 61.1, "depthIn": 54.0}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (5'-1\" x 4'-6\" | 22.9 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-103-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-103-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Storage - North Wall (5'-1\")", "clearWidthIn": 61.1, "ceilingHeightIn": 120, "bays": [{"id": "bay-103-N-1", "kind": "closet_shelves", "label": "Full-Height Shelving", "widthIn": 54, "heightIn": 96, "depthIn": 16, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=54\" | H=96\" | D=16\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "Storage - East Wall (4'-6\")", "clearWidthIn": 54.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Storage - South Wall (5'-1\")", "clearWidthIn": 61.1, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Storage - West Wall (4'-6\")", "clearWidthIn": 54.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5964196", "polarity": -1}}], "planOpenings": [{"id": "op-6020460-103", "wall": "S", "offsetIn": 20.0, "widthIn": 75, "kind": "door", "swing": "in-left"}], "flexPlanBinding": {"flexWallId": "fw-l1-5964196", "role": "shift_west"}, "level": 1}, {"id": "104", "number": "104", "name": "Great Room", "subtitle": "20'-0\" Double-Height Open to Loft | Wood Grain Tile", "status": "draft", "planRect": {"xIn": 333.5, "yIn": 66.0, "widthIn": 378.5, "depthIn": 255.5}, "ceilingHeightIn": 240, "ceilingLabel": "20'-0\" Ceiling (31'-6.5\" x 21'-3.5\" | 671.5 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-104-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-104-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Great Room - North Wall (31'-6.5\")", "clearWidthIn": 378.5, "ceilingHeightIn": 240, "bays": [{"id": "bay-104-N-1", "kind": "floating_shelves", "label": "Thick Floating Shelves + Lower Cab (L)", "widthIn": 66, "heightIn": 96, "depthIn": 18, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=66\" | H=96\" | D=18\""}, {"id": "bay-104-N-2", "kind": "fireplace_chase", "label": "Wood-Burn Gas-Start Fireplace + Hearth Across + Mantel + TV", "widthIn": 70, "heightIn": 240, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=70\" | H=240\" | D=24\""}, {"id": "bay-104-N-3", "kind": "floating_shelves", "label": "Thick Floating Shelves + Lower Cab (R)", "widthIn": 66, "heightIn": 96, "depthIn": 18, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=66\" | H=96\" | D=18\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "Great Room - East Wall (21'-3.5\")", "clearWidthIn": 255.5, "ceilingHeightIn": 240, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Great Room - South Wall (31'-6.5\")", "clearWidthIn": 378.5, "ceilingHeightIn": 240, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Great Room - West Wall (21'-3.5\")", "clearWidthIn": 255.5, "ceilingHeightIn": 240, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5974780", "polarity": -1}}], "planOpenings": [{"id": "op-5952318-104", "wall": "E", "offsetIn": 102.0, "widthIn": 192, "kind": "accordion", "swing": "none"}, {"id": "op-5959763-104", "wall": "N", "offsetIn": 63.5, "widthIn": 104, "kind": "door", "swing": "in-left"}, {"id": "op-6020460-104", "wall": "N", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-5975850-104", "wall": "E", "offsetIn": 34.0, "widthIn": 48, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l1-5974780", "role": "shift_west"}, "level": 1}, {"id": "105", "number": "105", "name": "Dining", "subtitle": "Open to Kitchen & East/South Patios", "status": "draft", "planRect": {"xIn": 576.0, "yIn": 256.8, "widthIn": 136.0, "depthIn": 205.2}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (11'-4\" x 17'-1\" | 193.7 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-105-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-105-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Dining - North Wall (11'-4\")", "clearWidthIn": 136.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Dining - East Wall (17'-1\")", "clearWidthIn": 205.2, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Dining - South Wall (11'-4\")", "clearWidthIn": 136.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Dining - West Wall (17'-1\")", "clearWidthIn": 205.2, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-5952318-105", "wall": "N", "offsetIn": 27.9, "widthIn": 192, "kind": "accordion", "swing": "none"}, {"id": "op-5975868-105", "wall": "E", "offsetIn": 123.2, "widthIn": 48, "kind": "window", "swing": "none"}], "level": 1}, {"id": "106", "number": "106", "name": "Kitchen", "subtitle": "10'-0\" Clg | 6'-0\" Wood-Wrap Island + Built-In Hood Run", "status": "draft", "planRect": {"xIn": 341.5, "yIn": 321.5, "widthIn": 234.5, "depthIn": 140.5}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (19'-6.5\" x 11'-8.5\" | 228.8 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-106-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-106-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Kitchen - North Wall (19'-6.5\")", "clearWidthIn": 234.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Kitchen - East Wall (11'-8.5\")", "clearWidthIn": 140.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Kitchen - South Wall (19'-6.5\")", "clearWidthIn": 234.5, "ceilingHeightIn": 120, "bays": [{"id": "bay-106-S-1", "kind": "fridge", "label": "Column Fridge + Ice Machine", "widthIn": 36, "heightIn": 108, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=36\" | H=108\" | D=24\""}, {"id": "bay-106-S-2", "kind": "drawer_stack", "label": "Base Drawers + Upper Cabs (L)", "widthIn": 48, "heightIn": 36, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=36\" | D=24\""}, {"id": "bay-106-S-3", "kind": "range_hood", "label": "48\" Range + Built-In Hood", "widthIn": 48, "heightIn": 108, "depthIn": 26, "affIn": 0, "hasMirror": false, "hasSconces": false, "hoodWidthIn": 48, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=108\" | D=26\""}, {"id": "bay-106-S-4", "kind": "drawer_stack", "label": "Base Drawers + Upper Cabs (R)", "widthIn": 48, "heightIn": 36, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=36\" | D=24\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Kitchen - West Wall (11'-8.5\")", "clearWidthIn": 140.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5968295", "polarity": -1}}], "planOpenings": [{"id": "op-5996294-106", "wall": "W", "offsetIn": 25.7, "widthIn": 81, "kind": "door", "swing": "in-left"}], "island": {"widthIn": 132, "depthIn": 72, "aisleNorthIn": 48, "overhangSouthIn": 15, "stoolsCount": 6}, "flexPlanBinding": {"flexWallId": "fw-l1-5968295", "role": "shift_west"}, "level": 1}, {"id": "107", "number": "107", "name": "Butler's Pantry", "subtitle": "10'-0\" Clg | Butler's Style Build-Out + MW", "status": "draft", "planRect": {"xIn": 282.6, "yIn": 369.5, "widthIn": 54.4, "depthIn": 92.5}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (4'-6.5\" x 7'-8.5\" | 34.9 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-107-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-107-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Butler's Pantry - North Wall (4'-6.5\")", "clearWidthIn": 54.4, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Butler's Pantry - East Wall (7'-8.5\")", "clearWidthIn": 92.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5968295", "polarity": 1}}, {"id": "S", "shortLabel": "S", "title": "Butler's Pantry - South Wall (4'-6.5\")", "clearWidthIn": 54.4, "ceilingHeightIn": 120, "bays": [{"id": "bay-107-S-1", "kind": "drawer_stack", "label": "Butler's Counter + MW + Upper Cabs", "widthIn": 54, "heightIn": 108, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=54\" | H=108\" | D=24\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Butler's Pantry - West Wall (7'-8.5\")", "clearWidthIn": 92.5, "ceilingHeightIn": 120, "bays": [{"id": "bay-107-W-2", "kind": "tall_tower", "label": "Pantry Storage Run", "widthIn": 84, "heightIn": 108, "depthIn": 18, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=84\" | H=108\" | D=18\""}], "autoCenter": true, "isCaseworkWall": true}], "planOpenings": [{"id": "op-5996294-107", "wall": "E", "offsetIn": 2.0, "widthIn": 81, "kind": "door", "swing": "in-left"}, {"id": "op-5996901-107", "wall": "N", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}], "flexPlanBinding": {"flexWallId": "fw-l1-5968295", "role": "expand_east"}, "level": 1}, {"id": "108", "number": "108", "name": "Stairs & Wet Bar", "subtitle": "Floating Thick-Tread Stair + Under-Stair Wine/Beverage Bar", "status": "draft", "planRect": {"xIn": 291.8, "yIn": 66.0, "widthIn": 96.7, "depthIn": 190.8}, "ceilingHeightIn": 240, "ceilingLabel": "20'-0\" Ceiling (8'-0.5\" x 15'-11\" | 128.2 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-108-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-108-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Stairs & Wet Bar - North Wall (8'-0.5\")", "clearWidthIn": 96.7, "ceilingHeightIn": 240, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Stairs & Wet Bar - East Wall (15'-11\")", "clearWidthIn": 190.8, "ceilingHeightIn": 240, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Stairs & Wet Bar - South Wall (8'-0.5\")", "clearWidthIn": 96.7, "ceilingHeightIn": 240, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Stairs & Wet Bar - West Wall (15'-11\")", "clearWidthIn": 190.8, "ceilingHeightIn": 240, "bays": [{"id": "bay-108-W-1", "kind": "sink_base", "label": "Bar Sink + Wine Fridge + UC Fridge + Ice + Open Shelving", "widthIn": 96, "heightIn": 96, "depthIn": 24, "affIn": 0, "hasMirror": true, "hasSconces": true, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=96\" | H=96\" | D=24\""}], "autoCenter": true, "isCaseworkWall": true}], "planOpenings": [{"id": "op-6020460-108", "wall": "N", "offsetIn": 20.0, "widthIn": 75, "kind": "door", "swing": "in-left"}], "level": 1}, {"id": "109", "number": "109", "name": "Laundry", "subtitle": "10'-0\" Clg | W/D Lifted 18\" + Vanity-Style Sink + Rod", "status": "draft", "planRect": {"xIn": 4.0, "yIn": 326.0, "widthIn": 76.3, "depthIn": 136.0}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (6'-4.5\" x 11'-4\" | 72.1 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-109-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-109-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Laundry - North Wall (6'-4.5\")", "clearWidthIn": 76.3, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Laundry - East Wall (11'-4\")", "clearWidthIn": 136.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-6012573", "polarity": 1}}, {"id": "S", "shortLabel": "S", "title": "Laundry - South Wall (6'-4.5\")", "clearWidthIn": 76.3, "ceilingHeightIn": 120, "bays": [{"id": "bay-109-S-3", "kind": "sink_base", "label": "Laundry Sink ('Like Master Van')", "widthIn": 42, "heightIn": 36, "depthIn": 22, "affIn": 0, "hasMirror": true, "hasSconces": true, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=42\" | H=36\" | D=22\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Laundry - West Wall (11'-4\")", "clearWidthIn": 136.0, "ceilingHeightIn": 120, "bays": [{"id": "bay-109-W-1", "kind": "tall_tower", "label": "Washer + Dryer Lifted 18\" on Pedestal", "widthIn": 66, "heightIn": 96, "depthIn": 30, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=66\" | H=96\" | D=30\""}, {"id": "bay-109-W-2", "kind": "base_doors", "label": "Base + Upper Cabs + Hanging Rod", "widthIn": 60, "heightIn": 96, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=60\" | H=96\" | D=24\""}], "autoCenter": true, "isCaseworkWall": true}], "planOpenings": [{"id": "op-6027950-109", "wall": "S", "offsetIn": 10.1, "widthIn": 60, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l1-6012573", "role": "expand_east"}, "level": 1}, {"id": "110", "number": "110", "name": "Bath 2", "subtitle": "10'-0\" Clg | Vanity, WC & Sliding-Glass Tile Shower w/ Niche", "status": "draft", "planRect": {"xIn": 84.8, "yIn": 323.4, "widthIn": 64.9, "depthIn": 138.6}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (5'-5\" x 11'-6.5\" | 62.5 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-110-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-110-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Bath 2 - North Wall (5'-5\")", "clearWidthIn": 64.9, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Bath 2 - East Wall (11'-6.5\")", "clearWidthIn": 138.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5964317", "polarity": 1}}, {"id": "S", "shortLabel": "S", "title": "Bath 2 - South Wall (5'-5\")", "clearWidthIn": 64.9, "ceilingHeightIn": 120, "bays": [{"id": "bay-110-S-3", "kind": "wet_room_glass", "label": "Sliding Glass Tile Shower + Niche", "widthIn": 60, "heightIn": 96, "depthIn": 36, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=60\" | H=96\" | D=36\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Bath 2 - West Wall (11'-6.5\")", "clearWidthIn": 138.6, "ceilingHeightIn": 120, "bays": [{"id": "bay-110-W-1", "kind": "sink_base", "label": "Single Vanity + Mirror + Sconces", "widthIn": 36, "heightIn": 36, "depthIn": 22, "affIn": 0, "hasMirror": true, "hasSconces": true, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=36\" | H=36\" | D=22\""}, {"id": "bay-110-W-2", "kind": "toilet_bay", "label": "WC Bay", "widthIn": 32, "heightIn": 36, "depthIn": 28, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=32\" | H=36\" | D=28\""}], "autoCenter": true, "isCaseworkWall": true}], "planOpenings": [{"id": "op-6012128-110", "wall": "E", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-6012690-110", "wall": "N", "offsetIn": 25.2, "widthIn": 38, "kind": "door", "swing": "in-left"}, {"id": "op-6027816-110", "wall": "S", "offsetIn": 2.2, "widthIn": 60, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l1-5964317", "role": "expand_east"}, "level": 1}, {"id": "111", "number": "111", "name": "Bed 2", "subtitle": "10'-0\" Clg | Reach-In Bench + Hanging Closet", "status": "draft", "planRect": {"xIn": 154.3, "yIn": 323.4, "widthIn": 123.7, "depthIn": 138.6}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (10'-3.5\" x 11'-6.5\" | 119.1 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-111-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-111-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Bed 2 - North Wall (10'-3.5\")", "clearWidthIn": 123.7, "ceilingHeightIn": 120, "bays": [{"id": "bay-111-N-1", "kind": "closet_double_hang", "label": "Closet Bench + Hanging Above", "widthIn": 72, "heightIn": 96, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=72\" | H=96\" | D=24\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "Bed 2 - East Wall (11'-6.5\")", "clearWidthIn": 138.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Bed 2 - South Wall (10'-3.5\")", "clearWidthIn": 123.7, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Bed 2 - West Wall (11'-6.5\")", "clearWidthIn": 138.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5964317", "polarity": -1}}], "planOpenings": [{"id": "op-5971346-111", "wall": "N", "offsetIn": 47.6, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-5996901-111", "wall": "E", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-6012128-111", "wall": "W", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-6006399-111", "wall": "S", "offsetIn": 6.2, "widthIn": 23, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l1-5964317", "role": "shift_west"}, "level": 1}, {"id": "112", "number": "112", "name": "Master Bedroom", "subtitle": "10'-0\" Flat Clg | Built-In Tall Cab & Shelves", "status": "draft", "planRect": {"xIn": 4.0, "yIn": 66.0, "widthIn": 177.6, "depthIn": 181.0}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (14'-9.5\" x 15'-1\" | 223.2 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-112-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-112-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Master Bedroom - North Wall (14'-9.5\")", "clearWidthIn": 177.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Master Bedroom - East Wall (15'-1\")", "clearWidthIn": 181.0, "ceilingHeightIn": 120, "bays": [{"id": "bay-112-E-1", "kind": "tall_tower", "label": "Built-In Tall Cabinet + 10' Shelves", "widthIn": 48, "heightIn": 120, "depthIn": 18, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=120\" | D=18\""}], "autoCenter": true, "isCaseworkWall": true, "flexBinding": {"flexWallId": "fw-l1-5955643", "polarity": 1}}, {"id": "S", "shortLabel": "S", "title": "Master Bedroom - South Wall (14'-9.5\")", "clearWidthIn": 177.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Master Bedroom - West Wall (15'-1\")", "clearWidthIn": 181.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-5971068-112", "wall": "S", "offsetIn": 134.1, "widthIn": 42, "kind": "door", "swing": "in-left"}, {"id": "op-5972339-112", "wall": "E", "offsetIn": 4.0, "widthIn": 42, "kind": "door", "swing": "in-left"}, {"id": "op-5972376-112", "wall": "E", "offsetIn": 99.9, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-6006317-112", "wall": "N", "offsetIn": 138.1, "widthIn": 24, "kind": "window", "swing": "none"}, {"id": "op-6006354-112", "wall": "N", "offsetIn": 16.1, "widthIn": 24, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l1-5955643", "role": "expand_east"}, "level": 1}, {"id": "113", "number": "113", "name": "Master Bath", "subtitle": "10'-0\" Clg | Floor-Standing Double Vanity + Glass Shower", "status": "draft", "planRect": {"xIn": 186.0, "yIn": 4.0, "widthIn": 101.3, "depthIn": 186.0}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (8'-5.5\" x 15'-6\" | 130.8 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-113-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-113-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Master Bath - North Wall (8'-5.5\")", "clearWidthIn": 101.3, "ceilingHeightIn": 120, "bays": [{"id": "bay-113-N-3", "kind": "wet_room_glass", "label": "Walk-In Glass Shower (Bench, Niche, Center Drain)", "widthIn": 96, "heightIn": 108, "depthIn": 54, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=96\" | H=108\" | D=54\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "Master Bath - East Wall (15'-6\")", "clearWidthIn": 186.0, "ceilingHeightIn": 120, "bays": [{"id": "bay-113-E-1", "kind": "sink_base", "label": "Double Vanity to Ground, Sep Mirrors & Lights Between", "widthIn": 84, "heightIn": 36, "depthIn": 22, "affIn": 0, "hasMirror": true, "hasSconces": true, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=84\" | H=36\" | D=22\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "S", "shortLabel": "S", "title": "Master Bath - South Wall (8'-5.5\")", "clearWidthIn": 101.3, "ceilingHeightIn": 120, "bays": [{"id": "bay-113-S-2", "kind": "toilet_bay", "label": "Enclosed WC Alcove", "widthIn": 36, "heightIn": 36, "depthIn": 28, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=36\" | H=36\" | D=28\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Master Bath - West Wall (15'-6\")", "clearWidthIn": 186.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5955643", "polarity": -1}}], "planOpenings": [{"id": "op-5972376-113", "wall": "W", "offsetIn": 161.9, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-5982037-113", "wall": "N", "offsetIn": 12.0, "widthIn": 76, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l1-5955643", "role": "shift_west"}, "level": 1}, {"id": "114", "number": "114", "name": "Master Closet", "subtitle": "10'-0\" Clg | Built-Ins, Double/Long Hang, Cubbies & Drawers", "status": "draft", "planRect": {"xIn": 186.0, "yIn": 194.5, "widthIn": 151.0, "depthIn": 69.5}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (12'-7\" x 5'-9.5\" | 72.8 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-114-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-114-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Master Closet - North Wall (12'-7\")", "clearWidthIn": 151.0, "ceilingHeightIn": 120, "bays": [{"id": "bay-114-N-1", "kind": "closet_double_hang", "label": "North Double Hang + Upper Shelf", "widthIn": 96, "heightIn": 96, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=96\" | H=96\" | D=24\""}, {"id": "bay-114-N-2", "kind": "closet_drawers", "label": "Center Cubbies + Drawer Stack", "widthIn": 48, "heightIn": 96, "depthIn": 20, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=96\" | D=20\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "Master Closet - East Wall (5'-9.5\")", "clearWidthIn": 69.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l1-5974780", "polarity": 1}}, {"id": "S", "shortLabel": "S", "title": "Master Closet - South Wall (12'-7\")", "clearWidthIn": 151.0, "ceilingHeightIn": 120, "bays": [{"id": "bay-114-S-3", "kind": "closet_long_hang", "label": "South Long Hang + Shoe Tiers", "widthIn": 144, "heightIn": 96, "depthIn": 24, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=144\" | H=96\" | D=24\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Master Closet - West Wall (5'-9.5\")", "clearWidthIn": 69.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-5972376-114", "wall": "W", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}], "flexPlanBinding": {"flexWallId": "fw-l1-5974780", "role": "expand_east"}, "level": 1}, {"id": "118", "number": "118", "name": "Mud Hall & Lockers", "subtitle": "10'-0\" Clg | Inspo Bench/Hooks + Tall Broom Cabinet", "status": "draft", "planRect": {"xIn": 4.0, "yIn": 251.5, "widthIn": 329.5, "depthIn": 74.5}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (27'-5.5\" x 6'-2.5\" | 170.5 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-118-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-118-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Mud Hall & Lockers - North Wall (27'-5.5\")", "clearWidthIn": 329.5, "ceilingHeightIn": 120, "bays": [{"id": "bay-118-N-1", "kind": "base_doors", "label": "Mud Lockers + Wood Bench + Hooks ('10'-1 1/2\"')", "widthIn": 90, "heightIn": 108, "depthIn": 20, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=90\" | H=108\" | D=20\""}, {"id": "bay-118-N-2", "kind": "tall_tower", "label": "Tall Broom / Utility Cabinet", "widthIn": 30, "heightIn": 108, "depthIn": 20, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=30\" | H=108\" | D=20\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "Mud Hall & Lockers - East Wall (6'-2.5\")", "clearWidthIn": 74.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Mud Hall & Lockers - South Wall (27'-5.5\")", "clearWidthIn": 329.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Mud Hall & Lockers - West Wall (6'-2.5\")", "clearWidthIn": 74.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-5971346-118", "wall": "S", "offsetIn": 198.0, "widthIn": 75, "kind": "door", "swing": "in-left"}, {"id": "op-6012690-118", "wall": "S", "offsetIn": 106.1, "widthIn": 38, "kind": "door", "swing": "in-left"}], "level": 1}, {"id": "120", "number": "120", "name": "Hall Closet", "subtitle": "10'-0\" Clg | Accent Wood Floor Piece", "status": "draft", "planRect": {"xIn": 282.6, "yIn": 323.4, "widthIn": 54.4, "depthIn": 41.6}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (4'-6.5\" x 3'-5.5\" | 15.7 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-120-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-120-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Hall Closet - North Wall (4'-6.5\")", "clearWidthIn": 54.4, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Hall Closet - East Wall (3'-5.5\")", "clearWidthIn": 41.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Hall Closet - South Wall (4'-6.5\")", "clearWidthIn": 54.4, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Hall Closet - West Wall (3'-5.5\")", "clearWidthIn": 41.6, "ceilingHeightIn": 120, "bays": [{"id": "bay-120-W-1", "kind": "closet_shelves", "label": "Linen / Coat Shelving", "widthIn": 42, "heightIn": 96, "depthIn": 18, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=42\" | H=96\" | D=18\""}], "autoCenter": true, "isCaseworkWall": true}], "planOpenings": [{"id": "op-5996901-120", "wall": "S", "offsetIn": 2.0, "widthIn": 75, "kind": "door", "swing": "in-left"}], "level": 1}, {"id": "201", "number": "201", "name": "Loft", "subtitle": "10'-0\" Clg | Wood Grain Tile | Overlooks Great Room + Full-Glass Balcony Door", "status": "draft", "planRect": {"xIn": 196.1, "yIn": 66.0, "widthIn": 145.4, "depthIn": 293.0}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (12'-1.5\" x 24'-5\" | 296.0 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-201-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-201-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Loft - North Wall (12'-1.5\")", "clearWidthIn": 145.4, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Loft - East Wall (24'-5\")", "clearWidthIn": 293.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Loft - South Wall (12'-1.5\")", "clearWidthIn": 145.4, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Loft - West Wall (24'-5\")", "clearWidthIn": 293.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l2-5981062", "polarity": -1}}], "planOpenings": [{"id": "op-6004195-201", "wall": "S", "offsetIn": 5.8, "widthIn": 34, "kind": "door", "swing": "in-left"}], "flexPlanBinding": {"flexWallId": "fw-l2-5981062", "role": "shift_west"}, "level": 2}, {"id": "202", "number": "202", "name": "Bed 3", "subtitle": "10'-0\" Clg | Built-In Bunk Wall + Casement Windows", "status": "draft", "planRect": {"xIn": 4.0, "yIn": 66.0, "widthIn": 187.7, "depthIn": 175.0}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (15'-7.5\" x 14'-7\" | 228.0 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-202-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-202-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Bed 3 - North Wall (15'-7.5\")", "clearWidthIn": 187.7, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Bed 3 - East Wall (14'-7\")", "clearWidthIn": 175.0, "ceilingHeightIn": 120, "bays": [{"id": "bay-202-E-1", "kind": "tall_tower", "label": "Built-In Custom Bunk System", "widthIn": 84, "heightIn": 108, "depthIn": 42, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=84\" | H=108\" | D=42\""}], "autoCenter": true, "isCaseworkWall": true, "flexBinding": {"flexWallId": "fw-l2-5981062", "polarity": 1}}, {"id": "S", "shortLabel": "S", "title": "Bed 3 - South Wall (15'-7.5\")", "clearWidthIn": 187.7, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Bed 3 - West Wall (14'-7\")", "clearWidthIn": 175.0, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-5999953-202", "wall": "E", "offsetIn": 130.2, "widthIn": 42, "kind": "door", "swing": "in-left"}, {"id": "op-5999980-202", "wall": "S", "offsetIn": 38.3, "widthIn": 81, "kind": "door", "swing": "in-left"}, {"id": "op-6000736-202", "wall": "N", "offsetIn": 78.1, "widthIn": 48, "kind": "window", "swing": "none"}, {"id": "op-6000837-202", "wall": "N", "offsetIn": 30.1, "widthIn": 48, "kind": "window", "swing": "none"}, {"id": "op-6007957-202", "wall": "W", "offsetIn": 7.0, "widthIn": 48, "kind": "window", "swing": "none"}, {"id": "op-6007958-202", "wall": "W", "offsetIn": 121.0, "widthIn": 48, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l2-5981062", "role": "expand_east"}, "level": 2}, {"id": "203", "number": "203", "name": "Bath 3", "subtitle": "10'-0\" Clg | 'Like Master' Vanity + Curtain Tub/Shower", "status": "draft", "planRect": {"xIn": 4.0, "yIn": 245.5, "widthIn": 131.6, "depthIn": 67.7}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (10'-11.5\" x 5'-7.5\" | 61.9 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-203-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-203-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Bath 3 - North Wall (10'-11.5\")", "clearWidthIn": 131.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Bath 3 - East Wall (5'-7.5\")", "clearWidthIn": 67.7, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l2-5981523", "polarity": 1}}, {"id": "S", "shortLabel": "S", "title": "Bath 3 - South Wall (10'-11.5\")", "clearWidthIn": 131.6, "ceilingHeightIn": 120, "bays": [{"id": "bay-203-S-1", "kind": "sink_base", "label": "Vanity ('Like Master')", "widthIn": 48, "heightIn": 36, "depthIn": 22, "affIn": 0, "hasMirror": true, "hasSconces": true, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=36\" | D=22\""}, {"id": "bay-203-S-2", "kind": "toilet_bay", "label": "WC Bay", "widthIn": 32, "heightIn": 36, "depthIn": 28, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=32\" | H=36\" | D=28\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Bath 3 - West Wall (5'-7.5\")", "clearWidthIn": 67.7, "ceilingHeightIn": 120, "bays": [{"id": "bay-203-W-3", "kind": "wet_room_glass", "label": "Tub/Shower w/ Curtain", "widthIn": 60, "heightIn": 96, "depthIn": 32, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=60\" | H=96\" | D=32\""}], "autoCenter": true, "isCaseworkWall": true}], "planOpenings": [{"id": "op-5999980-203", "wall": "N", "offsetIn": 38.3, "widthIn": 81, "kind": "door", "swing": "in-left"}, {"id": "op-6000023-203", "wall": "E", "offsetIn": 6.1, "widthIn": 59, "kind": "door", "swing": "in-left"}, {"id": "op-6031499-203", "wall": "W", "offsetIn": 9.5, "widthIn": 48, "kind": "window", "swing": "none"}], "flexPlanBinding": {"flexWallId": "fw-l2-5981523", "role": "expand_east"}, "level": 2}, {"id": "204", "number": "204", "name": "WIC 3 (Bed 3)", "subtitle": "10'-0\" Clg | Shelving + Bench for Suitcase Drawers", "status": "draft", "planRect": {"xIn": 140.2, "yIn": 245.5, "widthIn": 51.5, "depthIn": 67.7}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (4'-3.5\" x 5'-7.5\" | 24.2 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-204-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-204-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "WIC 3 (Bed 3) - North Wall (4'-3.5\")", "clearWidthIn": 51.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "WIC 3 (Bed 3) - East Wall (5'-7.5\")", "clearWidthIn": 67.7, "ceilingHeightIn": 120, "bays": [{"id": "bay-204-E-1", "kind": "closet_drawers", "label": "Suitcase Drawer Bench + Shelving", "widthIn": 60, "heightIn": 96, "depthIn": 20, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=60\" | H=96\" | D=20\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "S", "shortLabel": "S", "title": "WIC 3 (Bed 3) - South Wall (4'-3.5\")", "clearWidthIn": 51.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "WIC 3 (Bed 3) - West Wall (5'-7.5\")", "clearWidthIn": 67.7, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false, "flexBinding": {"flexWallId": "fw-l2-5981523", "polarity": -1}}], "planOpenings": [{"id": "op-6000023-204", "wall": "W", "offsetIn": 6.1, "widthIn": 59, "kind": "door", "swing": "in-left"}], "flexPlanBinding": {"flexWallId": "fw-l2-5981523", "role": "shift_west"}, "level": 2}, {"id": "205", "number": "205", "name": "Bed 4", "subtitle": "10'-0\" Clg | Casement Windows + Hidden Mirror Door to WIC", "status": "draft", "planRect": {"xIn": 4.0, "yIn": 317.8, "widthIn": 187.7, "depthIn": 144.2}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (15'-7.5\" x 12'-0\" | 188.0 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-205-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-205-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Bed 4 - North Wall (15'-7.5\")", "clearWidthIn": 187.7, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Bed 4 - East Wall (12'-0\")", "clearWidthIn": 144.2, "ceilingHeightIn": 120, "bays": [{"id": "bay-205-E-1", "kind": "door", "label": "Hidden Mirror Door into WIC 4", "widthIn": 32, "heightIn": 84, "depthIn": 4, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=32\" | H=84\" | D=4\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "S", "shortLabel": "S", "title": "Bed 4 - South Wall (15'-7.5\")", "clearWidthIn": 187.7, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "Bed 4 - West Wall (12'-0\")", "clearWidthIn": 144.2, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-6001216-205", "wall": "E", "offsetIn": 2.0, "widthIn": 42, "kind": "door", "swing": "in-left"}, {"id": "op-6002001-205", "wall": "E", "offsetIn": 42.7, "widthIn": 81, "kind": "door", "swing": "in-left"}, {"id": "op-6004561-205", "wall": "W", "offsetIn": 24.2, "widthIn": 48, "kind": "window", "swing": "none"}, {"id": "op-6004607-205", "wall": "W", "offsetIn": 72.2, "widthIn": 48, "kind": "window", "swing": "none"}], "level": 2}, {"id": "206", "number": "206", "name": "Bath 4", "subtitle": "10'-0\" Clg | 'Like Master' Vanity + Sliding Glass Shower", "status": "draft", "planRect": {"xIn": 196.1, "yIn": 393.7, "widthIn": 140.9, "depthIn": 68.3}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (11'-9\" x 5'-8.5\" | 66.8 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-206-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-206-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Bath 4 - North Wall (11'-9\")", "clearWidthIn": 140.9, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Bath 4 - East Wall (5'-8.5\")", "clearWidthIn": 68.3, "ceilingHeightIn": 120, "bays": [{"id": "bay-206-E-3", "kind": "wet_room_glass", "label": "Sliding Glass Shower", "widthIn": 48, "heightIn": 96, "depthIn": 36, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=96\" | D=36\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "S", "shortLabel": "S", "title": "Bath 4 - South Wall (11'-9\")", "clearWidthIn": 140.9, "ceilingHeightIn": 120, "bays": [{"id": "bay-206-S-1", "kind": "sink_base", "label": "Vanity ('Like Master')", "widthIn": 48, "heightIn": 36, "depthIn": 22, "affIn": 0, "hasMirror": true, "hasSconces": true, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=48\" | H=36\" | D=22\""}, {"id": "bay-206-S-2", "kind": "toilet_bay", "label": "WC Bay", "widthIn": 32, "heightIn": 36, "depthIn": 28, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=32\" | H=36\" | D=28\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Bath 4 - West Wall (5'-8.5\")", "clearWidthIn": 68.3, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-6002001-206", "wall": "W", "offsetIn": 2.0, "widthIn": 81, "kind": "door", "swing": "in-left"}, {"id": "op-6002667-206", "wall": "N", "offsetIn": 15.5, "widthIn": 75, "kind": "door", "swing": "in-left"}], "level": 2}, {"id": "207", "number": "207", "name": "WIC 4 (Bed 4)", "subtitle": "10'-0\" Clg | Hidden Mirror Entry + Suitcase Drawer Bench", "status": "draft", "planRect": {"xIn": 247.6, "yIn": 341.6, "widthIn": 89.4, "depthIn": 47.6}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (7'-5.5\" x 3'-11.5\" | 29.6 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-207-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-207-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "WIC 4 (Bed 4) - North Wall (7'-5.5\")", "clearWidthIn": 89.4, "ceilingHeightIn": 120, "bays": [{"id": "bay-207-N-1", "kind": "closet_drawers", "label": "Bench for Suitcase Drawers + Hanging/Shelves", "widthIn": 84, "heightIn": 96, "depthIn": 20, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=84\" | H=96\" | D=20\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "E", "shortLabel": "E", "title": "WIC 4 (Bed 4) - East Wall (3'-11.5\")", "clearWidthIn": 47.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "WIC 4 (Bed 4) - South Wall (7'-5.5\")", "clearWidthIn": 89.4, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "W", "shortLabel": "W", "title": "WIC 4 (Bed 4) - West Wall (3'-11.5\")", "clearWidthIn": 47.6, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-6002667-207", "wall": "W", "offsetIn": 4.1, "widthIn": 75, "kind": "door", "swing": "in-left"}], "level": 2}, {"id": "209", "number": "209", "name": "Loft Closet", "subtitle": "10'-0\" Clg | Double-Swing Doors + Shelving", "status": "draft", "planRect": {"xIn": 247.6, "yIn": 301.7, "widthIn": 89.4, "depthIn": 35.5}, "ceilingHeightIn": 120, "ceilingLabel": "10'-0\" Ceiling (7'-5.5\" x 2'-11.5\" | 22.1 sf)", "wallThicknessIn": 4.5, "datums": [{"id": "d-209-36", "affIn": 36, "label": "36\" COUNTER"}, {"id": "d-209-108", "affIn": 108, "label": "9'-0\" ALIGN"}], "walls": [{"id": "N", "shortLabel": "N", "title": "Loft Closet - North Wall (7'-5.5\")", "clearWidthIn": 89.4, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "E", "shortLabel": "E", "title": "Loft Closet - East Wall (2'-11.5\")", "clearWidthIn": 35.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}, {"id": "S", "shortLabel": "S", "title": "Loft Closet - South Wall (7'-5.5\")", "clearWidthIn": 89.4, "ceilingHeightIn": 120, "bays": [{"id": "bay-209-S-1", "kind": "closet_shelves", "label": "Double-Swing Storage Shelving", "widthIn": 84, "heightIn": 96, "depthIn": 20, "affIn": 0, "hasMirror": false, "hasSconces": false, "revitFamily": "Barnhaus_Parametric_Catalog.rfa", "revitParams": "W=84\" | H=96\" | D=20\""}], "autoCenter": true, "isCaseworkWall": true}, {"id": "W", "shortLabel": "W", "title": "Loft Closet - West Wall (2'-11.5\")", "clearWidthIn": 35.5, "ceilingHeightIn": 120, "bays": [], "autoCenter": true, "isCaseworkWall": false}], "planOpenings": [{"id": "op-6017195-209", "wall": "N", "offsetIn": 11.1, "widthIn": 65, "kind": "door", "swing": "in-left"}], "level": 2}], "outdoorZones": [{"id": "out-115", "label": "CARPORT", "level": 1, "xIn": -260.0, "yIn": 70.4, "widthIn": 256.1, "depthIn": 387.6}, {"id": "out-116", "label": "PATIO EAST", "level": 1, "xIn": 720.0, "yIn": 70.4, "widthIn": 172.0, "depthIn": 387.6}, {"id": "out-117", "label": "PATIO SOUTH", "level": 1, "xIn": -260.0, "yIn": 458.0, "widthIn": 1152.0, "depthIn": 184.1}, {"id": "out-119", "label": "PORCH", "level": 1, "xIn": -260.0, "yIn": -114.0, "widthIn": 1152.0, "depthIn": 184.4}, {"id": "out-208", "label": "BALCONY", "level": 2, "xIn": 184.7, "yIn": -114.4, "widthIn": 347.4, "depthIn": 172.3}], "voidZones": [{"id": "void-gr-l2", "label": "OPEN TO GREAT ROOM & KITCHEN BELOW", "level": 2, "xIn": 341.5, "yIn": 61.9, "widthIn": 374.5, "depthIn": 404.0}], "d1Notes": [{"id": "n-5951346", "revitId": 5951346, "level": 1, "text": "Fireplace", "textBoxRoom": "104", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [638.9, 113.7], "tipXYIn": [638.9, 113.7]}, {"id": "n-6012852", "revitId": 6012852, "level": 1, "text": "Lockers / Bench", "textBoxRoom": "118", "targetRoomId": "118", "targetRoomName": "Mud Hall", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [42.0, 289.1], "tipXYIn": [80.3, 264.5]}, {"id": "n-6015881", "revitId": 6015881, "level": 1, "text": "Bar Space, Wine Fridge, Small sink, Ice, etc, UC fridge, open shelving above", "textBoxRoom": "104", "targetRoomId": "108", "targetRoomName": "Stairs", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [350.0, 144.0], "tipXYIn": [298.9, 133.8]}, {"id": "n-6037236", "revitId": 6037236, "level": 1, "text": "MW", "textBoxRoom": "107", "targetRoomId": "107", "targetRoomName": "Pantry", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [311.5, 445.9], "tipXYIn": [311.5, 445.9]}, {"id": "n-6037268", "revitId": 6037268, "level": 1, "text": "base cabinet drawers", "textBoxRoom": "106", "targetRoomId": "106", "targetRoomName": "Kitchen", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [480.0, 402.5], "tipXYIn": [522.4, 373.8]}, {"id": "n-6037298", "revitId": 6037298, "level": 1, "text": "Ice Machine", "textBoxRoom": "106", "targetRoomId": "106", "targetRoomName": "Kitchen", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [354.2, 399.3], "tipXYIn": [416.6, 373.3]}, {"id": "n-6037301", "revitId": 6037301, "level": 1, "text": "built in hood", "textBoxRoom": "OUTSIDE", "targetRoomId": "106", "targetRoomName": "Kitchen", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [495.8, 485.4], "tipXYIn": [474.6, 452.8]}, {"id": "n-6037304", "revitId": 6037304, "level": 1, "text": "upper cabinets", "textBoxRoom": "OUTSIDE", "targetRoomId": "106", "targetRoomName": "Kitchen", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [428.2, 479.9], "tipXYIn": [408.5, 454.7]}, {"id": "n-6037306", "revitId": 6037306, "level": 1, "text": "upper cabinets", "textBoxRoom": "OUTSIDE", "targetRoomId": "106", "targetRoomName": "Kitchen", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [548.9, 503.5], "tipXYIn": [536.9, 454.1]}, {"id": "n-6037309", "revitId": 6037309, "level": 1, "text": "accent floor piece with wood", "textBoxRoom": "104", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [419.7, 280.6], "tipXYIn": [343.4, 322.0]}, {"id": "n-6037386", "revitId": 6037386, "level": 1, "text": "wood wrap", "textBoxRoom": "104", "targetRoomId": "106", "targetRoomName": "Kitchen", "hasLeader": true, "method": "leader_arrowhead+domain_guard(kitchen)", "confidence": "flagged_retargeted", "boxXYIn": [416.8, 300.9], "tipXYIn": [393.4, 329.5]}, {"id": "n-6037438", "revitId": 6037438, "level": 1, "text": "Furniture", "textBoxRoom": "105", "targetRoomId": "105", "targetRoomName": "Dining", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [656.7, 444.8], "tipXYIn": [656.7, 444.8]}, {"id": "n-6037454", "revitId": 6037454, "level": 1, "text": "build out butlers style", "textBoxRoom": "107", "targetRoomId": "107", "targetRoomName": "Pantry", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [287.5, 381.7], "tipXYIn": [287.5, 381.7]}, {"id": "n-6037476", "revitId": 6037476, "level": 1, "text": "thick floating shelves, cab at bottom", "textBoxRoom": "OUTSIDE", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [594.6, 5.1], "tipXYIn": [557.5, 70.7]}, {"id": "n-6037514", "revitId": 6037514, "level": 1, "text": "hearth run across", "textBoxRoom": "OUTSIDE", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [747.2, 65.3], "tipXYIn": [690.3, 91.8]}, {"id": "n-6037516", "revitId": 6037516, "level": 1, "text": "thick mantle, TV above", "textBoxRoom": "104", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [416.6, 101.5], "tipXYIn": [590.2, 89.9]}, {"id": "n-6037519", "revitId": 6037519, "level": 1, "text": "wood burning, gas start", "textBoxRoom": "104", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [529.3, 121.0], "tipXYIn": [605.1, 88.2]}, {"id": "n-6037625", "revitId": 6037625, "level": 1, "text": "wine fridge", "textBoxRoom": "104", "targetRoomId": "108", "targetRoomName": "Stairs", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [357.8, 69.1], "tipXYIn": [306.6, 86.5]}, {"id": "n-6037965", "revitId": 6037965, "level": 1, "text": "shelving", "textBoxRoom": "OUTSIDE", "targetRoomId": "103", "targetRoomName": "Storage", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [271.1, -57.2], "tipXYIn": [333.6, 28.0]}, {"id": "n-6037968", "revitId": 6037968, "level": 1, "text": "bench, hooks", "textBoxRoom": "OUTSIDE", "targetRoomId": "101", "targetRoomName": "Foyer", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [416.8, -36.2], "tipXYIn": [369.7, 14.3]}, {"id": "n-6037972", "revitId": 6037972, "level": 1, "text": "van to ground, sep mirrors, lights between like inspo", "textBoxRoom": "OUTSIDE", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-86.4, -39.6], "tipXYIn": [275.6, 69.7]}, {"id": "n-6037975", "revitId": 6037975, "level": 1, "text": "lin tall cab", "textBoxRoom": "112", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [116.2, 103.0], "tipXYIn": [198.4, 125.9]}, {"id": "n-6037994", "revitId": 6037994, "level": 1, "text": "shelves", "textBoxRoom": "112", "targetRoomId": "112", "targetRoomName": "Master", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [116.2, 179.4], "tipXYIn": [191.5, 164.9]}, {"id": "n-6038066", "revitId": 6038066, "level": 1, "text": "glass above pony wall", "textBoxRoom": "113", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [186.2, 82.9], "tipXYIn": [269.1, 60.0]}, {"id": "n-6038085", "revitId": 6038085, "level": 1, "text": "valves", "textBoxRoom": "OUTSIDE", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [255.9, -33.0], "tipXYIn": [245.5, 56.5]}, {"id": "n-6038179", "revitId": 6038179, "level": 1, "text": "bench", "textBoxRoom": "OUTSIDE", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [240.5, -65.5], "tipXYIn": [233.6, 9.2]}, {"id": "n-6038182", "revitId": 6038182, "level": 1, "text": "niche", "textBoxRoom": "OUTSIDE", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [339.0, -39.6], "tipXYIn": [269.7, 54.1]}, {"id": "n-6038238", "revitId": 6038238, "level": 1, "text": "center drain", "textBoxRoom": "OUTSIDE", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [161.5, 46.9], "tipXYIn": [239.0, 38.1]}, {"id": "n-6038241", "revitId": 6038241, "level": 1, "text": "valves normal", "textBoxRoom": "OUTSIDE", "targetRoomId": "110", "targetRoomName": "Bath 2", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [20.6, 485.4], "tipXYIn": [94.9, 446.7]}, {"id": "n-6038329", "revitId": 6038329, "level": 1, "text": "sliding glass", "textBoxRoom": "OUTSIDE", "targetRoomId": "110", "targetRoomName": "Bath 2", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [131.2, 517.1], "tipXYIn": [113.1, 424.1]}, {"id": "n-6038332", "revitId": 6038332, "level": 1, "text": "niche", "textBoxRoom": "OUTSIDE", "targetRoomId": "110", "targetRoomName": "Bath 2", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [131.2, 485.4], "tipXYIn": [148.2, 443.5]}, {"id": "n-6038335", "revitId": 6038335, "level": 1, "text": "like master van", "textBoxRoom": "OUTSIDE", "targetRoomId": "110", "targetRoomName": "Bath 2", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-101.4, 310.5], "tipXYIn": [101.6, 348.5]}, {"id": "n-6038712", "revitId": 6038712, "level": 1, "text": "built ins, hanging, cubbies drawers", "textBoxRoom": "114", "targetRoomId": "114", "targetRoomName": "M Closet", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [204.4, 203.0], "tipXYIn": [238.3, 237.8]}, {"id": "n-6038715", "revitId": 6038715, "level": 1, "text": "bench, hanging above", "textBoxRoom": "118", "targetRoomId": "118", "targetRoomName": "Mud Hall", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [207.4, 292.5], "tipXYIn": [324.3, 337.7]}, {"id": "n-6038734", "revitId": 6038734, "level": 1, "text": "like inspo bench hooks", "textBoxRoom": "OUTSIDE", "targetRoomId": "118", "targetRoomName": "Mud Hall", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-111.9, 216.5], "tipXYIn": [69.2, 265.7]}, {"id": "n-6038737", "revitId": 6038737, "level": 1, "text": "base cabs, upper cabs, shelf with rod", "textBoxRoom": "OUTSIDE", "targetRoomId": "109", "targetRoomName": "Laundry", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-188.7, 409.7], "tipXYIn": [13.5, 416.7]}, {"id": "n-6038740", "revitId": 6038740, "level": 1, "text": "lift up 18\"", "textBoxRoom": "OUTSIDE", "targetRoomId": "109", "targetRoomName": "Laundry", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-111.9, 372.4], "tipXYIn": [16.7, 368.3]}, {"id": "n-6038783", "revitId": 6038783, "level": 1, "text": "tall cab brooms", "textBoxRoom": "118", "targetRoomId": "118", "targetRoomName": "Mud Hall", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [136.3, 276.3], "tipXYIn": [112.3, 265.0]}, {"id": "n-6038831", "revitId": 6038831, "level": 1, "text": "wood grain tile", "textBoxRoom": "104", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [446.4, 227.6], "tipXYIn": [446.4, 227.6]}, {"id": "n-6038835", "revitId": 6038835, "level": 1, "text": "shower tile", "textBoxRoom": "OUTSIDE", "targetRoomId": "113", "targetRoomName": "M Bath", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [76.4, -4.3], "tipXYIn": [192.5, 34.0]}, {"id": "n-6038837", "revitId": 6038837, "level": 1, "text": "shower tile", "textBoxRoom": "OUTSIDE", "targetRoomId": "110", "targetRoomName": "Bath 2", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [69.9, 503.5], "tipXYIn": [113.8, 453.7]}, {"id": "n-6038840", "revitId": 6038840, "level": 1, "text": "floating with thick treads", "textBoxRoom": "104", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [450.5, 194.6], "tipXYIn": [359.6, 213.8]}, {"id": "n-6038844", "revitId": 6038844, "level": 1, "text": "dark counter wood cab", "textBoxRoom": "104", "targetRoomId": "104", "targetRoomName": "Great Room", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [594.6, 280.6], "tipXYIn": [594.6, 280.6]}, {"id": "n-6019955", "revitId": 6019955, "level": 2, "text": "Double Swing", "textBoxRoom": "201", "targetRoomId": "209", "targetRoomName": "Closet", "hasLeader": true, "method": "leader_arrowhead+domain_guard(closet)", "confidence": "flagged_retargeted", "boxXYIn": [255.5, 262.3], "tipXYIn": [290.0, 295.2]}, {"id": "n-6020208", "revitId": 6020208, "level": 2, "text": "Casement", "textBoxRoom": "OUTSIDE", "targetRoomId": "205", "targetRoomName": "Bed 4", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-96.6, 352.2], "tipXYIn": [-9.5, 358.6]}, {"id": "n-6020210", "revitId": 6020210, "level": 2, "text": "Casement", "textBoxRoom": "OUTSIDE", "targetRoomId": "205", "targetRoomName": "Bed 4", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-96.6, 403.2], "tipXYIn": [-9.5, 409.6]}, {"id": "n-6020219", "revitId": 6020219, "level": 2, "text": "Casement", "textBoxRoom": "OUTSIDE", "targetRoomId": "202", "targetRoomName": "Bed 3", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-96.6, 206.2], "tipXYIn": [-9.5, 212.6]}, {"id": "n-6020228", "revitId": 6020228, "level": 2, "text": "Casement", "textBoxRoom": "OUTSIDE", "targetRoomId": "202", "targetRoomName": "Bed 3", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-96.6, 95.2], "tipXYIn": [-9.5, 101.6]}, {"id": "n-6020270", "revitId": 6020270, "level": 2, "text": "Bunk", "textBoxRoom": "202", "targetRoomId": "202", "targetRoomName": "Bed 3", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [149.4, 108.3], "tipXYIn": [149.4, 108.3]}, {"id": "n-6036724", "revitId": 6036724, "level": 2, "text": "full glass", "textBoxRoom": "OUTSIDE", "targetRoomId": "201", "targetRoomName": "Loft", "hasLeader": true, "method": "leader_arrowhead", "confidence": "review", "boxXYIn": [313.2, 10.1], "tipXYIn": [260.2, 35.2]}, {"id": "n-6038849", "revitId": 6038849, "level": 2, "text": "shelving", "textBoxRoom": "201", "targetRoomId": "201", "targetRoomName": "Loft", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [203.1, 243.6], "tipXYIn": [270.0, 311.7]}, {"id": "n-6038943", "revitId": 6038943, "level": 2, "text": "wood grain tile", "textBoxRoom": "201", "targetRoomId": "201", "targetRoomName": "Loft", "hasLeader": false, "method": "text_box", "confidence": "medium", "boxXYIn": [241.6, 174.9], "tipXYIn": [241.6, 174.9]}, {"id": "n-6038947", "revitId": 6038947, "level": 2, "text": "like master", "textBoxRoom": "OUTSIDE", "targetRoomId": "206", "targetRoomName": "Bath 4", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [267.3, 488.8], "tipXYIn": [248.7, 456.4]}, {"id": "n-6038949", "revitId": 6038949, "level": 2, "text": "hidden mirror door", "textBoxRoom": "205", "targetRoomId": "206", "targetRoomName": "Bath 4", "hasLeader": true, "method": "leader_arrowhead+domain_guard(bath)", "confidence": "flagged_retargeted", "boxXYIn": [116.8, 332.8], "tipXYIn": [217.0, 361.3]}, {"id": "n-6038952", "revitId": 6038952, "level": 2, "text": "sliding glass", "textBoxRoom": "OUTSIDE", "targetRoomId": "206", "targetRoomName": "Bath 4", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [385.4, 417.5], "tipXYIn": [296.4, 422.0]}, {"id": "n-6038954", "revitId": 6038954, "level": 2, "text": "curtain", "textBoxRoom": "OUTSIDE", "targetRoomId": "203", "targetRoomName": "Bath 3", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-65.4, 268.2], "tipXYIn": [32.0, 272.7]}, {"id": "n-6038973", "revitId": 6038973, "level": 2, "text": "like master", "textBoxRoom": "OUTSIDE", "targetRoomId": "203", "targetRoomName": "Bath 3", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [-106.8, 294.5], "tipXYIn": [80.1, 306.2]}, {"id": "n-6038976", "revitId": 6038976, "level": 2, "text": "shelving, bench for suitecase drawers", "textBoxRoom": "202", "targetRoomId": "202", "targetRoomName": "Bed 3", "hasLeader": true, "method": "leader_arrowhead", "confidence": "high", "boxXYIn": [80.6, 174.9], "tipXYIn": [171.9, 253.7]}]};
+
+let state = {
+  level: 1,
+  mode: 'house', // 'house' | 'room'
+  mobTab: 'house',
+  roomId: '106',
+  wallId: 'S',
+  bayIdx: 0,
+  showNotes: true,
+  theme: 'blueprint', // 'blueprint' | 'paper'
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  selectedNoteId: null
+};
+
+function fmtFtIn(inc) {
+  const v = Math.round(Math.abs(inc) * 2) / 2;
+  const ft = Math.floor(v / 12);
+  const rem = v - ft * 12;
+  const ri = Math.floor(rem);
+  const hf = Math.abs(rem - ri - 0.5) < 0.01 ? ' 1/2' : '';
+  return `${ft}'-${ri}${hf}"`;
+}
+
+function getEffRect(rm) {
+  const r = { ...rm.planRect };
+  if (rm.flexPlanBinding) {
+    const fw = MATRIX.flexWalls[rm.flexPlanBinding.flexWallId];
+    if (fw && fw.nudgeIn) {
+      if (rm.flexPlanBinding.role === 'expand_east') r.widthIn += fw.nudgeIn;
+      else if (rm.flexPlanBinding.role === 'shift_west') { r.xIn += fw.nudgeIn; r.widthIn -= fw.nudgeIn; }
+    }
+  }
+  return r;
+}
+
+function levelRooms() {
+  return MATRIX.rooms.filter(r => (r.level || 1) === state.level);
+}
+function activeRoom() {
+  return MATRIX.rooms.find(r => r.id === state.roomId) || levelRooms()[0];
+}
+function activeWall() {
+  const rm = activeRoom();
+  return rm.walls.find(w => w.id === state.wallId) || rm.walls[0];
+}
+
+function setLevel(lvl) {
+  state.level = lvl;
+  const r0 = levelRooms()[0];
+  if (r0 && (activeRoom().level || 1) !== lvl) {
+    state.roomId = r0.id;
+    const w0 = r0.walls.find(w => w.bays.length > 0) || r0.walls[0];
+    state.wallId = w0.id;
+    state.bayIdx = 0;
+  }
+  state.zoom = 1; state.panX = 0; state.panY = 0;
+  renderAll();
+}
+
+function toggleHouseMode() {
+  if (state.mode === 'house') {
+    state.mode = 'room';
+    state.mobTab = 'room';
+  } else {
+    state.mode = 'house';
+    state.mobTab = 'house';
+  }
+  state.zoom = 1; state.panX = 0; state.panY = 0;
+  renderAll();
+}
+
+function setMobTab(tab) {
+  state.mobTab = tab;
+  if (tab === 'house') state.mode = 'house';
+  if (tab === 'room') state.mode = 'room';
+  state.zoom = 1; state.panX = 0; state.panY = 0;
+  renderAll();
+}
+
+function selectRoom(rid, enterStudio = false) {
+  const rm = MATRIX.rooms.find(r => r.id === rid);
+  if (!rm) return;
+  state.level = rm.level || 1;
+  state.roomId = rid;
+  const w0 = rm.walls.find(w => w.bays.length > 0) || rm.walls[0];
+  state.wallId = w0.id;
+  state.bayIdx = 0;
+  if (enterStudio) {
+    state.mode = 'room';
+    state.mobTab = 'room';
+    state.zoom = 1; state.panX = 0; state.panY = 0;
+  }
+  renderAll();
+}
+
+function toggleNotes() { state.showNotes = !state.showNotes; renderAll(); }
+function toggleTheme() { state.theme = state.theme === 'blueprint' ? 'paper' : 'blueprint'; renderAll(); }
+
+function nudgeFlex(fid, delta) {
+  const fw = MATRIX.flexWalls[fid];
+  if (!fw) return;
+  fw.nudgeIn = Math.max(-fw.maxNudgeIn, Math.min(fw.maxNudgeIn, fw.nudgeIn + delta));
+  renderAll();
+}
+
+function reassignNote(noteId, newRoomId) {
+  const n = (MATRIX.d1Notes || []).find(x => x.id === noteId);
+  const rm = MATRIX.rooms.find(r => r.id === newRoomId);
+  if (!n || !rm) return;
+  n.targetRoomId = rm.id;
+  n.targetRoomName = rm.name;
+  n.method = 'manual_designer_lock';
+  n.confidence = 'high';
+  renderAll();
+}
+
+function adjustBayWidth(idx, delta) {
+  const w = activeWall();
+  if (!w.bays[idx]) return;
+  w.bays[idx].widthIn = Math.max(12, w.bays[idx].widthIn + delta);
+  renderAll();
+}
+
+function exportJson() {
+  const blob = new Blob([JSON.stringify(MATRIX, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'barnhaus-sandbox-matrix-updated.json';
+  a.click();
+}
+
+// Touch / Mouse Drag Pan & Wheel Zoom
+(function initPanZoom() {
+  const wrap = document.getElementById('stageWrap');
+  let drag = null;
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    state.zoom = Math.max(0.6, Math.min(3.2, +(state.zoom + (e.deltaY < 0 ? 0.14 : -0.14)).toFixed(2)));
+    renderStage();
+  }, { passive: false });
+  wrap.addEventListener('pointerdown', e => {
+    if (e.target.closest('[data-click="1"]') || e.target.closest('.float-card')) return;
+    drag = { sx: e.clientX, sy: e.clientY, px: state.panX, py: state.panY };
+  });
+  wrap.addEventListener('pointermove', e => {
+    if (!drag) return;
+    state.panX = drag.px + (e.clientX - drag.sx) / state.zoom;
+    state.panY = drag.py + (e.clientY - drag.sy) / state.zoom;
+    renderStage();
+  });
+  window.addEventListener('pointerup', () => { drag = null; });
+})();
+
+function renderAll() {
+  // Update top pills
+  const fp = document.getElementById('floorPills').children;
+  fp[0].className = 'pill-btn' + (state.level === 1 ? ' active' : '');
+  fp[1].className = 'pill-btn' + (state.level === 2 ? ' active' : '');
+
+  const bh = document.getElementById('btnHouseMode');
+  bh.textContent = state.mode === 'house' ? '🏠 Whole House (Active)' : '← Whole House Plan';
+  bh.className = 'chip-btn' + (state.mode === 'house' ? ' gold' : '');
+
+  const bn = document.getElementById('btnNotes');
+  bn.textContent = `📝 D1 Notes + Arrows: ${state.showNotes ? 'ON' : 'OFF'}`;
+  bn.className = 'chip-btn' + (state.showNotes ? ' notes-on' : '');
+
+  document.getElementById('btnTheme').textContent = `CAD: ${state.theme === 'blueprint' ? 'Dark Blueprint' : 'Paper'}`;
+
+  const rm = activeRoom();
+  document.getElementById('studioBody').dataset.mob = state.mobTab;
+  document.getElementById('mtab-house').className = 'mob-tab' + (state.mobTab === 'house' ? ' active' : '');
+  document.getElementById('mtab-house').textContent = `🏠 House (L${state.level})`;
+  document.getElementById('mtab-room').className = 'mob-tab' + (state.mobTab === 'room' ? ' active' : '');
+  document.getElementById('mtab-room').textContent = `📐 ${rm.number} ${rm.name}`;
+  const roomNotes = (MATRIX.d1Notes || []).filter(n => n.targetRoomId === rm.id);
+  document.getElementById('mtab-notes').className = 'mob-tab' + (state.mobTab === 'notes' ? ' active' : '');
+  document.getElementById('mtab-notes').textContent = `📝 Notes (${roomNotes.length}) & Bays`;
+
+  // Left room list
+  const lrms = levelRooms();
+  document.getElementById('leftRoomList').innerHTML =
+    `<div class="sec-lbl">Level ${state.level} Rooms (${lrms.length}) — Double-Click for Elev</div>` +
+    lrms.map(r => {
+      const rc = getEffRect(r);
+      const ncnt = (MATRIX.d1Notes || []).filter(n => n.targetRoomId === r.id).length;
+      return `<button class="room-row ${r.id === rm.id ? 'active' : ''}" onclick="selectRoom('${r.id}', false)" ondblclick="selectRoom('${r.id}', true)">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;">
+          <span><span style="color:var(--muted);font-family:monospace;">${r.number}</span> ${r.name}</span>
+          <span style="font-family:monospace;font-size:11px;color:var(--cyan);">${fmtFtIn(rc.widthIn)}×${fmtFtIn(rc.depthIn)}</span>
+        </div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:2px;display:flex;justify-content:space-between;">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:175px;">${r.subtitle}</span>
+          ${ncnt ? `<span style="color:#6ee7b7;">${ncnt} notes</span>` : ''}
+        </div>
+      </button>`;
+    }).join('');
+
+  renderSubbar();
+  renderStage();
+  renderInspector();
+}
+
+function renderSubbar() {
+  const rm = activeRoom();
+  const sub = document.getElementById('stageSubbar');
+  if (state.mode === 'house') {
+    const lvlNotes = (MATRIX.d1Notes || []).filter(n => n.level === state.level);
+    const crossCnt = lvlNotes.filter(n => n.textBoxRoom !== n.targetRoomId).length;
+    sub.innerHTML = `
+      <div style="font-size:12px;color:var(--muted);">
+        <strong style="color:var(--gold-lt);">Level ${state.level} Interactive Floor Plan</strong> · Tap room to select · Double-tap or hit <b>Open Room Studio →</b> · <span style="color:#6ee7b7;">${crossCnt} cross-room arrow notes auto-linked</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="chip-btn" onclick="state.zoom=Math.max(0.6,state.zoom-0.2);renderStage()">−</button>
+        <button class="chip-btn" onclick="state.zoom=1;state.panX=0;state.panY=0;renderStage()">Fit (${Math.round(state.zoom*100)}%)</button>
+        <button class="chip-btn" onclick="state.zoom=Math.min(3.0,state.zoom+0.2);renderStage()">+</button>
+      </div>`;
+  } else {
+    const w = activeWall();
+    sub.innerHTML = `
+      <div style="display:flex;gap:5px;overflow-x:auto;align-items:center;">
+        <button class="chip-btn" onclick="toggleHouseMode()">← House Plan</button>
+        ${rm.walls.map(wl => `
+          <button class="pill-btn ${wl.id === w.id ? 'active' : ''}" style="border:1px solid var(--border);" onclick="state.wallId='${wl.id}';state.bayIdx=0;renderAll()">
+            ${wl.shortLabel} · ${fmtFtIn(wl.clearWidthIn)} (${wl.bays.length})
+          </button>`).join('')}
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="chip-btn" onclick="state.zoom=1;state.panX=0;state.panY=0;renderStage()">Reset Zoom</button>
+      </div>`;
+  }
+}
+
+function renderStage() {
+  const svg = document.getElementById('stageSvg');
+  const card = document.getElementById('floatRoomCard');
+  const isBp = state.theme === 'blueprint';
+  const bg = isBp ? '#0a1220' : '#f7f5ef';
+  const wallCol = isBp ? '#e2e8f0' : '#0f172a';
+  const roomFill = isBp ? '#132038' : '#ffffff';
+  const selFill = isBp ? 'rgba(234,179,8,0.24)' : 'rgba(234,179,8,0.18)';
+  const txtMain = isBp ? '#f8fafc' : '#0f172a';
+  const txtSub = isBp ? '#94a3b8' : '#475569';
+  svg.style.background = bg;
+
+  if (state.mode === 'house') {
+    const lrms = levelRooms();
+    const ozs = (MATRIX.outdoorZones || []).filter(z => z.level === state.level);
+    const vzs = (MATRIX.voidZones || []).filter(z => z.level === state.level);
+    const rects = lrms.map(r => ({ r, rc: getEffRect(r) }));
+    const allB = [...rects.map(x => x.rc), ...ozs, ...vzs];
+    const minX = Math.min(...allB.map(b => b.xIn)) - 48;
+    const minY = Math.min(...allB.map(b => b.yIn)) - 48;
+    const maxX = Math.max(...allB.map(b => b.xIn + b.widthIn)) + 48;
+    const maxY = Math.max(...allB.map(b => b.yIn + b.depthIn)) + 80;
+    const baseW = maxX - minX, baseH = maxY - minY;
+    const vw = baseW / state.zoom, vh = baseH / state.zoom;
+    const vx = minX + (baseW - vw) / 2 - state.panX;
+    const vy = minY + (baseH - vh) / 2 - state.panY;
+    svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+
+    let h = `<defs>
+      <pattern id="g60" width="60" height="60" patternUnits="userSpaceOnUse">
+        <path d="M 60 0 L 0 0 0 60" fill="none" stroke="${isBp ? 'rgba(148,163,184,0.09)' : 'rgba(15,23,42,0.08)'}" stroke-width="1"/>
+      </pattern>
+      <marker id="arr-grn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"/>
+      </marker>
+      <marker id="arr-amb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"/>
+      </marker>
+    </defs>
+    <rect x="${minX-500}" y="${minY-500}" width="${baseW+1000}" height="${baseH+1000}" fill="url(#g60)"/>`;
+
+    // Outdoor zones
+    ozs.forEach(oz => {
+      h += `<rect x="${oz.xIn}" y="${oz.yIn}" width="${oz.widthIn}" height="${oz.depthIn}" fill="${isBp?'rgba(30,41,59,0.4)':'rgba(226,232,240,0.45)'}" stroke="${txtSub}" stroke-width="2" stroke-dasharray="10 7"/>
+      <text x="${oz.xIn+oz.widthIn/2}" y="${oz.yIn+oz.depthIn/2}" text-anchor="middle" fill="${txtSub}" font-size="13" font-weight="600">${oz.label} (${fmtFtIn(oz.widthIn)}×${fmtFtIn(oz.depthIn)})</text>`;
+    });
+
+    // Voids
+    vzs.forEach(vz => {
+      h += `<rect x="${vz.xIn}" y="${vz.yIn}" width="${vz.widthIn}" height="${vz.depthIn}" fill="rgba(8,14,26,0.5)" stroke="${txtSub}" stroke-width="2" stroke-dasharray="6 5"/>
+      <line x1="${vz.xIn}" y1="${vz.yIn}" x2="${vz.xIn+vz.widthIn}" y2="${vz.yIn+vz.depthIn}" stroke="${txtSub}" stroke-width="1" opacity="0.5"/>
+      <line x1="${vz.xIn+vz.widthIn}" y1="${vz.yIn}" x2="${vz.xIn}" y2="${vz.yIn+vz.depthIn}" stroke="${txtSub}" stroke-width="1" opacity="0.5"/>
+      <text x="${vz.xIn+vz.widthIn/2}" y="${vz.yIn+vz.depthIn/2}" text-anchor="middle" fill="${txtSub}" font-size="12" font-weight="700">${vz.label}</text>`;
+    });
+
+    // Conditioned rooms
+    rects.forEach(({ r, rc }) => {
+      const sel = r.id === state.roomId;
+      const cx = rc.xIn + rc.widthIn / 2, cy = rc.yIn + rc.depthIn / 2;
+      const small = rc.widthIn < 88 || rc.depthIn < 66;
+      const baysCnt = r.walls.reduce((s, w) => s + w.bays.length, 0);
+      h += `<g data-click="1" onclick="selectRoom('${r.id}', false)" ondblclick="selectRoom('${r.id}', true)" style="cursor:pointer;">
+        <rect x="${rc.xIn}" y="${rc.yIn}" width="${rc.widthIn}" height="${rc.depthIn}" fill="${sel ? selFill : roomFill}" stroke="${sel ? '#eab308' : wallCol}" stroke-width="${sel ? 5 : 3.2}"/>`;
+      if (r.island) {
+        h += `<rect x="${cx - r.island.widthIn/2}" y="${cy - r.island.depthIn/2 + 8}" width="${r.island.widthIn}" height="${r.island.depthIn}" fill="rgba(56,189,248,0.16)" stroke="${wallCol}" stroke-width="1.8"/>`;
+      }
+      (r.planOpenings || []).forEach(op => {
+        const horiz = op.wall === 'N' || op.wall === 'S';
+        const ox = horiz ? rc.xIn + Math.min(rc.widthIn - op.widthIn, Math.max(0, op.offsetIn)) : (op.wall === 'W' ? rc.xIn - 2.5 : rc.xIn + rc.widthIn - 2.5);
+        const oy = horiz ? (op.wall === 'N' ? rc.yIn - 2.5 : rc.yIn + rc.depthIn - 2.5) : rc.yIn + Math.min(rc.depthIn - op.widthIn, Math.max(0, op.offsetIn));
+        h += `<rect x="${ox}" y="${oy}" width="${horiz ? op.widthIn : 5}" height="${horiz ? 5 : op.widthIn}" fill="${op.kind === 'window' ? '#38bdf8' : '#f59e0b'}" rx="1.5"/>`;
+      });
+      h += `<text x="${cx}" y="${cy - (small ? 1 : 9)}" text-anchor="middle" fill="${txtMain}" font-size="${small ? 10 : 13.5}" font-weight="700">${r.number} ${r.name}</text>`;
+      if (!small) {
+        h += `<text x="${cx}" y="${cy + 9}" text-anchor="middle" fill="${txtSub}" font-size="10.5" font-family="monospace">${fmtFtIn(rc.widthIn)} × ${fmtFtIn(rc.depthIn)}</text>`;
+        if (baysCnt > 0 && rc.depthIn >= 92) {
+          h += `<text x="${cx}" y="${cy + 24}" text-anchor="middle" fill="${sel ? '#fde047' : '#00e0ff'}" font-size="9.5" font-weight="700">${baysCnt} Bays</text>`;
+        }
+      }
+      h += `</g>`;
+    });
+
+    // D1 Leader-Targeted Notes Overlay!
+    if (state.showNotes) {
+      const lvlNotes = (MATRIX.d1Notes || []).filter(n => n.level === state.level);
+      lvlNotes.forEach(n => {
+        const isSelRoom = n.targetRoomId === state.roomId;
+        const [bx, by] = n.boxXYIn;
+        const [tx, ty] = n.tipXYIn;
+        const isCross = n.textBoxRoom !== n.targetRoomId;
+        const col = isCross ? '#10b981' : '#f59e0b';
+        const op = isSelRoom ? '1.0' : '0.42';
+        if (n.hasLeader || isCross) {
+          h += `<line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="${isSelRoom ? 2.4 : 1.5}" stroke-dasharray="${isCross ? 'none' : '4 3'}" opacity="${op}" marker-end="url(#${isCross ? 'arr-grn' : 'arr-amb'})"/>`;
+        }
+        h += `<g data-click="1" onclick="selectRoom('${n.targetRoomId}', false)" style="cursor:pointer;" opacity="${op}">
+          <circle cx="${tx}" cy="${ty}" r="${isSelRoom ? 5.5 : 4}" fill="${col}" stroke="#080d16" stroke-width="1.2"/>
+          <rect x="${bx - 4}" y="${by - 10}" width="${Math.min(180, n.text.length * 5.6 + 10)}" height="15" rx="3" fill="rgba(8,13,22,0.86)" stroke="${col}" stroke-width="1"/>
+          <text x="${bx + 1}" y="${by + 1}" fill="#f8fafc" font-size="8.8" font-weight="600">${n.text.slice(0, 30)}${n.text.length > 30 ? '…' : ''} → ${n.targetRoomId}</text>
+        </g>`;
+      });
+    }
+
+    svg.innerHTML = h;
+
+    // Floating Selected Room Action Card
+    const rm = activeRoom();
+    const rc = getEffRect(rm);
+    const flexObj = Object.values(MATRIX.flexWalls).find(fw => (fw.level || 1) === state.level && (fw.roomAId === rm.id || fw.roomBId === rm.id));
+    const nCnt = (MATRIX.d1Notes || []).filter(n => n.targetRoomId === rm.id).length;
+    card.style.display = 'flex';
+    card.innerHTML = `
+      <div>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span class="badge" style="background:rgba(234,179,8,0.22);color:var(--gold-lt);">${rm.number}</span>
+          <strong style="font-size:15px;">${rm.name}</strong>
+          <span style="font-family:monospace;font-size:12px;color:var(--cyan);">${fmtFtIn(rc.widthIn)} × ${fmtFtIn(rc.depthIn)}</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">${rm.subtitle} · <b style="color:#6ee7b7;">${nCnt} D1 notes linked</b></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${flexObj ? `
+          <button class="chip-btn" onclick="nudgeFlex('${flexObj.id}', -1)">−1"</button>
+          <span style="font-family:monospace;font-size:11px;color:var(--amber);">Flex ${flexObj.nudgeIn > 0 ? '+' : ''}${flexObj.nudgeIn}"</span>
+          <button class="chip-btn" onclick="nudgeFlex('${flexObj.id}', 1)">+1"</button>` : ''}
+        <button class="chip-btn gold" onclick="selectRoom('${rm.id}', true)">Open Room Studio →</button>
+      </div>`;
+  } else {
+    // ROOM ELEVATION + PLAN STUDIO STAGE
+    card.style.display = 'none';
+    const rm = activeRoom();
+    const w = activeWall();
+    const W = w.clearWidthIn, H = w.ceilingHeightIn || 120;
+    const pad = 54;
+    const vw = (W + pad * 2) / state.zoom, vh = (H + pad * 2.3) / state.zoom;
+    const vx = -pad + (W + pad * 2 - vw) / 2 - state.panX;
+    const vy = -pad + (H + pad * 2.3 - vh) / 2 - state.panY;
+    svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+
+    const totalBayW = w.bays.reduce((s, b) => s + b.widthIn, 0);
+    let curX = Math.max(0, (W - totalBayW) / 2);
+
+    let h = `<text x="0" y="-22" fill="${txtMain}" font-size="11" font-weight="700" font-family="monospace">${rm.number} ${rm.name.toUpperCase()} — ${w.title.toUpperCase()}</text>
+    <rect x="0" y="0" width="${W}" height="${H}" fill="${isBp ? '#0e1a2f' : '#ffffff'}" stroke="${wallCol}" stroke-width="2.6"/>
+    <!-- 36 in Counter & 108 in Head Datums -->
+    <line x1="-18" y1="${H - 36}" x2="${W + 18}" y2="${H - 36}" stroke="#0284c7" stroke-width="0.9" stroke-dasharray="5 4"/>
+    <text x="${W + 22}" y="${H - 33}" fill="#38bdf8" font-size="8" font-family="monospace">36" COUNTER</text>
+    <line x1="-18" y1="${H - 108}" x2="${W + 18}" y2="${H - 108}" stroke="#eab308" stroke-width="0.9" stroke-dasharray="5 4"/>
+    <text x="${W + 22}" y="${H - 105}" fill="#fde047" font-size="8" font-family="monospace">9'-0" ALIGN</text>`;
+
+    if (w.bays.length === 0) {
+      h += `<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="${txtSub}" font-size="11">Clear Architectural Wall (${fmtFtIn(W)} × ${fmtFtIn(H)}) — Pick another wall tab above</text>`;
+    }
+
+    w.bays.forEach((b, idx) => {
+      const bx = curX, bw = b.widthIn, bh = Math.min(H, b.heightIn || 36);
+      const by = H - bh - (b.affIn || 0);
+      const isSel = idx === state.bayIdx;
+      h += `<g data-click="1" onclick="state.bayIdx=${idx};renderAll()" style="cursor:pointer;">
+        <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="${isSel ? 'rgba(0,224,255,0.2)' : 'rgba(184,134,11,0.16)'}" stroke="${isSel ? '#00e0ff' : wallCol}" stroke-width="${isSel ? 2.4 : 1.5}"/>
+        <line x1="${bx+2}" y1="${by+4}" x2="${bx+bw-2}" y2="${by+4}" stroke="${wallCol}" stroke-width="1"/>
+        <text x="${bx + bw/2}" y="${by + bh/2 - 3}" text-anchor="middle" fill="${txtMain}" font-size="7.5" font-weight="700">${b.label.slice(0, 22)}</text>
+        <text x="${bx + bw/2}" y="${by + bh/2 + 8}" text-anchor="middle" fill="${txtSub}" font-size="7" font-family="monospace">${fmtFtIn(bw)} W × ${fmtFtIn(bh)} H</text>
+      </g>`;
+      // Bay width dim tick
+      h += `<line x1="${bx}" y1="${H + 16}" x2="${bx + bw}" y2="${H + 16}" stroke="#38bdf8" stroke-width="1"/>
+            <text x="${bx + bw/2}" y="${H + 26}" text-anchor="middle" fill="#7dd3fc" font-size="7.5" font-family="monospace">${fmtFtIn(bw)}</text>`;
+      curX += bw;
+    });
+
+    // Overall clear wall dimension
+    h += `<line x1="0" y1="${H + 36}" x2="${W}" y2="${H + 36}" stroke="${wallCol}" stroke-width="1.3"/>
+          <text x="${W/2}" y="${H + 48}" text-anchor="middle" fill="${txtMain}" font-size="9" font-weight="700" font-family="monospace">${fmtFtIn(W)} CLEAR WALL</text>`;
+    svg.innerHTML = h;
+  }
+}
+
+function renderInspector() {
+  const rm = activeRoom();
+  const w = activeWall();
+  const roomNotes = (MATRIX.d1Notes || []).filter(n => n.targetRoomId === rm.id);
+  const allRoomsOpts = MATRIX.rooms.map(r => `<option value="${r.id}">${r.number} ${r.name} (L${r.level||1})</option>`).join('');
+
+  let html = `
+    <div>
+      <div class="sec-lbl">📝 D1 Plan Notes Linked to ${rm.number} ${rm.name} (${roomNotes.length})</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+        Solved via <b>Leader Arrowhead Tip</b> + <b>Domain Keyword Guard</b> (retarget any note in 1 tap):
+      </div>
+      ${roomNotes.length === 0 ? `<div class="note-card" style="color:var(--muted);">No D1 callout notes pointed into this room.</div>` : ''}
+      ${roomNotes.map(n => {
+        const cross = n.textBoxRoom !== n.targetRoomId;
+        return `<div class="note-card">
+          <div style="font-weight:700;color:var(--text);margin-bottom:4px;">"${n.text}"</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <span class="badge ${cross ? 'badge-ldr' : 'badge-ret'}">
+              ${cross ? `Box in ${n.textBoxRoom} → Arrow to ${n.targetRoomId}` : `Inside ${n.targetRoomId} (${n.method})`}
+            </span>
+            <select aria-label="Reassign Note Room" onchange="reassignNote('${n.id}', this.value)" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:5px;font-size:11px;padding:2px 5px;">
+              ${MATRIX.rooms.map(r => `<option value="${r.id}" ${r.id === n.targetRoomId ? 'selected' : ''}>→ ${r.number} ${r.name}</option>`).join('')}
+            </select>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div>
+      <div class="sec-lbl">🎛️ ${w.shortLabel} Wall Parametric Bays (${w.bays.length})</div>
+      ${w.bays.length === 0 ? `<div class="bay-card" style="color:var(--muted);">No casework on ${w.shortLabel} wall — switch wall tabs in Room Studio.</div>` : ''}
+      ${w.bays.map((b, idx) => `
+        <div class="bay-card" style="margin-bottom:6px;border-color:${idx === state.bayIdx ? 'var(--cyan)' : 'var(--border)'};">
+          <div style="display:flex;justify-content:space-between;font-weight:700;">
+            <span>#${idx+1} ${b.label}</span>
+            <span style="font-family:monospace;color:var(--cyan);">${fmtFtIn(b.widthIn)}</span>
+          </div>
+          <div style="display:flex;gap:5px;margin-top:6px;">
+            <button class="chip-btn" onclick="adjustBayWidth(${idx}, -3)">−3"</button>
+            <button class="chip-btn" onclick="adjustBayWidth(${idx}, -0.5)">−½"</button>
+            <button class="chip-btn" onclick="adjustBayWidth(${idx}, 0.5)">+½"</button>
+            <button class="chip-btn" onclick="adjustBayWidth(${idx}, 3)">+3"</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  document.getElementById('rightInspector').innerHTML = html;
+}
+
+renderAll();
+</script>
+</body>
+</html>

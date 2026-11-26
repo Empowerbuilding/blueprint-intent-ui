@@ -150,6 +150,20 @@ export interface RoomCheck {
   detail: string
 }
 
+export interface D1PlanNote {
+  id: string
+  level: 1 | 2
+  text: string
+  textBoxRoom: string
+  targetRoomId: string
+  targetRoomName: string
+  hasLeader: boolean
+  method: string
+  confidence: 'high' | 'medium' | 'flagged_retargeted' | 'review' | 'conflict_review'
+  boxXYIn: [number, number]
+  tipXYIn: [number, number]
+}
+
 export interface HouseMatrix {
   projectId: string
   projectName: string
@@ -158,6 +172,7 @@ export interface HouseMatrix {
   flexWalls: Record<string, FlexWallSpec>
   outdoorZones?: HouseZoneRect[]
   voidZones?: HouseZoneRect[]
+  d1Notes?: D1PlanNote[]
 }
 
 export interface ResolvedBayPlacement {

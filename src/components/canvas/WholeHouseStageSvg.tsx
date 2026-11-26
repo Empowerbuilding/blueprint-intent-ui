@@ -45,6 +45,7 @@ export function WholeHouseStageSvg({
 }: WholeHouseStageSvgProps) {
   const [zoom, setZoom] = useState<number>(1)
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [showNotes, setShowNotes] = useState<boolean>(true)
   const dragRef = useRef<{ active: boolean; sx: number; sy: number; px: number; py: number }>({
     active: false,
     sx: 0,
@@ -191,6 +192,22 @@ export function WholeHouseStageSvg({
           <span className="hidden sm:inline text-[11px] text-slate-400">
             Click room to select · Double-click (or tap Open Room) to edit walls &amp; casework
           </span>
+
+          {(matrix.d1Notes?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              data-testid="toggle-d1-notes"
+              onClick={() => setShowNotes((v) => !v)}
+              className={
+                'rounded-md border px-2 py-0.5 text-[11px] font-semibold transition-colors ' +
+                (showNotes
+                  ? 'border-emerald-600/70 bg-emerald-950/50 text-emerald-300'
+                  : 'border-bh-border bg-bh-card text-slate-400')
+              }
+            >
+              D1 Notes + Leaders: {showNotes ? 'ON' : 'OFF'}
+            </button>
+          )}
         </div>
 
         {/* Right: Mode Switcher + Zoom */}
@@ -509,6 +526,57 @@ export function WholeHouseStageSvg({
               </g>
             )
           })}
+
+          {/* D1 Plan Notes + Leader-Arrowhead Overlay (Box -> Arrow Tip!) */}
+          {showNotes &&
+            (matrix.d1Notes ?? [])
+              .filter((n) => n.level === activeLevel)
+              .map((n) => {
+                const isSel = n.targetRoomId === activeRoomId
+                const isCross = n.textBoxRoom !== n.targetRoomId
+                const col = isCross ? '#10b981' : '#f59e0b'
+                const [bx, by] = n.boxXYIn
+                const [tx, ty] = n.tipXYIn
+                return (
+                  <g
+                    key={n.id}
+                    data-room-interactive="true"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectRoom(n.targetRoomId)
+                    }}
+                    className="cursor-pointer"
+                    opacity={isSel ? 1 : 0.45}
+                  >
+                    {(n.hasLeader || isCross) && (
+                      <line
+                        x1={bx}
+                        y1={by}
+                        x2={tx}
+                        y2={ty}
+                        stroke={col}
+                        strokeWidth={isSel ? 2.4 : 1.4}
+                        strokeDasharray={isCross ? undefined : '4 3'}
+                      />
+                    )}
+                    <circle cx={tx} cy={ty} r={isSel ? 5.2 : 3.8} fill={col} stroke="#0b1220" strokeWidth="1" />
+                    <rect
+                      x={bx - 3}
+                      y={by - 10}
+                      width={Math.min(175, n.text.length * 5.4 + 12)}
+                      height="14"
+                      rx="2.5"
+                      fill="rgba(8,13,22,0.88)"
+                      stroke={col}
+                      strokeWidth="0.9"
+                    />
+                    <text x={bx + 2} y={by} fill="#f8fafc" fontSize="8.5" fontWeight="600">
+                      {n.text.slice(0, 28)}
+                      {n.text.length > 28 ? '…' : ''} → {n.targetRoomId}
+                    </text>
+                  </g>
+                )
+              })}
 
           {/* Highlighted Shared Interior Flex Partitions */}
           {levelFlexWalls.map((fw) => {
