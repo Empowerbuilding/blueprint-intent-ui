@@ -61,6 +61,8 @@ export interface Hotspot {
   specKey?: string
 }
 
+export type RoomStatus = 'frozen' | 'updated' | 'approved' | 'draft'
+
 export interface RoomCanvasEntry {
   id: string
   code: string
@@ -79,9 +81,9 @@ export interface RoomCanvasEntry {
   shellAndNotes: ShellAndNotes
   knowledgeBase: KnowledgeBase
   hotspots?: Hotspot[]
-  /** PENDING ask #1 — freeze/lock badge + write-gating state. */
-  status?: 'frozen' | 'updated' | 'approved' | 'draft'
-  /** PENDING ask #1 — per-room sheet version, e.g. "v21". */
+  /** Contract v2 (2026-11-28): live on all rooms. */
+  status?: RoomStatus
+  /** Contract v2: per-room sheet version, e.g. "v23" / "v23-r1". */
   roomVersion?: string
 }
 
@@ -161,6 +163,42 @@ export interface RedrawPatternResponse {
   imageFile: string
   renderMs: number
   updatedPattern: PatternEntry
+}
+
+/** Contract v2: POST /api/rooms/:id/lock — engine-side freeze/unlock. */
+export interface RoomLockResponse {
+  ok: boolean
+  roomId: string
+  status: RoomStatus
+  room: RoomCanvasEntry
+}
+
+/** Contract v2: GET /api/vectors/:roomId — CAD overlay geometry. */
+export interface VectorElement {
+  id: string
+  view: string
+  type: string
+  label: string
+  specKey?: string
+  /** SVG path data in the response viewBox (0 0 3200 2240, 1:1 with the sheet). */
+  svgPath?: string
+  rect?: { x: number; y: number; w: number; h: number }
+  pct?: { xPct: number; yPct: number; wPct: number; hPct: number }
+  stroke?: string
+  fill?: string
+  dimensions?: string
+}
+
+export interface VectorsResponse {
+  ok: boolean
+  roomId: string
+  roomVersion: string
+  status: RoomStatus
+  /** e.g. "0 0 3200 2240" — 1:1 with the sheet PNG. */
+  viewBox: string
+  views: string[]
+  elementCount: number
+  elements: VectorElement[]
 }
 
 export interface EngineError {

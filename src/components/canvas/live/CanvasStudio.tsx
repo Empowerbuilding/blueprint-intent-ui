@@ -13,7 +13,9 @@ import {
   sheetProxyUrl,
   type EditableSpecField,
   type RoomCanvasEntry,
+  type RoomStatus,
   type StudioStateV16,
+  type VectorsResponse,
 } from '@/lib/canvas/types'
 import { PatternLibrary } from './PatternLibrary'
 
@@ -52,9 +54,13 @@ export function CanvasStudio({ projectLabel }: { projectLabel?: string }) {
 
   // Spec editing
   const [specDraft, setSpecDraft] = useState<Record<string, number | string>>({})
-  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
+  const [lockBusy, setLockBusy] = useState(false)
   const [redrawing, setRedrawing] = useState(false)
   const [notice, setNotice] = useState<{ tone: 'green' | 'red' | 'gold'; text: string } | null>(null)
+
+  // CAD vector overlay (contract v2), cached per room — null = fetch failed
+  const [vectorsCache, setVectorsCache] = useState<Record<string, VectorsResponse | null>>({})
+  const [showVectors, setShowVectors] = useState(true)
 
   const stageRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null)
@@ -120,8 +126,9 @@ export function CanvasStudio({ projectLabel }: { projectLabel?: string }) {
   }, [activeRoom])
 
   // ---- freeze lock --------------------------------------------------------
-
-  const roomLocked = activeRoom != null && activeRoom.status === 'frozen' && !unlocked.has(activeRoom.id)
+  // Contract v2: the ENGINE is the lock authority — status "frozen" = locked,
+  // redraw gets HTTP 423 room_frozen until POST /api/rooms/:id/lock lifts it.
+  const roomLocked = activeRoom?.status === 'frozen'
 
   // ---- spec draft / dirty keys --------------------------------------------
 
@@ -173,6 +180,83 @@ export function CanvasStudio({ projectLabel }: { projectLabel?: string }) {
       setRedrawing(false)
     }
   }, [activeRoom, dirtyKeys, specDraft, redrawing])
+
+  // ---- engine-side room lock (contract v2) --------------------------------
+
+  const setRoomStatus = useCallback(async (status: RoomStatus) => {
+    if (!activeRoom) return
+    if (status === 'draft') {
+      const okToUnlock = window.confirm(
+        `Unlock ${activeRoom.code} for editing? This lifts the freeze-lock on the approved sheet.`,
+      )
+      if (!okToUnlock) return
+    }
+    setLockBusy(true)
+    setNotice(null)
+    try {
+      const res = await fetch(`/api/canvas/rooms/${encodeURIComponent(activeRoom.id)}/lock`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status, by: 'design-intent-ui' }),
+      })
+      const json = (await res.json()) as {
+        ok?: boolean
+        error?: string
+        code?: string
+        room?: RoomCanvasEntry
+      }
+      if (res.ok && json.ok && json.room) {
+        const updated = json.room
+        setState((s) => (s ? { ...s, rooms: s.rooms.map((r) => (r.id === updated.id ? updated : r)) } : s))
+        setNotice({
+          tone: 'green',
+          text:
+            status === 'frozen'
+              ? `${updated.code} re-locked (frozen).`
+              : `${updated.code} unlocked — edits enabled.`,
+        })
+      } else {
+        setNotice({ tone: 'red', text: json.error || `Lock change failed (${res.status})` })
+      }
+    } catch {
+      setNotice({ tone: 'red', text: 'Lock request failed — engine unreachable?' })
+    } finally {
+      setLockBusy(false)
+    }
+  }, [activeRoom])
+
+  // ---- CAD vector overlay (contract v2) ------------------------------------
+
+  const roomVectors = activeRoom ? vectorsCache[activeRoom.id] : undefined
+
+  useEffect(() => {
+    if (!showVectors || !activeRoom) return
+    const cached = vectorsCache[activeRoom.id]
+    if (cached !== undefined) {
+      if (cached === null) return
+      if (cached.roomVersion === (activeRoom.roomVersion ?? cached.roomVersion)) return
+    }
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/canvas/vectors/${encodeURIComponent(activeRoom.id)}`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) {
+          if (!cancelled) setVectorsCache((c) => ({ ...c, [activeRoom.id]: null }))
+          return
+        }
+        const json = (await res.json()) as VectorsResponse
+        if (!cancelled) setVectorsCache((c) => ({ ...c, [activeRoom.id]: json }))
+      } catch {
+        if (!cancelled) setVectorsCache((c) => ({ ...c, [activeRoom.id]: null }))
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [showVectors, activeRoom, vectorsCache])
 
   // ---- stage interaction --------------------------------------------------
 
@@ -316,6 +400,8 @@ export function CanvasStudio({ projectLabel }: { projectLabel?: string }) {
                       {r.code}
                       {r.status === 'frozen' && <span title="Freeze-locked — unlock to edit"> 🔒</span>}
                       {r.status === 'updated' && <span title="Updated since baseline"> ⟳</span>}
+                      {r.status === 'approved' && <span title="Approved"> ✓</span>}
+                      {r.status === 'draft' && <span title="Draft — unlocked for editing"> ✎</span>}
                     </span>
                     <span className="block text-[10px] text-slate-500 truncate">
                       {r.name.split('—')[1] ?? r.name}
@@ -335,6 +421,16 @@ export function CanvasStudio({ projectLabel }: { projectLabel?: string }) {
               {activeRoom?.lastRedrawMs != null && (
                 <Pill tone="blue" title="Last sheet redraw">{`${Math.round(activeRoom.lastRedrawMs)}ms`}</Pill>
               )}
+              {roomVectors !== undefined && (
+                <button
+                  className={`btn-secondary-sm ${showVectors ? 'border-gold text-gold-light' : ''}`}
+                  onClick={() => setShowVectors((v) => !v)}
+                  title="CAD vector overlay — click an element to jump to its spec control"
+                >
+                  CAD vectors{roomVectors ? ` (${roomVectors.elementCount})` : ' n/a'}
+                </button>
+              )}
+              {showVectors && roomVectors === null && <Pill tone="outline">vectors unavailable</Pill>}
               {activeRoom?.baselineFile && (
                 <button
                   className={`btn-secondary-sm ${compareBaseline ? 'border-gold text-gold-light' : ''}`}
@@ -384,32 +480,74 @@ export function CanvasStudio({ projectLabel }: { projectLabel?: string }) {
                     className="block max-h-[70vh] w-auto select-none rounded-lg"
                     draggable={false}
                   />
-                  <div className="absolute inset-0">
-                    {(activeRoom.hotspots ?? []).map((h) => (
-                      <button
-                        key={h.id}
-                        title={h.specKey ? `${h.label} → ${h.specKey}` : h.label}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          focusSpec(h.specKey)
-                        }}
-                        className="absolute rounded border border-gold-light/70 bg-gold/20 hover:bg-gold/45 text-[10px] leading-tight text-gold-light px-1 truncate"
-                        style={{
-                          left: `${h.xPct}%`,
-                          top: `${h.yPct}%`,
-                          width: `${h.wPct}%`,
-                          height: `${h.hPct}%`,
-                        }}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
-                  </div>
+                  {(!showVectors || !roomVectors) && (
+                    <div className="absolute inset-0">
+                      {(activeRoom.hotspots ?? []).map((h) => (
+                        <button
+                          key={h.id}
+                          title={h.specKey ? `${h.label} → ${h.specKey}` : h.label}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            focusSpec(h.specKey)
+                          }}
+                          className="absolute rounded border border-gold-light/70 bg-gold/20 hover:bg-gold/45 text-[10px] leading-tight text-gold-light px-1 truncate"
+                          style={{
+                            left: `${h.xPct}%`,
+                            top: `${h.yPct}%`,
+                            width: `${h.wPct}%`,
+                            height: `${h.hPct}%`,
+                          }}
+                        >
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showVectors && roomVectors && (
+                    <svg
+                      viewBox={roomVectors.viewBox || '0 0 3200 2240'}
+                      className="absolute inset-0 h-full w-full"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {roomVectors.elements.map((el) => {
+                        const interactive = !!el.specKey
+                        const shapeProps = {
+                          fill: el.fill ?? '#daa520',
+                          fillOpacity: el.fill ? 0.18 : 0.05,
+                          stroke: el.stroke ?? '#daa520',
+                          strokeWidth: 4,
+                          vectorEffect: 'non-scaling-stroke' as const,
+                          style: interactive
+                            ? { pointerEvents: 'auto' as const, cursor: 'pointer' }
+                            : undefined,
+                          onClick: () => focusSpec(el.specKey),
+                        }
+                        const label =
+                          el.dimensions ? `${el.label} — ${el.dimensions}` : el.label
+                        return el.svgPath ? (
+                          <path key={el.id} d={el.svgPath} {...shapeProps}>
+                            <title>{label}</title>
+                          </path>
+                        ) : el.rect ? (
+                          <rect
+                            key={el.id}
+                            x={el.rect.x}
+                            y={el.rect.y}
+                            width={el.rect.w}
+                            height={el.rect.h}
+                            {...shapeProps}
+                          >
+                            <title>{label}</title>
+                          </rect>
+                        ) : null
+                      })}
+                    </svg>
+                  )}
                 </div>
               )}
             </div>
             <p className="text-[10px] text-slate-600">
-              drag to pan · wheel to zoom · gold boxes are hotspots (click jumps to the spec control)
+              drag to pan · wheel to zoom · click a CAD element (or gold hotspot) to jump to its spec control
             </p>
           </section>
 
@@ -439,14 +577,11 @@ export function CanvasStudio({ projectLabel }: { projectLabel?: string }) {
                 locked={roomLocked}
                 dirtyCount={dirtyKeys.length}
                 redrawing={redrawing}
+                lockBusy={lockBusy}
                 notice={notice}
                 onRedraw={() => void redraw()}
-                onUnlock={() => activeRoom && setUnlocked((u) => new Set(u).add(activeRoom.id))}
-                onRelock={() => activeRoom && setUnlocked((u) => {
-                  const next = new Set(u)
-                  next.delete(activeRoom.id)
-                  return next
-                })}
+                onUnlock={() => void setRoomStatus('draft')}
+                onRelock={() => void setRoomStatus('frozen')}
                 focusKey={focusSpecKey}
               />}
 
@@ -566,6 +701,7 @@ function SpecControls({
   locked: boolean
   dirtyCount: number
   redrawing: boolean
+  lockBusy: boolean
   notice: { tone: 'green' | 'red' | 'gold'; text: string } | null
   onRedraw: () => void
   onUnlock: () => void
@@ -590,13 +726,17 @@ function SpecControls({
       {locked && (
         <div className="rounded-lg border border-gold/40 bg-gold/10 p-2.5 flex items-center gap-2">
           <span className="text-xs text-gold-light flex-1">🔒 Freeze-locked room — edits held.</span>
-          <button className="btn-secondary-sm" onClick={onUnlock}>Unlock</button>
+          <button className="btn-secondary-sm" disabled={lockBusy} onClick={onUnlock}>
+            {lockBusy ? '…' : 'Unlock'}
+          </button>
         </div>
       )}
-      {!locked && room.status === 'frozen' && (
+      {!locked && room.status && room.status !== 'approved' && (
         <div className="flex items-center gap-2 text-[10px] text-slate-500">
-          <span>unlocked for editing</span>
-          <button className="btn-secondary-sm" onClick={onRelock}>Re-lock</button>
+          <Pill tone={room.status === 'draft' ? 'gold' : 'blue'}>{room.status}</Pill>
+          <button className="btn-secondary-sm" disabled={lockBusy} onClick={onRelock}>
+            Re-freeze
+          </button>
         </div>
       )}
 

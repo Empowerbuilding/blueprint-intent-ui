@@ -17,10 +17,14 @@ engine from the browser.
 - `GET  /api/canvas/health` — liveness probe (powers the "engine live/offline" badge)
 - `GET  /api/canvas/state` — full `StudioStateV16` (rooms, library, constraints)
 - `POST /api/canvas/redraw` — room re-render (`{ roomId, specUpdates }`); forwards the
-  engine's error status/code (e.g. `room_frozen`) so freeze-locking is enforced engine-side
+  engine's error status/code (HTTP 423 `room_frozen` per contract v2)
 - `POST /api/canvas/redraw-pattern` — pattern re-render (`{ patternId, overrides }`)
+- `POST /api/canvas/rooms/:id/lock` — engine-authoritative freeze/unfreeze
+  (`{ status: frozen|updated|approved|draft }`); the UI unlock/re-freeze buttons call this
+- `GET  /api/canvas/vectors/:roomId` — CAD overlay geometry (SVG paths, 1:1 with the
+  3200x2240 sheet; elements with `specKey` are click-to-focus)
 - `GET  /api/canvas/sheets/<file>` — binary PNG passthrough (rooms + `library_patterns/`),
-  traversal-guarded, `max-age=60` until immutable-versioned filenames are confirmed
+  traversal-guarded; versioned filenames cache immutable, others 60s
 
 All routes require an authenticated Supabase session (401 otherwise).
 
@@ -34,8 +38,10 @@ changes needed.
 
 ## Contract status
 
-Schema is typed in `src/lib/canvas/types.ts` exactly per Blueprint's StudioStateV16
-handoff (2026-11-28). `RoomCanvasEntry.status` / `roomVersion` are optional pending
-Blueprint populating them — the UI (lock badges, write-gating) lights up automatically
-once the engine sends them. Full ask list: `INTENT-CANVAS-TAB-SCOPE.md` (Codie workspace)
-or the portal channel `barnhaus-codie-intent-app`.
+**Contract v2 shipped by Blueprint 2026-11-28** — all 8 asks live on the engine (`contractVersion: "v2"`):
+status/roomVersion on all rooms, HTTP 423 freeze guard + `POST /api/rooms/:id/lock`, room-scoped
+fetch, immutable versioned sheet filenames, `x-canvas-secret` enforcement, `GET /api/vectors/:roomId`,
+snapshot bundle exported, engine running on the DO host (container `885588b884f3`, needs routing).
+This branch is wired for all of it. Snapshot fallback is pending a fetchable URL for the JSON bundle
+(engine `/snapshot.json` or the public docs bucket) — then it needs one small code addition here.
+Full ask history: portal channel `barnhaus-codie-intent-app` / `INTENT-CANVAS-TAB-SCOPE.md` (Codie workspace).

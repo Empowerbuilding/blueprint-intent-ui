@@ -1,7 +1,7 @@
 // Proxy: sheet + pattern PNG passthrough (binary stream from the engine).
-// Path is validated against traversal; long-cache is deliberately conservative
-// (max-age=60) until ask #4 (immutable versioned filenames) is confirmed —
-// if sheetFile is ever overwritten in place, a stale cache would show old sheets.
+// Path is validated against traversal. Contract v2: the engine marks
+// versioned filenames (_v<N>/_r<N>) immutable — those cache for a year;
+// anything else falls back to 60s.
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +28,8 @@ export async function GET(
   return new Response(result.body, {
     headers: {
       'content-type': result.contentType,
-      'cache-control': 'public, max-age=60',
+      // Contract v2: engine marks versioned filenames (_v<N>/_r<N>) immutable.
+      'cache-control': result.cacheControl ?? 'public, max-age=60',
     },
   })
 }

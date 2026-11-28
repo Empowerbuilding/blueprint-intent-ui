@@ -92,10 +92,34 @@ export function engineRedrawPattern(body: {
   })
 }
 
+/** Contract v2: POST /api/rooms/:id/lock — engine-authoritative freeze/unlock. */
+export function engineRoomLock(
+  roomId: string,
+  status: 'frozen' | 'updated' | 'approved' | 'draft',
+  by?: string,
+  reason?: string,
+): Promise<EngineResult<Record<string, unknown>>> {
+  return engineFetch<Record<string, unknown>>(`/api/rooms/${encodeURIComponent(roomId)}/lock`, {
+    method: 'POST',
+    body: { status, by, reason },
+    timeoutMs: 8000,
+  })
+}
+
+/** Contract v2: GET /api/vectors/:roomId — CAD overlay geometry. */
+export function engineVectors(roomId: string): Promise<EngineResult<Record<string, unknown>>> {
+  return engineFetch<Record<string, unknown>>(`/api/vectors/${encodeURIComponent(roomId)}`, {
+    timeoutMs: 10000,
+  })
+}
+
 /** GET /sheets/<file> — room PNGs + library_patterns/*.png (binary passthrough). */
 export async function engineSheet(
   file: string,
-): Promise<{ ok: true; body: ArrayBuffer; contentType: string } | { ok: false; status: number; error: string }> {
+): Promise<
+  | { ok: true; body: ArrayBuffer; contentType: string; cacheControl?: string }
+  | { ok: false; status: number; error: string }
+> {
   const guarded = file.replace(/^\/+/, '')
   if (!guarded || guarded.includes('..') || guarded.includes('\\')) {
     return { ok: false, status: 400, error: 'bad sheet path' }
@@ -110,8 +134,14 @@ export async function engineSheet(
     })
     if (!res.ok) return { ok: false, status: res.status, error: `sheet fetch failed (${res.status})` }
     const contentType = res.headers.get('content-type') || 'image/png'
+    // Contract v2: engine sends immutable on versioned filenames (_v<N>/_r<N>);
+    // forward it so redraws at a NEW filename cache forever and old ones never go stale.
+    const rawCache = res.headers.get('cache-control') || ''
+    const cacheControl = /immutable/i.test(rawCache)
+      ? 'public, max-age=31536000, immutable'
+      : rawCache || undefined
     const body = await res.arrayBuffer()
-    return { ok: true, body, contentType }
+    return { ok: true, body, contentType, cacheControl }
   } catch {
     return { ok: false, status: 504, error: 'engine unreachable' }
   } finally {
